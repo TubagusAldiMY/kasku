@@ -1,0 +1,45 @@
+{
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "exchanges": [
+    {
+      "name":        "kasku.events",
+      "vhost":       "/",
+      "type":        "topic",
+      "durable":     true,
+      "auto_delete": false,
+      "internal":    false,
+      "arguments":   {}
+    },
+    {
+      "name":        "kasku.events.dlx",
+      "vhost":       "/",
+      "type":        "fanout",
+      "durable":     true,
+      "auto_delete": false,
+      "internal":    false,
+      "arguments":   {}
+    }
+  ],
+  "queues": [
+    {
+      "name":        "kasku.events.dlq",
+      "vhost":       "/",
+      "durable":     true,
+      "auto_delete": false,
+      "exclusive":   false,
+      "arguments":   {}
+    }
+  ],
+  "bindings": [
+    {
+      "source":           "kasku.events.dlx",
+      "vhost":            "/",
+      "destination":      "kasku.events.dlq",
+      "destination_type": "queue",
+      "routing_key":      "",
+      "arguments":        {}
+    }
+  ]
+}

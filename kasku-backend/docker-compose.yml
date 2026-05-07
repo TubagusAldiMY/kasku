@@ -1,0 +1,162 @@
+name: kasku
+
+# ==============================================================
+# KasKu SaaS — Docker Compose (Production Base)
+# Usage:
+#   Local dev  : docker compose up -d          (uses override.yml automatically)
+#   Production : docker compose -f docker-compose.yml up -d
+# ==============================================================
+
+networks:
+  kasku-public:
+    name: kasku-public
+    driver: bridge
+  kasku-internal:
+    name: kasku-internal
+    driver: bridge
+  kasku-data:
+    name: kasku-data
+    driver: bridge
+  kasku-admin:
+    name: kasku-admin
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: kasku-pgdata
+  rabbitmq-data:
+    name: kasku-rabbitmq-data
+  redis-data:
+    name: kasku-redis-data
+  traefik-certs:
+    name: kasku-traefik-certs
+
+services:
+
+  # ============================================================
+  # Traefik — TLS termination + reverse proxy
+  # ============================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: kasku-traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=kasku-public"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/certs
+    networks:
+      - kasku-public
+    stop_grace_period: 35s
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================================
+  # PostgreSQL 16 — 5 databases, schema-per-tenant for finance
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: kasku-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: kasku_superuser
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASS}
+      POSTGRES_DB: kasku_auth
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+    networks:
+      - kasku-data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kasku_superuser -d kasku_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Redis 7 — Rate limiting counters + JWT blacklist
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: kasku-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - kasku-data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # RabbitMQ 3.13 — Async event bus
+  # Exchange: kasku.events (topic, durable)
+  # DLX:      kasku.events.dlx (fanout, durable)
+  # DLQ:      kasku.events.dlq
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: kasku-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      - kasku-data
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Application services — added per task (Phase 1 MVP)
+  #
+  # Task 1:  auth-service        :8081 / gRPC :9081   kasku-internal + kasku-data
+  # Task 2:  api-gateway         :8080                kasku-public + kasku-internal + kasku-admin + kasku-data
+  # Task 3:  user-service        :8082 / gRPC :9082   kasku-internal + kasku-data
+  # Task 4:  billing-service     :8083 / gRPC :9083   kasku-internal + kasku-data
+  # Task 5:  finance-service     :8084 / gRPC :9084   kasku-internal + kasku-data
+  # Task 6:  transaction-service :8085 / gRPC :9085   kasku-internal + kasku-data
+  # ============================================================

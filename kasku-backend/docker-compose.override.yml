@@ -1,0 +1,28 @@
+# ==============================================================
+# KasKu SaaS — Docker Compose Override (Local Development)
+# Applied automatically by `docker compose up -d`.
+# NOT used in production (run with -f docker-compose.yml only).
+#
+# Exposes infra ports directly so developers can connect with
+# pgAdmin, redis-cli, RabbitMQ Management UI, etc.
+# ==============================================================
+
+services:
+
+  postgres:
+    ports:
+      - "5433:5432"   # mapped to 5433 locally (5432 used by host/existing Postgres)
+
+  redis:
+    ports:
+      - "6380:6379"   # mapped to 6380 locally (6379 used by host Redis)
+
+  rabbitmq:
+    ports:
+      - "5672:5672"    # AMQP — Go/Rust services
+      - "15672:15672"  # Management UI — http://localhost:15672
+
+  # Disable Traefik in local dev (services expose ports directly via override)
+  traefik:
+    profiles:
+      - production

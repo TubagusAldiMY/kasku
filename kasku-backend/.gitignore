@@ -1,0 +1,39 @@
+# Environment — NEVER commit real credentials
+.env
+
+# Go build artifacts
+bin/
+dist/
+*.exe
+*.test
+*.out
+coverage.html
+coverage.out
+
+# Go module cache (vendor not used, rely on module cache)
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TLS certs (managed by Traefik at runtime)
+certs/
+*.pem
+*.key
+*.crt
+acme.json
+
+# Proto generated files (committed only if CI doesn't generate them)
+# Uncomment to ignore:
+# **/*.pb.go
+# **/*_grpc.pb.go

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/TubagusAldiMY/kasku/api-gateway/proto/billing/v1;billingv1";
+
+service BillingInternal {
+  rpc GetUserTierLimits(GetUserTierLimitsRequest) returns (TierLimitsResponse);
+}
+
+message GetUserTierLimitsRequest {
+  string user_id = 1;
+}
+
+message TierLimitsResponse {
+  int32 max_transactions_per_month = 1;
+  int32 max_financial_accounts     = 2;
+  int32 max_investment_instruments = 3;
+  int32 history_retention_months   = 4;
+  bool  email_notifications_enabled = 5;
+  bool  export_csv_enabled          = 6;
+}
