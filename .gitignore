@@ -31,4 +31,11 @@ go.work.sum
 .idea/
 # .vscode/
 
+# Build output
+bin/
+
+# Other
 Plan
+CLAUDE.md
+Knowledge
+.github
