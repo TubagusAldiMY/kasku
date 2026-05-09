@@ -1,0 +1,10 @@
+{{define "welcome.html"}}<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Selamat Datang di KasKu</title></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #6366f1;">Selamat Datang di KasKu, {{.Username}}!</h1>
+  <p>Terima kasih telah mendaftar. Silakan verifikasi email Anda untuk mulai menggunakan KasKu.</p>
+  <a href="{{.VerificationLink}}" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0;">Verifikasi Email</a>
+  <p style="color: #666; font-size: 12px;">Link ini berlaku selama 24 jam. Jika Anda tidak mendaftar, abaikan email ini.</p>
+</body>
+</html>{{end}}

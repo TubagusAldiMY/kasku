@@ -1,0 +1,11 @@
+{{define "payment_success.html"}}<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Pembayaran Berhasil</title></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #22c55e;">Pembayaran Berhasil!</h1>
+  <p>Pembayaran Anda untuk paket <strong>{{.PlanName}}</strong> telah berhasil diproses.</p>
+  <p>Jumlah: <strong>Rp {{.AmountIDR}}</strong></p>
+  <p>Order ID: <code>{{.OrderID}}</code></p>
+  <p>Terima kasih telah menggunakan KasKu!</p>
+</body>
+</html>{{end}}

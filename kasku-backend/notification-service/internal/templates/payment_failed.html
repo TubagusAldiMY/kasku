@@ -1,0 +1,10 @@
+{{define "payment_failed.html"}}<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Pembayaran Gagal</title></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #ef4444;">Pembayaran Gagal</h1>
+  <p>Pembayaran untuk Order ID <code>{{.OrderID}}</code> gagal diproses.</p>
+  <p>Alasan: {{.Reason}}</p>
+  <p>Silakan coba lagi atau hubungi support kami.</p>
+</body>
+</html>{{end}}
