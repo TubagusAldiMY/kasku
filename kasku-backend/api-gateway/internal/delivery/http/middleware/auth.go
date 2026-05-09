@@ -24,6 +24,7 @@ const (
 	HeaderTierMaxAccounts     = "X-Tier-Max-Accounts"
 	HeaderTierMaxInvestments  = "X-Tier-Max-Investments"
 	HeaderTierHistoryMonths   = "X-Tier-History-Months"
+	HeaderTierExportCSV       = "X-Tier-Export-CSV"
 
 	// Context key untuk parsed token
 	ContextKeyParsedToken = "parsed_token"
@@ -82,6 +83,11 @@ func Auth(verifier JWTVerifier, tierProvider TierLimitsProvider) gin.HandlerFunc
 		c.Request.Header.Set(HeaderTierMaxAccounts, fmt.Sprintf("%d", limits.MaxFinancialAccounts))
 		c.Request.Header.Set(HeaderTierMaxInvestments, fmt.Sprintf("%d", limits.MaxInvestmentInstruments))
 		c.Request.Header.Set(HeaderTierHistoryMonths, fmt.Sprintf("%d", limits.HistoryRetentionMonths))
+		if limits.ExportCsvEnabled {
+			c.Request.Header.Set(HeaderTierExportCSV, "true")
+		} else {
+			c.Request.Header.Set(HeaderTierExportCSV, "false")
+		}
 
 		c.Next()
 	}
