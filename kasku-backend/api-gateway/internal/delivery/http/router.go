@@ -109,6 +109,19 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	{
 		v1Categories.Any("/*path", cfg.ProxyHandler.ProxyTo("transaction"))
 	}
+	// ── /v1/investments/** ────────────────────────────────────────────────
+	v1Investments := r.Group("/v1/investments")
+	v1Investments.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
+	{
+		v1Investments.Any("/*path", cfg.ProxyHandler.ProxyTo("investment"))
+	}
+
+	// ── /v1/sync/** ───────────────────────────────────────────────────────
+	v1Sync := r.Group("/v1/sync")
+	v1Sync.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
+	{
+		v1Sync.Any("/*path", cfg.ProxyHandler.ProxyTo("sync"))
+	}
 
 	return r
 }

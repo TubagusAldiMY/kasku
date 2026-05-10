@@ -160,6 +160,10 @@ services:
   # Task 5:  finance-service     :8084 / gRPC :9084   kasku-internal + kasku-data
   # Task 6:  transaction-service :8085 / gRPC :9085   kasku-internal + kasku-data
   # Task 7:  notification-service :8089                kasku-internal + kasku-data
+  # Phase 2:
+  # Task 8:  investment-service  :8086 / gRPC :9086   kasku-internal + kasku-data
+  # Task 9:  price-service       :8087 / gRPC :9087   kasku-internal + kasku-data
+  # Task 10: sync-service        :8088                 kasku-internal + kasku-data
   # ============================================================
 
   # ============================================================
@@ -222,6 +226,8 @@ services:
       BILLING_SERVICE_URL: http://kasku-billing-service:8083
       FINANCE_SERVICE_URL: http://kasku-finance-service:8084
       TRANSACTION_SERVICE_URL: http://kasku-transaction-service:8085
+      INVESTMENT_SERVICE_URL: http://kasku-investment-service:8086
+      SYNC_SERVICE_URL: http://kasku-sync-service:8088
     networks:
       - kasku-public
       - kasku-internal
@@ -258,8 +264,8 @@ services:
       GRPC_PORT: "9082"
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      POSTGRES_FINANCE_DSN: postgres://kasku_user_svc:${KASKU_USER_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
-      POSTGRES_BILLING_DSN: postgres://kasku_user_svc:${KASKU_USER_DB_PASS}@postgres:5432/kasku_billing?sslmode=disable
+      POSTGRES_FINANCE_DSN: ${POSTGRES_FINANCE_DSN}
+      POSTGRES_BILLING_DSN: ${POSTGRES_BILLING_DSN}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
     networks:
       - kasku-internal
@@ -402,4 +408,100 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Phase 2 — investment-service
+  # ============================================================
+  investment-service:
+    build: ./investment-service
+    container_name: kasku-investment-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: "8086"
+      GRPC_PORT: "9086"
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      POSTGRES_DSN: postgres://kasku_investment_svc:${KASKU_INVESTMENT_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
+      PRICE_GRPC_ADDR: kasku-price-service:9087
+    networks:
+      - kasku-internal
+      - kasku-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      price-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Phase 2 — price-service (Rust)
+  # ============================================================
+  price-service:
+    build: ./price-service
+    container_name: kasku-price-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HTTP_PORT: "8087"
+      GRPC_PORT: "9087"
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://kasku_price_svc:${KASKU_PRICE_DB_PASS}@postgres:5432/kasku_price?sslmode=disable
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      PRICE_CACHE_TTL_SECONDS: ${PRICE_CACHE_TTL_SECONDS:-900}
+      EXTERNAL_REQUEST_TIMEOUT_SECONDS: ${EXTERNAL_REQUEST_TIMEOUT_SECONDS:-10}
+    networks:
+      - kasku-internal
+      - kasku-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8087/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Phase 2 — sync-service (Rust)
+  # ============================================================
+  sync-service:
+    build: ./sync-service
+    container_name: kasku-sync-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HTTP_PORT: "8088"
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://kasku_sync_svc:${KASKU_SYNC_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
+    networks:
+      - kasku-internal
+      - kasku-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     stop_grace_period: 35s

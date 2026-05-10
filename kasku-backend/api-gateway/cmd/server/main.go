@@ -83,6 +83,8 @@ func main() {
 		"billing":     cfg.Proxy.BillingServiceURL,
 		"finance":     cfg.Proxy.FinanceServiceURL,
 		"transaction": cfg.Proxy.TransactionServiceURL,
+		"investment":  cfg.Proxy.InvestmentServiceURL,
+		"sync":        cfg.Proxy.SyncServiceURL,
 	}
 	proxyHandler, err := handler.NewProxyHandler(upstreams, logger)
 	if err != nil {

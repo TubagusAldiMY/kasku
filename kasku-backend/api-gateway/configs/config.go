@@ -59,6 +59,8 @@ type ProxyConfig struct {
 	BillingServiceURL     string
 	FinanceServiceURL     string
 	TransactionServiceURL string
+	InvestmentServiceURL  string
+	SyncServiceURL        string
 }
 
 // Load membaca seluruh konfigurasi dari environment variables.
@@ -108,6 +110,8 @@ func Load() (*Config, error) {
 	cfg.Proxy.BillingServiceURL = getEnvOrDefault("BILLING_SERVICE_URL", "http://billing-service:8083")
 	cfg.Proxy.FinanceServiceURL = getEnvOrDefault("FINANCE_SERVICE_URL", "http://finance-service:8084")
 	cfg.Proxy.TransactionServiceURL = getEnvOrDefault("TRANSACTION_SERVICE_URL", "http://transaction-service:8085")
+	cfg.Proxy.InvestmentServiceURL = getEnvOrDefault("INVESTMENT_SERVICE_URL", "http://investment-service:8086")
+	cfg.Proxy.SyncServiceURL = getEnvOrDefault("SYNC_SERVICE_URL", "http://sync-service:8088")
 
 	return cfg, nil
 }
