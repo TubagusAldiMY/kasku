@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package price.v1;
+
+// PriceService provides real-time and cached asset price data.
+// Used internally by investment-service via gRPC.
+service PriceService {
+  // GetPrice returns the latest price for a single symbol.
+  rpc GetPrice(GetPriceRequest) returns (GetPriceResponse);
+
+  // GetPrices returns prices for multiple symbols in a single call.
+  rpc GetPrices(GetPricesRequest) returns (GetPricesResponse);
+}
+
+message GetPriceRequest {
+  // Asset symbol, e.g. "bitcoin", "ethereum", "XAU"
+  string symbol = 1;
+  // Source hint: "COINGECKO", "METALS_LIVE", or empty for auto-detect
+  string source = 2;
+}
+
+message GetPriceResponse {
+  string symbol = 1;
+  double price_idr = 2;
+  double price_usd = 3;
+  bool is_fresh = 4;
+  // RFC3339 timestamp of when the price was last fetched
+  string updated_at = 5;
+}
+
+message GetPricesRequest {
+  repeated string symbols = 1;
+}
+
+message GetPricesResponse {
+  repeated GetPriceResponse prices = 1;
+}
