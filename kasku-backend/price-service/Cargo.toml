@@ -1,0 +1,54 @@
+[package]
+name = "price-service"
+version = "1.0.0"
+edition = "2021"
+authors = ["TubsAMY <admin@tubsamy.tech>"]
+description = "KasKu price-service — Real-time price cache from CoinGecko & metals.live"
+
+[[bin]]
+name = "price-service"
+path = "src/main.rs"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# gRPC
+tonic = "0.12"
+prost = "0.13"
+prost-types = "0.13"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "rust_decimal"] }
+
+# HTTP client (external APIs)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Types
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = { version = "1", features = ["serde-with-str"] }
+
+# Config
+envy = "0.4"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# URL parsing (SSRF protection)
+url = "2"
+
+[build-dependencies]
+tonic-build = "0.12"
