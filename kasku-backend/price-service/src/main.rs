@@ -68,13 +68,15 @@ async fn main() {
     let coingecko = CoinGeckoClient::new(
         cfg.external_request_timeout_seconds,
         cfg.coingecko_api_key.clone(),
-    );
+    )
+    .expect("gagal inisialisasi CoinGecko client");
 
     let metals_live = MetalsLiveClient::new(
         cfg.external_request_timeout_seconds,
         cfg.metals_live_url.clone(),
         cfg.gold_usd_idr_rate,
-    );
+    )
+    .expect("gagal inisialisasi metals.live client");
 
     let get_price_uc = Arc::new(GetPriceUseCase::new(
         repo,

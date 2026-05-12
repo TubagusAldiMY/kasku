@@ -33,7 +33,10 @@ func main() {
 		Str("env", cfg.App.Env).
 		Msg("investment-service starting")
 
-	// Database — investment-service tidak perlu migrasi, tabel dibuat oleh provision_tenant()
+	// Database — investment-service tidak punya migration sendiri. Tabel
+	// investment_assets & unit_history di tiap tenant schema dibuat oleh
+	// stored function public.provision_tenant() yang dimiliki finance-service.
+	// Lihat finance-service/migrations/000003_extend_provision_tenant_with_investment.up.sql
 	ctx := context.Background()
 	pool, err := persistence.NewPostgresPool(ctx, cfg.Postgres.DSN)
 	if err != nil {

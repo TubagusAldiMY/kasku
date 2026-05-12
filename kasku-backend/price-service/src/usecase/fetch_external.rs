@@ -30,14 +30,14 @@ struct CoinGeckoPriceEntry {
 }
 
 impl CoinGeckoClient {
-    pub fn new(timeout_seconds: u64, api_key: String) -> Self {
+    pub fn new(timeout_seconds: u64, api_key: String) -> Result<Self, DomainError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(timeout_seconds))
             .user_agent("KasKu/1.0 price-service")
             .build()
-            .expect("gagal membuat HTTP client");
+            .map_err(|e| DomainError::Internal(format!("gagal membuat HTTP client CoinGecko: {}", e)))?;
 
-        Self { client, api_key }
+        Ok(Self { client, api_key })
     }
 
     /// Fetch price from CoinGecko API for a given coin_id (e.g., "bitcoin", "ethereum").
@@ -109,18 +109,22 @@ struct MetalsLiveSpot {
 }
 
 impl MetalsLiveClient {
-    pub fn new(timeout_seconds: u64, metals_live_url: String, gold_usd_idr_rate: f64) -> Self {
+    pub fn new(
+        timeout_seconds: u64,
+        metals_live_url: String,
+        gold_usd_idr_rate: f64,
+    ) -> Result<Self, DomainError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(timeout_seconds))
             .user_agent("KasKu/1.0 price-service")
             .build()
-            .expect("gagal membuat HTTP client");
+            .map_err(|e| DomainError::Internal(format!("gagal membuat HTTP client metals.live: {}", e)))?;
 
-        Self {
+        Ok(Self {
             client,
             metals_live_url,
             gold_usd_idr_rate,
-        }
+        })
     }
 
     /// Fetch gold price from metals.live. Returns (price_usd, price_idr) per troy ounce.
