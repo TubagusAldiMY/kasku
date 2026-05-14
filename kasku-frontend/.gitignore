@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+
+# SvelteKit build artifacts
+/.svelte-kit
+/build
+/dist
+.output
+
+# Deploy platform artifacts
+.vercel
+.netlify
+.wrangler
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Test output
+coverage
+playwright-report
+test-results
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Logs
+npm-debug.log*
+yarn-error.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+
+# AI tools
+.gemini
