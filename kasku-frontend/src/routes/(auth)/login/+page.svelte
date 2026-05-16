@@ -35,9 +35,9 @@
 				auth.setUser({ id: '1', email, username: email.split('@')[0] });
 				goto('/dashboard');
 			} else {
-				error = result.error?.message || 'Email atau password salah.';
-				// Cek jika error karena verifikasi email (berdasarkan pesan error umum dari backend auth)
-				if (error.toLowerCase().includes('verifikasi') || error.toLowerCase().includes('verify')) {
+				const msg = result.error?.message || 'Email atau password salah.';
+				error = msg;
+				if (msg.toLowerCase().includes('verifikasi') || msg.toLowerCase().includes('verify')) {
 					needsVerification = true;
 				}
 			}

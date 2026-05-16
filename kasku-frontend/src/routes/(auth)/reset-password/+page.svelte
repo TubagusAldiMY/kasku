@@ -117,6 +117,7 @@
 						/>
 						<button
 							type="button"
+							aria-label="Tampilkan/sembunyikan sandi"
 							onclick={() => showPassword = !showPassword}
 							class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-300 hover:text-gray-500"
 						>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { apiFetch } from '$lib/api/client';
@@ -111,7 +112,7 @@
 						<h2 class="text-xl font-black text-[#0a2e31]">Notifikasi</h2>
 						<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Pesan Terbaru Anda</p>
 					</div>
-					<button onclick={() => showNotifications = false} class="p-2 text-gray-300 hover:text-gray-600 transition-colors">
+					<button aria-label="Tutup notifikasi" onclick={() => showNotifications = false} class="p-2 text-gray-300 hover:text-gray-600 transition-colors">
 						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
 					</button>
 				</div>

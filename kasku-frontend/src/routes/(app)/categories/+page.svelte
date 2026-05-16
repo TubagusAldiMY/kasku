@@ -215,7 +215,7 @@
 			<div class="p-8 space-y-6">
 				<div class="flex justify-between items-center">
 					<h2 class="text-xl font-black text-[#0a2e31]">{form.id ? 'Edit Kategori' : 'Kategori Baru'}</h2>
-					<button onclick={() => showModal = false} class="text-gray-300 hover:text-gray-500 transition-colors">
+					<button aria-label="Tutup modal" onclick={() => showModal = false} class="text-gray-300 hover:text-gray-500 transition-colors">
 						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
 					</button>
 				</div>
@@ -249,8 +249,9 @@
 					<!-- Preset Colors -->
 					<div class="flex justify-between gap-1 pt-2">
 						{#each predefinedColors as color}
-							<button 
-								type="button" 
+							<button
+								type="button"
+								aria-label="Pilih warna {color}"
 								onclick={() => form.color = color}
 								class="h-6 w-6 rounded-full border-2 transition-transform active:scale-90 hover:scale-110"
 								class:border-gray-900={form.color === color}

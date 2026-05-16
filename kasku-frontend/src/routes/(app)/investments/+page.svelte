@@ -299,7 +299,8 @@
 								<h3 class="text-xl font-black text-[#0a2e31]">{asset.name}</h3>
 								<p class="text-xs font-bold text-gray-400">{asset.symbol}</p>
 							</div>
-							<button 
+							<button
+								aria-label="Edit {asset.name}"
 								onclick={() => openEditModal(asset)}
 								class="p-2 text-gray-300 hover:text-[#0a2e31] transition-colors"
 							>
@@ -359,7 +360,7 @@
 			<div class="p-10 space-y-8">
 				<div class="flex justify-between items-center">
 					<h2 class="text-2xl font-black text-[#0a2e31]">{assetForm.id ? 'Edit Instrumen' : 'Tambah Instrumen'}</h2>
-					<button onclick={() => showAssetModal = false} class="text-gray-300 hover:text-gray-500 transition-colors">
+					<button aria-label="Tutup modal" onclick={() => showAssetModal = false} class="text-gray-300 hover:text-gray-500 transition-colors">
 						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
 					</button>
 				</div>
@@ -436,7 +437,7 @@
 					<h2 class="text-2xl font-black text-[#0a2e31]">{selectedAsset.name}</h2>
 					<p class="text-xs font-bold text-gray-400">{selectedAsset.symbol} — {selectedAsset.asset_type}</p>
 				</div>
-				<button onclick={() => showHistoryModal = false} class="p-2 text-gray-300 hover:text-gray-500">
+				<button aria-label="Tutup riwayat" onclick={() => showHistoryModal = false} class="p-2 text-gray-300 hover:text-gray-500">
 					<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg>
 				</button>
 			</div>
