@@ -37,7 +37,7 @@ target/
 .npm-cache/
 
 # Other
-Plan
+#Plan
 CLAUDE.md
 Knowledge
 .github/*
