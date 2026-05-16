@@ -9,16 +9,22 @@ import (
 )
 
 // ListPlansUseCase mengambil semua subscription plan yang aktif.
-type ListPlansUseCase struct {
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_list_plans_usecase.go -package=mocks
+type ListPlansUseCase interface {
+	Execute(ctx context.Context) ([]entity.SubscriptionPlan, error)
+}
+
+type listPlansUseCase struct {
 	subRepo repository.SubscriptionRepository
 }
 
-func NewListPlansUseCase(subRepo repository.SubscriptionRepository) *ListPlansUseCase {
-	return &ListPlansUseCase{subRepo: subRepo}
+func NewListPlansUseCase(subRepo repository.SubscriptionRepository) ListPlansUseCase {
+	return &listPlansUseCase{subRepo: subRepo}
 }
 
 // Execute mengembalikan daftar plan yang tersedia untuk ditampilkan di halaman pricing.
-func (uc *ListPlansUseCase) Execute(ctx context.Context) ([]entity.SubscriptionPlan, error) {
+func (uc *listPlansUseCase) Execute(ctx context.Context) ([]entity.SubscriptionPlan, error) {
 	plans, err := uc.subRepo.ListAllPlans(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("gagal mengambil daftar subscription plan: %w", err)

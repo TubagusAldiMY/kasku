@@ -151,3 +151,46 @@ func (r *postgresSubscriptionRepository) UpdateStatus(ctx context.Context, subsc
 	}
 	return nil
 }
+
+// ExpireSubscriptionAtomic membungkus UPDATE status + INSERT outbox event dalam
+// satu transaksi pgx. Guard `AND status = 'ACTIVE'` memastikan operasi idempotent
+// kalau cron jalan ulang setelah crash sebelum publish — baris yang sudah EXPIRED
+// tidak menghasilkan event duplikat.
+func (r *postgresSubscriptionRepository) ExpireSubscriptionAtomic(
+	ctx context.Context,
+	subscriptionID string,
+	eventType string,
+	routingKey string,
+	payload []byte,
+) (bool, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return false, fmt.Errorf("gagal mulai transaksi expire subscription: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE public.subscriptions
+		SET status = 'EXPIRED', updated_at = now()
+		WHERE id = $1 AND status = 'ACTIVE'
+	`, subscriptionID)
+	if err != nil {
+		return false, fmt.Errorf("gagal update status subscription %s: %w", subscriptionID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		// Tidak ada baris ACTIVE — sudah di-flip oleh run sebelumnya.
+		return false, nil
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO public.outbox_events (event_type, routing_key, payload)
+		VALUES ($1, $2, $3::jsonb)
+	`, eventType, routingKey, string(payload)); err != nil {
+		return false, fmt.Errorf("gagal insert outbox event untuk subscription %s: %w", subscriptionID, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("gagal commit transaksi expire subscription %s: %w", subscriptionID, err)
+	}
+	return true, nil
+}

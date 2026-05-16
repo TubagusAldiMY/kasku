@@ -1,4 +1,4 @@
-.PHONY: build run test lint migrate-up migrate-down tidy docker-build
+.PHONY: build run test test-unit test-integration lint migrate-up migrate-down tidy generate docker-build
 
 SERVICE_NAME := billing-service
 BIN_DIR      := bin
@@ -12,6 +12,12 @@ run:
 test:
 	go test ./... -v -race -count=1
 
+test-unit:
+	go test ./internal/... -v -race -count=1 -short
+
+test-integration:
+	go test ./tests/integration/... -v -race -count=1
+
 lint:
 	golangci-lint run ./...
 
@@ -24,6 +30,9 @@ migrate-down:
 
 tidy:
 	go mod tidy
+
+generate:
+	go generate ./...
 
 docker-build:
 	docker build -t kasku/$(SERVICE_NAME):latest .

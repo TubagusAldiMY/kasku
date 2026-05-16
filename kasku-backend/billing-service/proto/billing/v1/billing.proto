@@ -1,0 +1,49 @@
+// billing.v1 mendefinisikan internal gRPC contract untuk billing-service.
+//
+// PENTING: File ini adalah SUMBER KEBENARAN dokumentasi tapi *tidak* dipakai
+// untuk codegen. Server di internal/infrastructure/grpc/ menggunakan manual
+// wire-encoding (google.golang.org/protobuf/encoding/protowire) — pola yang
+// sama dengan auth-service. Konsisten dengan repo & menghindari ketergantungan
+// pada protoc di build environment.
+//
+// Setiap perubahan di file ini WAJIB diikuti perubahan terkait di:
+//   - internal/infrastructure/grpc/wire_*.go (encode/decode)
+//   - internal/infrastructure/grpc/service_desc.go (handler registration)
+//   - api-gateway/proto/billing/v1/billing.proto + billing_grpc.go (client side).
+//
+// Field number sekali ditetapkan TIDAK BOLEH diubah/dipakai-ulang.
+// Tambah field baru di nomor berikutnya, jangan rename atau remove existing field.
+
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/TubagusAldiMY/kasku/billing-service/proto/billing/v1;billingv1";
+
+// BillingInternal adalah service gRPC internal untuk billing-service.
+// Hanya boleh diakses dari kasku-internal Docker network.
+service BillingInternal {
+  // GetUserTierLimits mengambil tier limit aktif untuk user. Dipanggil oleh
+  // api-gateway untuk dipasang sebagai header X-Tier-* sebelum proxy request
+  // ke service downstream (finance, transaction, investment).
+  //
+  // Saat user tidak punya subscription atau plan-nya inactive, server WAJIB
+  // mengembalikan FREE tier limits sebagai fallback (bukan error). Ini supaya
+  // api-gateway tetap bisa lanjut proxy dengan default yang aman.
+  rpc GetUserTierLimits(GetUserTierLimitsRequest) returns (TierLimitsResponse);
+}
+
+// ─── GetUserTierLimits ────────────────────────────────────────────────────────
+
+message GetUserTierLimitsRequest {
+  string user_id = 1; // UUID string
+}
+
+message TierLimitsResponse {
+  int32 max_transactions_per_month    = 1; // -1 = unlimited (PRO)
+  int32 max_financial_accounts        = 2; // -1 = unlimited (PRO)
+  int32 max_investment_instruments    = 3; // -1 = unlimited (PRO)
+  int32 history_retention_months      = 4; // -1 = unlimited (PRO)
+  bool  email_notifications_enabled   = 5;
+  bool  export_csv_enabled            = 6;
+}

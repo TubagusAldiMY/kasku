@@ -11,9 +11,10 @@ import (
 	"github.com/TubagusAldiMY/kasku/billing-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http/handler"
-	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/entity"
-	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/repository"
+	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/cleanup"
 	billinggrpc "github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/grpc"
+	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/messaging"
+	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/outbox"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -45,7 +46,7 @@ func main() {
 
 	ctx := context.Background()
 
-	// Buat connection pool PostgreSQL
+	// Connection pool PostgreSQL
 	pool, err := persistence.NewPostgresPool(ctx, cfg.Postgres.DSN)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("gagal membuat koneksi ke PostgreSQL")
@@ -53,23 +54,44 @@ func main() {
 	defer pool.Close()
 	logger.Info().Msg("PostgreSQL terhubung")
 
-	// Wiring dependency injection: repository → use case → handler/server
+	// RabbitMQ publisher untuk publish event subscription.expired/expiring lewat outbox.
+	publisher, err := messaging.NewRabbitMQPublisher(cfg.RabbitMQ.URL)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("gagal koneksi ke RabbitMQ")
+	}
+	defer func() { _ = publisher.Close() }()
+	logger.Info().Msg("RabbitMQ terhubung")
+
+	// Outbox dispatcher — jalan di goroutine terpisah, dihentikan via outboxCancel().
+	outboxCtx, outboxCancel := context.WithCancel(context.Background())
+	defer outboxCancel()
+	outbox.NewDispatcher(pool, publisher, logger).Start(outboxCtx)
+	logger.Info().Msg("outbox dispatcher started")
+
+	// Cleanup job retention untuk outbox_events.
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	cleanupJob := cleanup.NewCleanupJob(pool, logger, cfg.Cleanup.Interval, cfg.Cleanup.DryRun)
+	go cleanupJob.Run(cleanupCtx)
+
+	// Wiring dependency injection: repository → use case → handler/server.
 	subRepo := persistence.NewPostgresSubscriptionRepository(pool)
 
 	getTierLimitsUC := usecase.NewGetTierLimitsUseCase(subRepo)
 	listPlansUC := usecase.NewListPlansUseCase(subRepo)
 	getSubscriptionUC := usecase.NewGetSubscriptionUseCase(subRepo)
+	expireSubscriptionsUC := usecase.NewExpireSubscriptionsUseCase(subRepo, logger)
 
 	// Mulai gRPC server pada port 9083
-	grpcServer := billinggrpc.NewBillingGRPCServer(getTierLimitsUC, logger)
+	grpcServer := billinggrpc.NewBillingGRPCServer(getTierLimitsUC, logger, cfg.IsDevelopment())
 	if err := grpcServer.Start(cfg.Server.GRPCPort); err != nil {
 		logger.Fatal().Err(err).Msg("gagal memulai gRPC server")
 	}
 	defer grpcServer.Stop()
 	logger.Info().Str("port", cfg.Server.GRPCPort).Msg("gRPC server berjalan")
 
-	// Siapkan HTTP server
-	healthChecker := &postgresHealthChecker{pool: pool}
+	// HTTP server + composite health checker.
+	healthChecker := newHealthChecker(pool, publisher)
 	billingHandler := handler.NewBillingHandler(
 		healthChecker,
 		listPlansUC,
@@ -87,7 +109,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Mulai HTTP server di goroutine terpisah
 	go func() {
 		logger.Info().Str("port", cfg.Server.Port).Msg("billing-service HTTP listening")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -95,15 +116,18 @@ func main() {
 		}
 	}()
 
-	// Mulai background job untuk update expired subscriptions
-	go runSubscriptionExpiryCheck(ctx, subRepo, cfg.App.SubscriptionCheckInterval, logger)
+	// Background job — update expired subscriptions + publish event via outbox.
+	go runSubscriptionExpiryCheck(ctx, expireSubscriptionsUC, cfg.App.SubscriptionCheckInterval, logger)
 
-	// Tunggu sinyal shutdown
+	// Tunggu sinyal shutdown.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
 	logger.Info().Msg("menerima sinyal shutdown, memulai graceful shutdown (30s timeout)")
+
+	outboxCancel()
+	cleanupCancel()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
@@ -129,21 +153,30 @@ func buildLogger(cfg *configs.Config) zerolog.Logger {
 		Logger()
 }
 
-// postgresHealthChecker mengadaptasi pgxpool.Pool ke interface HealthChecker yang dibutuhkan handler.
-type postgresHealthChecker struct {
-	pool *pgxpool.Pool
+// appHealthChecker menggabungkan ping pgxpool + RabbitMQ publisher untuk health endpoint.
+type appHealthChecker struct {
+	pool      *pgxpool.Pool
+	publisher *messaging.RabbitMQPublisher
 }
 
-func (h *postgresHealthChecker) PingPostgres(ctx context.Context) error {
+func newHealthChecker(pool *pgxpool.Pool, publisher *messaging.RabbitMQPublisher) *appHealthChecker {
+	return &appHealthChecker{pool: pool, publisher: publisher}
+}
+
+func (h *appHealthChecker) PingPostgres(ctx context.Context) error {
 	return persistence.PingPostgres(ctx, h.pool)
 }
 
-// runSubscriptionExpiryCheck adalah background job yang berjalan periodik untuk mengubah status
-// subscription yang sudah melewati current_period_end menjadi EXPIRED.
-// Interval dikonfigurasi via SUBSCRIPTION_CHECK_INTERVAL_MS (default 1 jam).
+func (h *appHealthChecker) PingRabbitMQ() error {
+	return h.publisher.Ping()
+}
+
+// runSubscriptionExpiryCheck adalah background job yang berjalan periodik untuk
+// memanggil ExpireSubscriptionsUseCase. Usecase yang menjamin transaksi atomic
+// UPDATE+outbox INSERT supaya event tidak hilang setelah crash.
 func runSubscriptionExpiryCheck(
 	ctx context.Context,
-	subRepo repository.SubscriptionRepository,
+	uc usecase.ExpireSubscriptionsUseCase,
 	interval time.Duration,
 	log zerolog.Logger,
 ) {
@@ -156,23 +189,13 @@ func runSubscriptionExpiryCheck(
 			log.Info().Msg("subscription expiry check job berhenti")
 			return
 		case <-ticker.C:
-			expired, err := subRepo.ListExpiredSubscriptions(ctx)
+			processed, err := uc.Execute(ctx)
 			if err != nil {
-				log.Error().Err(err).Msg("gagal mengambil daftar expired subscriptions")
+				log.Error().Err(err).Msg("subscription expiry check pass gagal")
 				continue
 			}
-
-			for _, sub := range expired {
-				if err := subRepo.UpdateStatus(ctx, sub.ID.String(), entity.StatusExpired); err != nil {
-					log.Error().
-						Err(err).
-						Str("subscription_id", sub.ID.String()).
-						Msg("gagal update status subscription ke EXPIRED")
-				}
-			}
-
-			if len(expired) > 0 {
-				log.Info().Int("count", len(expired)).Msg("subscription expired berhasil diupdate")
+			if processed > 0 {
+				log.Info().Int("count", processed).Msg("subscription expired berhasil diupdate")
 			}
 		}
 	}

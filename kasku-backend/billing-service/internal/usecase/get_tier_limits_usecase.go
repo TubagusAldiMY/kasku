@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/entity"
@@ -22,21 +23,27 @@ var freeTierDefaultLimits = &entity.PlanLimits{
 
 // GetTierLimitsUseCase mengambil tier limits berdasarkan subscription aktif user.
 // Jika user tidak memiliki subscription, dikembalikan FREE tier defaults.
-type GetTierLimitsUseCase struct {
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_get_tier_limits_usecase.go -package=mocks
+type GetTierLimitsUseCase interface {
+	Execute(ctx context.Context, userID string) (*entity.PlanLimits, error)
+}
+
+type getTierLimitsUseCase struct {
 	subRepo repository.SubscriptionRepository
 }
 
-func NewGetTierLimitsUseCase(subRepo repository.SubscriptionRepository) *GetTierLimitsUseCase {
-	return &GetTierLimitsUseCase{subRepo: subRepo}
+func NewGetTierLimitsUseCase(subRepo repository.SubscriptionRepository) GetTierLimitsUseCase {
+	return &getTierLimitsUseCase{subRepo: subRepo}
 }
 
 // Execute mengambil PlanLimits untuk userID yang diberikan.
 // Dipanggil oleh gRPC handler untuk setiap JWT verification request dari api-gateway.
-func (uc *GetTierLimitsUseCase) Execute(ctx context.Context, userID string) (*entity.PlanLimits, error) {
+func (uc *getTierLimitsUseCase) Execute(ctx context.Context, userID string) (*entity.PlanLimits, error) {
 	sub, err := uc.subRepo.GetByUserID(ctx, userID)
 	if err != nil {
-		if err == domainerrors.ErrSubscriptionNotFound {
-			// User belum berlangganan — kembalikan FREE tier limits sebagai default aman
+		if errors.Is(err, domainerrors.ErrSubscriptionNotFound) {
+			// User belum berlangganan — kembalikan FREE tier limits sebagai default aman.
 			return freeTierDefaultLimits, nil
 		}
 		return nil, fmt.Errorf("gagal membaca subscription untuk user %s: %w", userID, err)
@@ -44,8 +51,8 @@ func (uc *GetTierLimitsUseCase) Execute(ctx context.Context, userID string) (*en
 
 	plan, err := uc.subRepo.GetPlanWithLimits(ctx, sub.PlanID.String())
 	if err != nil {
-		if err == domainerrors.ErrPlanNotFound {
-			// Plan tidak aktif lagi — fallback ke FREE tier agar tidak blocking
+		if errors.Is(err, domainerrors.ErrPlanNotFound) {
+			// Plan tidak aktif lagi — fallback ke FREE tier agar tidak blocking.
 			return freeTierDefaultLimits, nil
 		}
 		return nil, fmt.Errorf("gagal membaca plan limits untuk plan %s: %w", sub.PlanID.String(), err)

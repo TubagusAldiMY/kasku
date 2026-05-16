@@ -18,6 +18,7 @@ const (
 // HealthChecker mendefinisikan kontrak untuk health check dependencies.
 type HealthChecker interface {
 	PingPostgres(ctx context.Context) error
+	PingRabbitMQ() error
 }
 
 // PlansLister mendefinisikan kontrak use case untuk mengambil daftar plan.
@@ -71,6 +72,13 @@ func (h *BillingHandler) Health(c *gin.Context) {
 		httpStatus = http.StatusServiceUnavailable
 	} else {
 		checks["postgres"] = "healthy"
+	}
+	if err := h.health.PingRabbitMQ(); err != nil {
+		checks["rabbitmq"] = "unhealthy"
+		status = "degraded"
+		httpStatus = http.StatusServiceUnavailable
+	} else {
+		checks["rabbitmq"] = "healthy"
 	}
 
 	c.JSON(httpStatus, gin.H{
