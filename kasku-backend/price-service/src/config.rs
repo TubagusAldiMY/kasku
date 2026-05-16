@@ -41,16 +41,20 @@ pub struct Config {
     /// metals.live API URL
     #[serde(default = "default_metals_live_url")]
     pub metals_live_url: String,
+
+    /// Comma-separated symbols refreshed by the background scheduler.
+    #[serde(default = "default_scheduler_symbols")]
+    pub price_scheduler_symbols: String,
+
+    /// Background scheduler interval in seconds.
+    #[serde(default = "default_scheduler_interval")]
+    pub price_scheduler_interval_seconds: u64,
 }
 
 impl Config {
     /// Load configuration from environment variables.
     pub fn from_env() -> Result<Self, envy::Error> {
         envy::from_env::<Config>()
-    }
-
-    pub fn is_development(&self) -> bool {
-        self.app_env == "development"
     }
 }
 
@@ -77,4 +81,10 @@ fn default_gold_usd_idr_rate() -> f64 {
 }
 fn default_metals_live_url() -> String {
     "https://api.metals.live/v1/spot/gold".to_string()
+}
+fn default_scheduler_symbols() -> String {
+    "bitcoin,ethereum,XAU".to_string()
+}
+fn default_scheduler_interval() -> u64 {
+    900
 }

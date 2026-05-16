@@ -78,13 +78,15 @@ func main() {
 	healthHandler := handler.NewHealthHandler(cfg.App.ServiceVersion)
 
 	upstreams := map[string]string{
-		"auth":        cfg.Proxy.AuthServiceURL,
-		"user":        cfg.Proxy.UserServiceURL,
-		"billing":     cfg.Proxy.BillingServiceURL,
-		"finance":     cfg.Proxy.FinanceServiceURL,
-		"transaction": cfg.Proxy.TransactionServiceURL,
-		"investment":  cfg.Proxy.InvestmentServiceURL,
-		"sync":        cfg.Proxy.SyncServiceURL,
+		"auth":         cfg.Proxy.AuthServiceURL,
+		"user":         cfg.Proxy.UserServiceURL,
+		"billing":      cfg.Proxy.BillingServiceURL,
+		"finance":      cfg.Proxy.FinanceServiceURL,
+		"transaction":  cfg.Proxy.TransactionServiceURL,
+		"investment":   cfg.Proxy.InvestmentServiceURL,
+		"price":        cfg.Proxy.PriceServiceURL,
+		"sync":         cfg.Proxy.SyncServiceURL,
+		"notification": cfg.Proxy.NotificationServiceURL,
 	}
 	proxyHandler, err := handler.NewProxyHandler(upstreams, logger)
 	if err != nil {

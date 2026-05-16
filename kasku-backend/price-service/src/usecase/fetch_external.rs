@@ -35,7 +35,9 @@ impl CoinGeckoClient {
             .timeout(Duration::from_secs(timeout_seconds))
             .user_agent("KasKu/1.0 price-service")
             .build()
-            .map_err(|e| DomainError::Internal(format!("gagal membuat HTTP client CoinGecko: {}", e)))?;
+            .map_err(|e| {
+                DomainError::Internal(format!("gagal membuat HTTP client CoinGecko: {}", e))
+            })?;
 
         Ok(Self { client, api_key })
     }
@@ -118,7 +120,9 @@ impl MetalsLiveClient {
             .timeout(Duration::from_secs(timeout_seconds))
             .user_agent("KasKu/1.0 price-service")
             .build()
-            .map_err(|e| DomainError::Internal(format!("gagal membuat HTTP client metals.live: {}", e)))?;
+            .map_err(|e| {
+                DomainError::Internal(format!("gagal membuat HTTP client metals.live: {}", e))
+            })?;
 
         Ok(Self {
             client,
@@ -175,8 +179,8 @@ impl MetalsLiveClient {
 
 /// SSRF protection: validate that the URL domain is in the allowed whitelist.
 fn validate_url_domain(url_str: &str) -> Result<(), DomainError> {
-    let parsed =
-        Url::parse(url_str).map_err(|e| DomainError::SsrfBlocked(format!("URL tidak valid: {}", e)))?;
+    let parsed = Url::parse(url_str)
+        .map_err(|e| DomainError::SsrfBlocked(format!("URL tidak valid: {}", e)))?;
 
     let host = parsed
         .host_str()

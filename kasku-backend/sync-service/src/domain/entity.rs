@@ -48,19 +48,6 @@ pub enum SyncStatus {
     Error,
 }
 
-/// A sync log entry stored in the tenant schema.
-#[derive(Debug, Clone, Serialize)]
-pub struct SyncLogEntry {
-    pub id: Uuid,
-    pub operation: String,
-    pub entity_type: String,
-    pub entity_id: Uuid,
-    pub client_checksum: Option<String>,
-    pub server_checksum: Option<String>,
-    pub resolution: Option<String>,
-    pub synced_at: DateTime<Utc>,
-}
-
 /// Response for batch push.
 #[derive(Debug, Serialize)]
 pub struct PushResponse {

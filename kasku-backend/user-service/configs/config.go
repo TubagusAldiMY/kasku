@@ -9,6 +9,7 @@ type Config struct {
 	Server   ServerConfig
 	Finance  PostgresConfig
 	Billing  PostgresConfig
+	User     PostgresConfig
 	RabbitMQ RabbitMQConfig
 	App      AppConfig
 }
@@ -43,6 +44,9 @@ func Load() (*Config, error) {
 		},
 		Billing: PostgresConfig{
 			DSN: requireEnv("POSTGRES_BILLING_DSN"),
+		},
+		User: PostgresConfig{
+			DSN: requireEnv("POSTGRES_USER_DSN"),
 		},
 		RabbitMQ: RabbitMQConfig{
 			URL: requireEnv("RABBITMQ_URL"),

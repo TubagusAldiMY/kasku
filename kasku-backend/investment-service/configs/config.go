@@ -25,6 +25,7 @@ type PostgresConfig struct {
 
 type PriceConfig struct {
 	GRPCAddr string
+	HTTPURL  string
 	Timeout  time.Duration
 }
 
@@ -47,6 +48,7 @@ func Load() (*Config, error) {
 		},
 		Price: PriceConfig{
 			GRPCAddr: getEnvOrDefault("PRICE_GRPC_ADDR", "price-service:9087"),
+			HTTPURL:  getEnvOrDefault("PRICE_HTTP_URL", "http://price-service:8087"),
 			Timeout:  time.Duration(priceTimeoutMs) * time.Millisecond,
 		},
 		App: AppConfig{

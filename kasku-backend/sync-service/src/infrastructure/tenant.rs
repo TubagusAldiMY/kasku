@@ -65,11 +65,13 @@ mod tests {
         assert!(verify_tenant_ownership(
             "550e8400-e29b-41d4-a716-446655440000",
             "tenant_550e8400_e29b_41d4_a716_446655440000"
-        ).is_ok());
+        )
+        .is_ok());
 
         assert!(verify_tenant_ownership(
             "550e8400-e29b-41d4-a716-446655440000",
             "tenant_other_user_schema"
-        ).is_err());
+        )
+        .is_err());
     }
 }

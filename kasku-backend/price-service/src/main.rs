@@ -10,8 +10,9 @@ use std::sync::Arc;
 
 use axum::{routing::get, Router};
 use tokio::signal;
+use tokio::time::{interval, Duration};
 use tonic::transport::Server as TonicServer;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use config::Config;
 use delivery::grpc_handler::PriceGrpcHandler;
@@ -85,6 +86,12 @@ async fn main() {
         cfg.price_cache_ttl_seconds,
     ));
 
+    start_price_scheduler(
+        get_price_uc.clone(),
+        cfg.price_scheduler_symbols.clone(),
+        cfg.price_scheduler_interval_seconds,
+    );
+
     // ── Axum HTTP Server ────────────────────────────────────────────────
     let app_state = Arc::new(AppState {
         get_price_uc: get_price_uc.clone(),
@@ -94,7 +101,8 @@ async fn main() {
 
     let http_app = Router::new()
         .route("/health", get(http_handler::health))
-        .route("/v1/prices/{symbol}", get(http_handler::get_price))
+        .route("/metrics", get(http_handler::metrics))
+        .route("/v1/prices/:symbol", get(http_handler::get_price))
         .with_state(app_state);
 
     let http_addr = SocketAddr::from(([0, 0, 0, 0], cfg.http_port));
@@ -105,8 +113,14 @@ async fn main() {
     let grpc_addr = SocketAddr::from(([0, 0, 0, 0], cfg.grpc_port));
 
     // ── Start both servers ──────────────────────────────────────────────
-    info!(http_port = cfg.http_port, "price-service HTTP server listening");
-    info!(grpc_port = cfg.grpc_port, "price-service gRPC server listening");
+    info!(
+        http_port = cfg.http_port,
+        "price-service HTTP server listening"
+    );
+    info!(
+        grpc_port = cfg.grpc_port,
+        "price-service gRPC server listening"
+    );
 
     let http_server = axum::serve(
         tokio::net::TcpListener::bind(http_addr)
@@ -160,4 +174,49 @@ async fn shutdown_signal() {
     }
 
     info!("sinyal shutdown diterima");
+}
+
+fn start_price_scheduler(
+    get_price_uc: Arc<GetPriceUseCase>,
+    symbols_raw: String,
+    interval_seconds: u64,
+) {
+    let symbols: Vec<String> = symbols_raw
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+
+    if symbols.is_empty() || interval_seconds == 0 {
+        warn!("price scheduler dinonaktifkan karena symbol kosong atau interval 0");
+        return;
+    }
+
+    tokio::spawn(async move {
+        info!(
+            symbols = symbols.join(","),
+            interval_seconds = interval_seconds,
+            "price scheduler aktif"
+        );
+
+        let mut ticker = interval(Duration::from_secs(interval_seconds));
+        loop {
+            ticker.tick().await;
+            for symbol in &symbols {
+                match get_price_uc.execute(symbol, "").await {
+                    Ok(result) => {
+                        info!(
+                            symbol = result.symbol.as_str(),
+                            is_fresh = result.is_fresh,
+                            "scheduler refresh harga selesai"
+                        );
+                    }
+                    Err(err) => {
+                        warn!(symbol = symbol.as_str(), error = %err, "scheduler gagal refresh harga");
+                    }
+                }
+            }
+        }
+    });
 }

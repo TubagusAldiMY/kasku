@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http/handler"
@@ -19,6 +21,7 @@ func NewRouter(h *handler.InvestmentHandler, isDev bool) *gin.Engine {
 
 	// Health check (public)
 	r.GET("/health", h.Health)
+	r.GET("/metrics", metrics("investment-service"))
 
 	// Investment endpoints
 	v1 := r.Group("/v1/investments")
@@ -33,4 +36,14 @@ func NewRouter(h *handler.InvestmentHandler, isDev bool) *gin.Engine {
 	}
 
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }

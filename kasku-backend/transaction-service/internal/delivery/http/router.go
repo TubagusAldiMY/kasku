@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
@@ -17,6 +19,7 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, log zerolog.Logger) *g
 	r.Use(securityHeaders())
 
 	r.GET("/health", h.Health)
+	r.GET("/metrics", metrics("transaction-service"))
 
 	v1 := r.Group("/v1")
 	{
@@ -37,6 +40,16 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, log zerolog.Logger) *g
 		}
 	}
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }
 
 // securityHeaders agrega security response headers standar OWASP.

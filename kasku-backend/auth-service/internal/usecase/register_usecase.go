@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"time"
@@ -52,8 +53,15 @@ type RegisterOutput struct {
 	Username string
 }
 
-// RegisterUseCase mengimplementasikan alur registrasi user baru.
-type RegisterUseCase struct {
+// RegisterUseCase adalah kontrak alur registrasi user baru.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_register_usecase.go -package=mocks
+type RegisterUseCase interface {
+	Execute(ctx context.Context, input RegisterInput) (*RegisterOutput, error)
+}
+
+// registerUseCase mengimplementasikan RegisterUseCase.
+type registerUseCase struct {
 	pool         *pgxpool.Pool
 	userRepo     repository.UserRepository
 	publisher    messaging.EventPublisher
@@ -66,8 +74,8 @@ func NewRegisterUseCase(
 	userRepo repository.UserRepository,
 	publisher messaging.EventPublisher,
 	argon2Cfg Argon2Config,
-) *RegisterUseCase {
-	return &RegisterUseCase{
+) RegisterUseCase {
+	return &registerUseCase{
 		pool:         pool,
 		userRepo:     userRepo,
 		publisher:    publisher,
@@ -80,9 +88,9 @@ func NewRegisterUseCase(
 // 2. Cek keunikan email dan username
 // 3. Hash password dengan Argon2id
 // 4. DB transaction: INSERT user + INSERT email_verification
-// 5. Publish event user.registered
-// 6. Rollback jika publish gagal
-func (uc *RegisterUseCase) Execute(ctx context.Context, input RegisterInput) (*RegisterOutput, error) {
+// 5. Insert outbox event user.registered dalam transaksi yang sama
+// 6. Dispatcher background mem-publish event setelah commit
+func (uc *registerUseCase) Execute(ctx context.Context, input RegisterInput) (*RegisterOutput, error) {
 	if err := validateRegisterInput(input); err != nil {
 		return nil, err
 	}
@@ -166,7 +174,6 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, input RegisterInput) (*R
 		return nil, fmt.Errorf("gagal insert email verification dalam transaksi: %w", err)
 	}
 
-	// Publish event SEBELUM commit — jika publish gagal, defer rollback membatalkan INSERT
 	event := messaging.UserRegisteredEvent{
 		UserID:            newUser.ID.String(),
 		Email:             input.Email,
@@ -174,8 +181,23 @@ func (uc *RegisterUseCase) Execute(ctx context.Context, input RegisterInput) (*R
 		VerificationToken: rawToken,
 	}
 
-	if err := uc.publisher.PublishUserRegistered(ctx, event); err != nil {
-		return nil, domainerrors.ErrServiceUnavailable
+	eventPayload, err := json.Marshal(event)
+	if err != nil {
+		return nil, fmt.Errorf("gagal marshal outbox event user.registered: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO public.outbox_events (id, event_type, routing_key, payload, created_at)
+		VALUES ($1, $2, $3, $4::jsonb, $5)
+	`,
+		uuid.New(),
+		"user.registered",
+		messaging.RoutingKeyUserRegistered,
+		string(eventPayload),
+		now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("gagal insert outbox event user.registered: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

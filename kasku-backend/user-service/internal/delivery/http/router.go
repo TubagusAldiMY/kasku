@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
@@ -26,6 +28,7 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger)
 	})
 
 	r.GET("/health", userHandler.Health)
+	r.GET("/metrics", metrics("user-service"))
 
 	v1 := r.Group("/v1")
 	{
@@ -37,4 +40,14 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger)
 	}
 
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }

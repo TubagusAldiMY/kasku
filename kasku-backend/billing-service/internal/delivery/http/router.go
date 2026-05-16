@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
@@ -21,6 +23,7 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, log zerolog.L
 
 	// Health check tidak memerlukan autentikasi — diakses oleh load balancer dan Docker healthcheck
 	r.GET("/health", billingHandler.Health)
+	r.GET("/metrics", metrics("billing-service"))
 
 	v1 := r.Group("/v1")
 	{
@@ -39,6 +42,16 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, log zerolog.L
 	}
 
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }
 
 // securityHeadersMiddleware menambahkan security headers standar OWASP ke semua response.

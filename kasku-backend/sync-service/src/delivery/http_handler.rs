@@ -1,11 +1,11 @@
 use axum::{
     extract::{Query, State},
-    http::{HeaderMap, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     Json,
 };
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::domain::entity::SyncOperation;
@@ -48,8 +48,9 @@ fn domain_error_response(err: DomainError) -> impl IntoResponse {
         DomainError::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
         DomainError::InvalidTenantSchema(_) => (StatusCode::BAD_REQUEST, "INVALID_TENANT_SCHEMA"),
         DomainError::TenantMismatch { .. } => (StatusCode::FORBIDDEN, "TENANT_MISMATCH"),
-        DomainError::UnsupportedEntityType(_) => (StatusCode::BAD_REQUEST, "UNSUPPORTED_ENTITY_TYPE"),
-        DomainError::UnsupportedOperation(_) => (StatusCode::BAD_REQUEST, "UNSUPPORTED_OPERATION"),
+        DomainError::UnsupportedEntityType(_) => {
+            (StatusCode::BAD_REQUEST, "UNSUPPORTED_ENTITY_TYPE")
+        }
         _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
     };
 
@@ -72,8 +73,16 @@ pub async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         Err(_) => "unhealthy",
     };
 
-    let overall = if pg_status == "healthy" { "healthy" } else { "degraded" };
-    let status_code = if overall == "healthy" { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };
+    let overall = if pg_status == "healthy" {
+        "healthy"
+    } else {
+        "degraded"
+    };
+    let status_code = if overall == "healthy" {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
 
     (
         status_code,
@@ -83,6 +92,14 @@ pub async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
             "checks": { "postgres": pg_status }
         })),
     )
+}
+
+/// GET /metrics — minimal Prometheus scrape endpoint.
+pub async fn metrics() -> impl IntoResponse {
+    (
+		[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+		"# HELP kasku_service_info KasKu service metadata\n# TYPE kasku_service_info gauge\nkasku_service_info{service=\"sync-service\"} 1\n",
+	)
 }
 
 /// Push request body.
@@ -107,7 +124,11 @@ pub async fn push_sync(
         .execute(&user_id, &tenant_schema, body.operations)
         .await
     {
-        Ok(result) => (StatusCode::OK, Json(serde_json::json!({"success": true, "data": result}))).into_response(),
+        Ok(result) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"success": true, "data": result})),
+        )
+            .into_response(),
         Err(err) => domain_error_response(err).into_response(),
     }
 }
@@ -134,7 +155,11 @@ pub async fn pull_sync(
         .execute(&user_id, &tenant_schema, query.since)
         .await
     {
-        Ok(result) => (StatusCode::OK, Json(serde_json::json!({"success": true, "data": result}))).into_response(),
+        Ok(result) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"success": true, "data": result})),
+        )
+            .into_response(),
         Err(err) => domain_error_response(err).into_response(),
     }
 }

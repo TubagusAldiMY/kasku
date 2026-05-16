@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,14 +12,19 @@ type RabbitMQPinger interface {
 	Ping() error
 }
 
+type PostgresPinger interface {
+	Ping(ctx context.Context) error
+}
+
 // HealthHandler menangani endpoint health check service.
 type HealthHandler struct {
 	consumer       RabbitMQPinger
+	postgres       PostgresPinger
 	serviceVersion string
 }
 
-func NewHealthHandler(consumer RabbitMQPinger, serviceVersion string) *HealthHandler {
-	return &HealthHandler{consumer: consumer, serviceVersion: serviceVersion}
+func NewHealthHandler(consumer RabbitMQPinger, postgres PostgresPinger, serviceVersion string) *HealthHandler {
+	return &HealthHandler{consumer: consumer, postgres: postgres, serviceVersion: serviceVersion}
 }
 
 // Health mengembalikan status kesehatan service beserta dependency check.
@@ -34,6 +40,14 @@ func (h *HealthHandler) Health(c *gin.Context) {
 		httpStatus = http.StatusServiceUnavailable
 	} else {
 		checks["rabbitmq"] = "healthy"
+	}
+
+	if err := h.postgres.Ping(c.Request.Context()); err != nil {
+		checks["postgres"] = "unhealthy"
+		status = "degraded"
+		httpStatus = http.StatusServiceUnavailable
+	} else {
+		checks["postgres"] = "healthy"
 	}
 
 	c.JSON(httpStatus, gin.H{

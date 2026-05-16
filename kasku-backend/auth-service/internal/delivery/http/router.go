@@ -4,14 +4,22 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TubagusAldiMY/kasku/auth-service/configs"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/middleware"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/ratelimit"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
 // NewRouter membuat dan mengkonfigurasi Gin router dengan semua middleware dan routes.
-func NewRouter(authHandler *handler.AuthHandler, isDev bool, logger zerolog.Logger) *gin.Engine {
+func NewRouter(
+	authHandler *handler.AuthHandler,
+	cfg *configs.Config,
+	limiter ratelimit.Limiter,
+	logger zerolog.Logger,
+) *gin.Engine {
+	isDev := cfg.IsDevelopment()
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -32,21 +40,65 @@ func NewRouter(authHandler *handler.AuthHandler, isDev bool, logger zerolog.Logg
 
 	// Health check (public, tanpa auth)
 	r.GET("/health", authHandler.Health)
+	r.GET("/metrics", metrics("auth-service"))
 
 	// Auth endpoints
 	auth := r.Group("/auth")
 	{
-		auth.POST("/register", authHandler.Register)
+		registerHandlers := []gin.HandlerFunc{authHandler.Register}
+		loginHandlers := []gin.HandlerFunc{authHandler.Login}
+		forgotHandlers := []gin.HandlerFunc{authHandler.ForgotPassword}
+
+		if cfg.RateLimit.Enabled {
+			registerHandlers = append([]gin.HandlerFunc{
+				middleware.RateLimit(limiter, middleware.RateLimitConfig{
+					KeyFunc:      middleware.KeyByClientIP,
+					Limit:        cfg.RateLimit.RegisterPerWindow,
+					Window:       cfg.RateLimit.IPWindow,
+					EndpointName: "register:ip",
+				}, logger),
+			}, registerHandlers...)
+
+			loginHandlers = append([]gin.HandlerFunc{
+				middleware.RateLimit(limiter, middleware.RateLimitConfig{
+					KeyFunc:      middleware.KeyByClientIP,
+					Limit:        cfg.RateLimit.LoginPerWindow,
+					Window:       cfg.RateLimit.IPWindow,
+					EndpointName: "login:ip",
+				}, logger),
+			}, loginHandlers...)
+
+			forgotHandlers = append([]gin.HandlerFunc{
+				middleware.RateLimit(limiter, middleware.RateLimitConfig{
+					KeyFunc:      middleware.KeyByClientIP,
+					Limit:        cfg.RateLimit.ForgotIPPerWindow,
+					Window:       cfg.RateLimit.IPWindow,
+					EndpointName: "forgot:ip",
+				}, logger),
+			}, forgotHandlers...)
+		}
+
+		auth.POST("/register", registerHandlers...)
 		auth.POST("/verify-email", authHandler.VerifyEmail) // query param: ?token=
 		auth.POST("/resend-verification", authHandler.ResendVerification)
-		auth.POST("/login", authHandler.Login)
+		auth.POST("/login", loginHandlers...)
 		auth.POST("/refresh", authHandler.Refresh)
 		auth.POST("/logout", authHandler.Logout)
-		auth.POST("/forgot-password", authHandler.ForgotPassword)
+		auth.POST("/forgot-password", forgotHandlers...)
 		auth.POST("/reset-password", authHandler.ResetPassword)
 	}
 
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }
 
 // securityHeaders meng-inject security headers ke setiap response.

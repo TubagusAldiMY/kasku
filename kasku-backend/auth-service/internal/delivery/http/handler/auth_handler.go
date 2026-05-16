@@ -31,14 +31,14 @@ type HealthChecker interface {
 // 2. Memanggil use case yang sesuai
 // 3. Memetakan hasil ke HTTP response
 type AuthHandler struct {
-	registerUC           *usecase.RegisterUseCase
-	verifyEmailUC        *usecase.VerifyEmailUseCase
-	resendVerificationUC *usecase.ResendVerificationUseCase
-	loginUC              *usecase.LoginUseCase
-	refreshTokenUC       *usecase.RefreshTokenUseCase
-	logoutUC             *usecase.LogoutUseCase
-	forgotPasswordUC     *usecase.ForgotPasswordUseCase
-	resetPasswordUC      *usecase.ResetPasswordUseCase
+	registerUC           usecase.RegisterUseCase
+	verifyEmailUC        usecase.VerifyEmailUseCase
+	resendVerificationUC usecase.ResendVerificationUseCase
+	loginUC              usecase.LoginUseCase
+	refreshTokenUC       usecase.RefreshTokenUseCase
+	logoutUC             usecase.LogoutUseCase
+	forgotPasswordUC     usecase.ForgotPasswordUseCase
+	resetPasswordUC      usecase.ResetPasswordUseCase
 	healthChecker        HealthChecker
 	serviceVersion       string
 	isDev                bool
@@ -47,14 +47,14 @@ type AuthHandler struct {
 
 // NewAuthHandler membuat instance AuthHandler dengan semua dependency.
 func NewAuthHandler(
-	registerUC *usecase.RegisterUseCase,
-	verifyEmailUC *usecase.VerifyEmailUseCase,
-	resendVerificationUC *usecase.ResendVerificationUseCase,
-	loginUC *usecase.LoginUseCase,
-	refreshTokenUC *usecase.RefreshTokenUseCase,
-	logoutUC *usecase.LogoutUseCase,
-	forgotPasswordUC *usecase.ForgotPasswordUseCase,
-	resetPasswordUC *usecase.ResetPasswordUseCase,
+	registerUC usecase.RegisterUseCase,
+	verifyEmailUC usecase.VerifyEmailUseCase,
+	resendVerificationUC usecase.ResendVerificationUseCase,
+	loginUC usecase.LoginUseCase,
+	refreshTokenUC usecase.RefreshTokenUseCase,
+	logoutUC usecase.LogoutUseCase,
+	forgotPasswordUC usecase.ForgotPasswordUseCase,
+	resetPasswordUC usecase.ResetPasswordUseCase,
 	healthChecker HealthChecker,
 	serviceVersion string,
 	isDev bool,

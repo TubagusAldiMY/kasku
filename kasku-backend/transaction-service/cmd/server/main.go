@@ -11,6 +11,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/transaction-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/handler"
+	grpcserver "github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,6 +62,11 @@ func main() {
 		IdleTimeout:  httpIdleTimeout,
 	}
 
+	grpcSrv := grpcserver.NewTransactionGRPCServer(pool, logger)
+	if err := grpcSrv.Start(cfg.Server.GRPCPort); err != nil {
+		logger.Fatal().Err(err).Msg("gagal start transaction gRPC server")
+	}
+
 	go func() {
 		logger.Info().Str("port", cfg.Server.Port).Msg("transaction-service listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -73,6 +79,8 @@ func main() {
 	<-quit
 
 	logger.Info().Msg("graceful shutdown dimulai")
+	grpcSrv.Stop()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {

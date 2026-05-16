@@ -9,6 +9,8 @@ import (
 
 // UserRepository mendefinisikan kontrak akses data untuk entitas User.
 // Implementasi konkret berada di infrastructure/persistence.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../../tests/mocks/mock_user_repository.go -package=mocks
 type UserRepository interface {
 	// FindByEmail mencari user berdasarkan email (case-insensitive).
 	// Mengembalikan nil, nil jika tidak ditemukan.

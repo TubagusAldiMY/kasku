@@ -11,8 +11,12 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/handler"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/cleanup"
+	authgrpc "github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/messaging"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/outbox"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/persistence"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/ratelimit"
 	redisinfra "github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/redis"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/usecase"
 	"github.com/golang-jwt/jwt/v5"
@@ -73,6 +77,23 @@ func main() {
 	}()
 	logger.Info().Msg("RabbitMQ terhubung")
 
+	outboxCtx, outboxCancel := context.WithCancel(context.Background())
+	defer outboxCancel()
+	outbox.NewDispatcher(pool, publisher, logger).Start(outboxCtx)
+	logger.Info().Msg("outbox dispatcher berjalan")
+
+	// ── Cleanup Job (retention) ─────────────────────────────────────────────
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	if cfg.Cleanup.Enabled {
+		cleanupJob := cleanup.NewCleanupJob(pool, logger, cfg.Cleanup.Interval, cfg.Cleanup.DryRun)
+		go cleanupJob.Run(cleanupCtx)
+		logger.Info().
+			Dur("interval", cfg.Cleanup.Interval).
+			Bool("dry_run", cfg.Cleanup.DryRun).
+			Msg("cleanup job dijadwalkan")
+	}
+
 	// ── RSA Keys ──────────────────────────────────────────────────────────────
 	privKey, err := jwt.ParseRSAPrivateKeyFromPEM(cfg.JWT.PrivateKeyPEM)
 	if err != nil {
@@ -97,12 +118,32 @@ func main() {
 		KeyLength: cfg.Argon2.KeyLength,
 	}
 
+	// ── Rate Limiter ──────────────────────────────────────────────────────────
+	rateLimiter := ratelimit.NewRedisLimiter(redisClient)
+
 	// ── Use Cases ─────────────────────────────────────────────────────────────
 	blacklist := redisinfra.NewTokenBlacklist(redisClient)
 
+	var (
+		forgotEmailLimit usecase.EmailRateLimit
+		resendEmailLimit usecase.EmailRateLimit
+	)
+	if cfg.RateLimit.Enabled {
+		forgotEmailLimit = usecase.EmailRateLimit{
+			Limit:    cfg.RateLimit.ForgotEmailLimit,
+			Window:   cfg.RateLimit.EmailWindow,
+			Endpoint: "forgot:email",
+		}
+		resendEmailLimit = usecase.EmailRateLimit{
+			Limit:    cfg.RateLimit.ResendEmailLimit,
+			Window:   cfg.RateLimit.EmailWindow,
+			Endpoint: "resend:email",
+		}
+	}
+
 	registerUC := usecase.NewRegisterUseCase(pool, userRepo, publisher, argon2Cfg)
 	verifyEmailUC := usecase.NewVerifyEmailUseCase(emailVerifRepo, userRepo)
-	resendVerifUC := usecase.NewResendVerificationUseCase(userRepo, emailVerifRepo, publisher)
+	resendVerifUC := usecase.NewResendVerificationUseCase(userRepo, emailVerifRepo, publisher, rateLimiter, resendEmailLimit)
 	loginUC := usecase.NewLoginUseCase(
 		userRepo, refreshTokenRepo,
 		privKey,
@@ -116,7 +157,8 @@ func main() {
 		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
 	)
 	logoutUC := usecase.NewLogoutUseCase(refreshTokenRepo, pubKey, blacklist)
-	forgotPasswordUC := usecase.NewForgotPasswordUseCase(userRepo, resetRepo, publisher)
+	validateTokenUC := usecase.NewValidateAccessTokenUseCase(pubKey, blacklist)
+	forgotPasswordUC := usecase.NewForgotPasswordUseCase(userRepo, resetRepo, publisher, rateLimiter, forgotEmailLimit)
 	resetPasswordUC := usecase.NewResetPasswordUseCase(resetRepo, resetTxRepo, argon2Cfg)
 
 	// ── Handler & Router ──────────────────────────────────────────────────────
@@ -137,7 +179,24 @@ func main() {
 		logger,
 	)
 
-	router := deliveryhttp.NewRouter(authHandler, cfg.IsDevelopment(), logger)
+	router := deliveryhttp.NewRouter(authHandler, cfg, rateLimiter, logger)
+
+	// ── gRPC Server (internal, port :9081) ────────────────────────────────────
+	// Reflection HANYA di dev — di prod akan diabaikan agar API schema tidak
+	// ter-leak ke siapa pun yang reach port internal.
+	grpcSrv := authgrpc.NewAuthGRPCServer(
+		validateTokenUC,
+		userRepo,
+		refreshTokenRepo,
+		blacklist,
+		cfg.Server.InternalSecret,
+		cfg.IsDevelopment(),
+		logger,
+	)
+	if err := grpcSrv.Start(cfg.Server.GRPCPort); err != nil {
+		logger.Fatal().Err(err).Msg("gagal start gRPC server")
+	}
+	defer grpcSrv.Stop()
 
 	// ── HTTP Server ───────────────────────────────────────────────────────────
 	srv := &http.Server{
@@ -161,6 +220,8 @@ func main() {
 	<-quit
 
 	logger.Info().Msg("menerima sinyal shutdown, memulai graceful shutdown")
+	outboxCancel()
+	cleanupCancel()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

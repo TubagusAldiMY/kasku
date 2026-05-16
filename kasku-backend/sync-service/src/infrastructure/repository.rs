@@ -3,11 +3,11 @@ use serde_json::Value as JsonValue;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::domain::entity::EntityChange;
 use crate::domain::error::DomainError;
 use crate::infrastructure::tenant::validate_tenant_schema;
 
-/// Repository for sync operations on tenant schemas.
+/// Repository untuk sync_log dan conflict detection di kasku_finance.
+/// apply_operation dan get_changes_since dipindahkan ke owning service via gRPC.
 #[derive(Clone)]
 pub struct SyncRepository {
     pool: PgPool,
@@ -18,7 +18,7 @@ impl SyncRepository {
         Self { pool }
     }
 
-    /// Check if a sync_id has already been processed (idempotency check).
+    /// Check idempotency: apakah sync_id sudah pernah diproses.
     pub async fn sync_id_exists(
         &self,
         tenant_schema: &str,
@@ -37,8 +37,8 @@ impl SyncRepository {
         Ok(exists)
     }
 
-    /// Get the server's current version of an entity (for conflict detection).
-    /// Returns (entity_data, updated_at).
+    /// Ambil versi server entity untuk conflict detection (Server Wins).
+    /// Mengembalikan (entity_data, updated_at) atau None jika tidak ada.
     pub async fn get_entity(
         &self,
         tenant_schema: &str,
@@ -68,7 +68,7 @@ impl SyncRepository {
         Ok(row)
     }
 
-    /// Log a sync operation to the sync_log table.
+    /// Catat operasi sync ke sync_log.
     pub async fn log_sync(
         &self,
         tenant_schema: &str,
@@ -95,52 +95,5 @@ impl SyncRepository {
             .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
         Ok(())
     }
-
-    /// Get all changes since a given timestamp for pull sync.
-    pub async fn get_changes_since(
-        &self,
-        tenant_schema: &str,
-        since: DateTime<Utc>,
-    ) -> Result<Vec<EntityChange>, DomainError> {
-        validate_tenant_schema(tenant_schema)?;
-        let mut changes = Vec::new();
-
-        // Query each entity table for changes
-        let tables = [
-            ("financial_accounts", "financial_account"),
-            ("transactions", "transaction"),
-            ("investment_assets", "investment_asset"),
-        ];
-
-        for (table, entity_type) in &tables {
-            let query = format!(
-                "SELECT id, to_jsonb(t.*) as data, updated_at,
-                        CASE WHEN is_deleted THEN 'delete' ELSE 'upsert' END as operation
-                 FROM {}.{} t
-                 WHERE updated_at > $1
-                 ORDER BY updated_at ASC",
-                tenant_schema, table
-            );
-
-            let rows: Vec<(Uuid, JsonValue, DateTime<Utc>, String)> = sqlx::query_as(&query)
-                .bind(since)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
-
-            for (id, data, updated_at, operation) in rows {
-                changes.push(EntityChange {
-                    entity_type: entity_type.to_string(),
-                    entity_id: id,
-                    operation,
-                    data,
-                    updated_at,
-                });
-            }
-        }
-
-        // Sort all changes by updated_at across entity types
-        changes.sort_by_key(|c| c.updated_at);
-        Ok(changes)
-    }
 }
+

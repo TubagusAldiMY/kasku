@@ -54,8 +54,15 @@ type RefreshTokenCookieParams struct {
 	IsSecure bool
 }
 
-// LoginUseCase mengimplementasikan alur autentikasi user.
-type LoginUseCase struct {
+// LoginUseCase adalah kontrak alur autentikasi user.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_login_usecase.go -package=mocks
+type LoginUseCase interface {
+	Execute(ctx context.Context, input LoginInput) (*LoginOutput, error)
+}
+
+// loginUseCase mengimplementasikan LoginUseCase.
+type loginUseCase struct {
 	userRepo         repository.UserRepository
 	refreshTokenRepo repository.RefreshTokenRepository
 	jwtPrivateKey    *rsa.PrivateKey
@@ -76,8 +83,8 @@ func NewLoginUseCase(
 	argon2Cfg Argon2Config,
 	bruteForceMax int16,
 	lockoutDuration time.Duration,
-) *LoginUseCase {
-	return &LoginUseCase{
+) LoginUseCase {
+	return &loginUseCase{
 		userRepo:         userRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		jwtPrivateKey:    jwtPrivateKey,
@@ -97,7 +104,7 @@ func NewLoginUseCase(
 // 5. Cek account active
 // 6. Generate JWT access token + refresh token
 // 7. Set cookie
-func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOutput, error) {
+func (uc *loginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOutput, error) {
 	user, err := uc.userRepo.FindByEmail(ctx, input.Email)
 	if err != nil {
 		return nil, fmt.Errorf("gagal lookup user: %w", err)
@@ -190,7 +197,7 @@ func (uc *LoginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 }
 
 // generateAccessToken membuat JWT RS256 dengan custom claims KasKu.
-func (uc *LoginUseCase) generateAccessToken(user *entity.User) (string, error) {
+func (uc *loginUseCase) generateAccessToken(user *entity.User) (string, error) {
 	now := time.Now().UTC()
 	jti := uuid.New().String()
 

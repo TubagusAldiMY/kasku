@@ -19,11 +19,15 @@ type Config struct {
 	BruteForce BruteForceConfig
 	Redis      RedisConfig
 	RabbitMQ   RabbitMQConfig
+	RateLimit  RateLimitConfig
+	Cleanup    CleanupConfig
 	App        AppConfig
 }
 
 type ServerConfig struct {
-	Port string
+	Port           string
+	GRPCPort       string
+	InternalSecret string // shared secret untuk gRPC RPC sensitif (mis. RevokeUserTokens)
 }
 
 type PostgresConfig struct {
@@ -56,6 +60,23 @@ type RedisConfig struct {
 
 type RabbitMQConfig struct {
 	URL string
+}
+
+type RateLimitConfig struct {
+	Enabled           bool
+	RegisterPerWindow int
+	LoginPerWindow    int
+	ForgotIPPerWindow int
+	ForgotEmailLimit  int
+	ResendEmailLimit  int
+	IPWindow          time.Duration // window untuk per-IP limits (mis. 1m)
+	EmailWindow       time.Duration // window untuk per-email limits (mis. 1h)
+}
+
+type CleanupConfig struct {
+	Enabled  bool
+	Interval time.Duration
+	DryRun   bool
 }
 
 type AppConfig struct {
@@ -118,9 +139,48 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("BRUTE_FORCE_LOCKOUT_DURATION tidak valid: %w", err)
 	}
 
+	rateLimitEnabled := parseBoolEnv("RATE_LIMIT_ENABLED", true)
+	registerPerWin, err := parseIntEnv("RATE_LIMIT_REGISTER_PER_MIN", 10)
+	if err != nil {
+		return nil, err
+	}
+	loginPerWin, err := parseIntEnv("RATE_LIMIT_LOGIN_PER_MIN", 10)
+	if err != nil {
+		return nil, err
+	}
+	forgotIPPerWin, err := parseIntEnv("RATE_LIMIT_FORGOT_IP_PER_MIN", 5)
+	if err != nil {
+		return nil, err
+	}
+	forgotEmailLimit, err := parseIntEnv("RATE_LIMIT_FORGOT_EMAIL_PER_HOUR", 3)
+	if err != nil {
+		return nil, err
+	}
+	resendEmailLimit, err := parseIntEnv("RATE_LIMIT_RESEND_EMAIL_PER_HOUR", 3)
+	if err != nil {
+		return nil, err
+	}
+	ipWindow, err := time.ParseDuration(getEnvOrDefault("RATE_LIMIT_IP_WINDOW", "1m"))
+	if err != nil {
+		return nil, fmt.Errorf("RATE_LIMIT_IP_WINDOW tidak valid: %w", err)
+	}
+	emailWindow, err := time.ParseDuration(getEnvOrDefault("RATE_LIMIT_EMAIL_WINDOW", "1h"))
+	if err != nil {
+		return nil, fmt.Errorf("RATE_LIMIT_EMAIL_WINDOW tidak valid: %w", err)
+	}
+
+	cleanupEnabled := parseBoolEnv("CLEANUP_ENABLED", true)
+	cleanupInterval, err := time.ParseDuration(getEnvOrDefault("CLEANUP_INTERVAL", "1h"))
+	if err != nil {
+		return nil, fmt.Errorf("CLEANUP_INTERVAL tidak valid: %w", err)
+	}
+	cleanupDryRun := parseBoolEnv("CLEANUP_DRY_RUN", false)
+
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnvOrDefault("SERVER_PORT", "8081"),
+			Port:           getEnvOrDefault("SERVER_PORT", "8081"),
+			GRPCPort:       getEnvOrDefault("GRPC_PORT", "9081"),
+			InternalSecret: os.Getenv("INTERNAL_GRPC_SECRET"),
 		},
 		Postgres: PostgresConfig{
 			DSN: requireEnv("POSTGRES_DSN"),
@@ -147,6 +207,21 @@ func Load() (*Config, error) {
 		},
 		RabbitMQ: RabbitMQConfig{
 			URL: requireEnv("RABBITMQ_URL"),
+		},
+		RateLimit: RateLimitConfig{
+			Enabled:           rateLimitEnabled,
+			RegisterPerWindow: registerPerWin,
+			LoginPerWindow:    loginPerWin,
+			ForgotIPPerWindow: forgotIPPerWin,
+			ForgotEmailLimit:  forgotEmailLimit,
+			ResendEmailLimit:  resendEmailLimit,
+			IPWindow:          ipWindow,
+			EmailWindow:       emailWindow,
+		},
+		Cleanup: CleanupConfig{
+			Enabled:  cleanupEnabled,
+			Interval: cleanupInterval,
+			DryRun:   cleanupDryRun,
 		},
 		App: AppConfig{
 			Env:            getEnvOrDefault("APP_ENV", "development"),
@@ -199,6 +274,33 @@ func parseUint8Env(key string, defaultValue uint8) (uint8, error) {
 		return 0, fmt.Errorf("%s harus berupa angka 0-255: %w", key, err)
 	}
 	return uint8(parsed), nil
+}
+
+func parseIntEnv(key string, defaultValue int) (int, error) {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultValue, nil
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, fmt.Errorf("%s harus berupa angka: %w", key, err)
+	}
+	return parsed, nil
+}
+
+func parseBoolEnv(key string, defaultValue bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultValue
+	}
+	switch val {
+	case "1", "true", "TRUE", "True", "yes", "YES":
+		return true
+	case "0", "false", "FALSE", "False", "no", "NO":
+		return false
+	default:
+		return defaultValue
+	}
 }
 
 func parseInt16Env(key string, defaultValue int16) (int16, error) {

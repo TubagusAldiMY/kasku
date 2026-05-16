@@ -8,6 +8,8 @@ import (
 )
 
 // EmailVerificationRepository mendefinisikan kontrak akses data untuk token verifikasi email.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../../tests/mocks/mock_email_verification_repository.go -package=mocks
 type EmailVerificationRepository interface {
 	// Create menyimpan token verifikasi email baru.
 	Create(ctx context.Context, verification *entity.EmailVerification) error

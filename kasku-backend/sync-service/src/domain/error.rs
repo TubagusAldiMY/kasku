@@ -11,15 +11,12 @@ pub enum DomainError {
     #[error("tipe entitas tidak didukung: {0}")]
     UnsupportedEntityType(String),
 
-    #[error("operasi tidak didukung: {0}")]
-    UnsupportedOperation(String),
-
     #[error("header autentikasi tidak ditemukan")]
     Unauthorized,
 
     #[error("kesalahan database: {0}")]
     DatabaseError(String),
 
-    #[error("kesalahan internal: {0}")]
-    Internal(String),
+    #[error("gRPC error: {0}")]
+    GrpcError(String),
 }

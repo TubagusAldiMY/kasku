@@ -1,0 +1,103 @@
+// auth.v1 mendefinisikan internal gRPC contract untuk auth-service.
+//
+// PENTING: File ini adalah SUMBER KEBENARAN dokumentasi tapi *tidak* dipakai
+// untuk codegen. Server di internal/infrastructure/grpc/ menggunakan manual
+// wire-encoding (google.golang.org/protobuf/encoding/protowire) — pola yang
+// sama dengan billing-service. Konsisten dengan repo & menghindari ketergantungan
+// pada protoc di build environment.
+//
+// Setiap perubahan di file ini WAJIB diikuti perubahan terkait di:
+//   - internal/infrastructure/grpc/wire_*.go (encode/decode)
+//   - internal/infrastructure/grpc/service_desc.go (handler registration)
+//   - Client implementations di service lain (kalau ada).
+//
+// Field number sekali ditetapkan TIDAK BOLEH diubah/dipakai-ulang.
+// Tambah field baru di nomor berikutnya, jangan rename atau remove existing field.
+
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/TubagusAldiMY/kasku/auth-service/proto/auth/v1;authv1";
+
+// AuthInternal adalah service gRPC internal untuk auth-service.
+// Hanya boleh diakses dari kasku-internal Docker network.
+service AuthInternal {
+  // ValidateToken melakukan verifikasi STRICT atas access token:
+  // signature RS256 valid, belum expired, dan JTI tidak ada di blacklist.
+  // Mengembalikan codes.Unauthenticated untuk semua kegagalan validasi.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // GetUserByID mengambil user berdasarkan UUID. Field PII (email/username)
+  // dikembalikan untuk keperluan profile lookup oleh user-service /
+  // notification-service. Password_hash TIDAK PERNAH dikembalikan.
+  rpc GetUserByID(GetUserByIDRequest) returns (UserResponse);
+
+  // GetUserByEmail sama seperti GetUserByID tapi dengan email sebagai lookup key.
+  // Email lookup case-insensitive (sama dengan repository.UserRepository.FindByEmail).
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (UserResponse);
+
+  // RevokeUserTokens mencabut SEMUA refresh token aktif user. Digunakan oleh
+  // admin-service saat ban user atau saat user delete account dari user-service.
+  // Endpoint ini SENSITIF — wajib lewat auth interceptor (shared secret /
+  // mTLS / admin JWT).
+  rpc RevokeUserTokens(RevokeUserTokensRequest) returns (RevokeUserTokensResponse);
+
+  // IsTokenBlacklisted memeriksa keberadaan JTI di blacklist Redis. Useful
+  // sebagai fallback bagi service yang tidak punya akses langsung ke Redis.
+  rpc IsTokenBlacklisted(IsTokenBlacklistedRequest) returns (IsTokenBlacklistedResponse);
+}
+
+// ─── ValidateToken ────────────────────────────────────────────────────────────
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  string user_id           = 1; // UUID string
+  string email             = 2;
+  string tenant_schema     = 3;
+  string subscription_tier = 4;
+  string jti               = 5;
+  int64  expires_at_unix   = 6; // detik
+}
+
+// ─── GetUserByID / GetUserByEmail ─────────────────────────────────────────────
+
+message GetUserByIDRequest {
+  string user_id = 1; // UUID string
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message UserResponse {
+  string id              = 1; // UUID string
+  string email           = 2;
+  string username        = 3;
+  bool   is_active       = 4;
+  bool   email_verified  = 5;
+  int64  created_at_unix = 6;
+}
+
+// ─── RevokeUserTokens ─────────────────────────────────────────────────────────
+
+message RevokeUserTokensRequest {
+  string user_id = 1; // UUID string
+}
+
+message RevokeUserTokensResponse {
+  bool success = 1;
+}
+
+// ─── IsTokenBlacklisted ───────────────────────────────────────────────────────
+
+message IsTokenBlacklistedRequest {
+  string jti = 1;
+}
+
+message IsTokenBlacklistedResponse {
+  bool blacklisted = 1;
+}

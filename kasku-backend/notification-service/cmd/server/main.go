@@ -13,6 +13,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/infrastructure/email"
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/infrastructure/messaging"
+	"github.com/TubagusAldiMY/kasku/notification-service/internal/infrastructure/persistence"
 	apptemplates "github.com/TubagusAldiMY/kasku/notification-service/internal/templates"
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/usecase"
 	"github.com/rs/zerolog"
@@ -37,6 +38,14 @@ func main() {
 		Str("service", "notification-service").
 		Str("version", cfg.App.ServiceVersion).
 		Msg("notification-service starting")
+
+	ctx := context.Background()
+	pool, err := persistence.NewPostgresPool(ctx, cfg.Postgres.DSN)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("gagal koneksi ke PostgreSQL")
+	}
+	defer pool.Close()
+	logger.Info().Msg("PostgreSQL terhubung")
 
 	tmpl, err := apptemplates.LoadEmailTemplates()
 	if err != nil {
@@ -72,8 +81,10 @@ func main() {
 	}
 	logger.Info().Msg("event consumer berjalan")
 
-	healthHandler := handler.NewHealthHandler(consumer, cfg.App.ServiceVersion)
-	router := deliveryhttp.NewRouter(healthHandler, cfg.IsDevelopment(), logger)
+	preferenceRepo := persistence.NewPostgresPreferenceRepository(pool)
+	healthHandler := handler.NewHealthHandler(consumer, pool, cfg.App.ServiceVersion)
+	preferenceHandler := handler.NewPreferenceHandler(preferenceRepo)
+	router := deliveryhttp.NewRouter(healthHandler, preferenceHandler, cfg.IsDevelopment(), logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

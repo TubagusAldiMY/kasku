@@ -54,13 +54,15 @@ type CORSConfig struct {
 
 // ProxyConfig menyimpan upstream URL untuk setiap service.
 type ProxyConfig struct {
-	AuthServiceURL        string
-	UserServiceURL        string
-	BillingServiceURL     string
-	FinanceServiceURL     string
-	TransactionServiceURL string
-	InvestmentServiceURL  string
-	SyncServiceURL        string
+	AuthServiceURL         string
+	UserServiceURL         string
+	BillingServiceURL      string
+	FinanceServiceURL      string
+	TransactionServiceURL  string
+	InvestmentServiceURL   string
+	PriceServiceURL        string
+	SyncServiceURL         string
+	NotificationServiceURL string
 }
 
 // Load membaca seluruh konfigurasi dari environment variables.
@@ -111,7 +113,9 @@ func Load() (*Config, error) {
 	cfg.Proxy.FinanceServiceURL = getEnvOrDefault("FINANCE_SERVICE_URL", "http://finance-service:8084")
 	cfg.Proxy.TransactionServiceURL = getEnvOrDefault("TRANSACTION_SERVICE_URL", "http://transaction-service:8085")
 	cfg.Proxy.InvestmentServiceURL = getEnvOrDefault("INVESTMENT_SERVICE_URL", "http://investment-service:8086")
+	cfg.Proxy.PriceServiceURL = getEnvOrDefault("PRICE_SERVICE_URL", "http://price-service:8087")
 	cfg.Proxy.SyncServiceURL = getEnvOrDefault("SYNC_SERVICE_URL", "http://sync-service:8088")
+	cfg.Proxy.NotificationServiceURL = getEnvOrDefault("NOTIFICATION_SERVICE_URL", "http://notification-service:8089")
 
 	return cfg, nil
 }

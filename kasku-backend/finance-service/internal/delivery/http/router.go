@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net/http"
+
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
@@ -17,6 +19,7 @@ func NewRouter(h *handler.AccountHandler, isDev bool) *gin.Engine {
 	r.Use(securityHeaders())
 
 	r.GET("/health", h.Health)
+	r.GET("/metrics", metrics("finance-service"))
 
 	v1 := r.Group("/v1")
 	{
@@ -32,6 +35,16 @@ func NewRouter(h *handler.AccountHandler, isDev bool) *gin.Engine {
 	}
 
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }
 
 // securityHeaders menambahkan security headers standar OWASP pada semua response.

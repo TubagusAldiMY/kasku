@@ -40,3 +40,8 @@ anyhow = "1"
 
 # Regex for tenant schema validation
 regex = "1"
+
+# gRPC client (tonic + prost — manual prost structs, no protoc needed)
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+http = "1"

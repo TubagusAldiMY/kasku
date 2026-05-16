@@ -43,6 +43,8 @@ type PasswordResetRequestedEvent struct {
 }
 
 // EventPublisher mendefinisikan kontrak untuk menerbitkan event ke message broker.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../../tests/mocks/mock_event_publisher.go -package=mocks
 type EventPublisher interface {
 	PublishUserRegistered(ctx context.Context, event UserRegisteredEvent) error
 	PublishEmailVerificationResent(ctx context.Context, event EmailVerificationResentEvent) error
@@ -103,6 +105,11 @@ func (p *RabbitMQPublisher) PublishPasswordResetRequested(ctx context.Context, e
 	return p.publish(ctx, RoutingKeyPasswordResetRequested, event)
 }
 
+// PublishRaw menerbitkan payload JSON yang sudah tersimpan di outbox.
+func (p *RabbitMQPublisher) PublishRaw(ctx context.Context, routingKey string, body []byte) error {
+	return p.publishBytes(ctx, routingKey, body)
+}
+
 // publish melakukan serialisasi payload ke JSON dan menerbitkan ke exchange dengan routing key yang diberikan.
 func (p *RabbitMQPublisher) publish(ctx context.Context, routingKey string, payload interface{}) error {
 	body, err := json.Marshal(payload)
@@ -110,10 +117,14 @@ func (p *RabbitMQPublisher) publish(ctx context.Context, routingKey string, payl
 		return fmt.Errorf("gagal marshal event payload: %w", err)
 	}
 
+	return p.publishBytes(ctx, routingKey, body)
+}
+
+func (p *RabbitMQPublisher) publishBytes(ctx context.Context, routingKey string, body []byte) error {
 	publishCtx, cancel := context.WithTimeout(ctx, publishTimeout)
 	defer cancel()
 
-	err = p.channel.PublishWithContext(
+	err := p.channel.PublishWithContext(
 		publishCtx,
 		exchangeName,
 		routingKey,

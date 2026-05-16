@@ -33,10 +33,17 @@ go.work.sum
 
 # Build output
 bin/
+target/
+.npm-cache/
 
 # Other
 Plan
 CLAUDE.md
 Knowledge
-.github
+.github/*
+!.github/workflows/
+!.github/workflows/**
 GEMINI.md
+deploy.md
+.github
+ui-example

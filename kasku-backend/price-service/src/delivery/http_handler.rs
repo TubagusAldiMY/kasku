@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::IntoResponse,
     Json,
 };
@@ -51,6 +51,14 @@ pub async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
             },
         }),
     )
+}
+
+/// GET /metrics — minimal Prometheus scrape endpoint.
+pub async fn metrics() -> impl IntoResponse {
+    (
+		[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+		"# HELP kasku_service_info KasKu service metadata\n# TYPE kasku_service_info gauge\nkasku_service_info{service=\"price-service\"} 1\n",
+	)
 }
 
 /// Price response for REST API.

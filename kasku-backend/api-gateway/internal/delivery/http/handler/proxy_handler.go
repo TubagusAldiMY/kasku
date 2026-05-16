@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -79,6 +80,13 @@ func (h *ProxyHandler) ProxyTo(upstreamName string) gin.HandlerFunc {
 		correlationID := middleware.GetCorrelationID(c)
 		if correlationID != "" {
 			c.Request.Header.Set(middleware.CorrelationIDHeader, correlationID)
+		}
+
+		// auth-service routes are mounted at /auth/* internally, while the
+		// public gateway contract is /v1/auth/*.
+		if upstreamName == "auth" && strings.HasPrefix(c.Request.URL.Path, "/v1/auth") {
+			c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, "/v1")
+			c.Request.URL.RawPath = ""
 		}
 
 		h.logger.Debug().

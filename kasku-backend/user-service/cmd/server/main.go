@@ -42,13 +42,21 @@ func main() {
 	defer financePool.Close()
 	logger.Info().Msg("kasku_finance terhubung")
 
-	// PostgreSQL — kasku_billing
+	// PostgreSQL — kasku_billing (untuk CreateFreeSubscription saja)
 	billingPool, err := persistence.NewPostgresPool(ctx, cfg.Billing.DSN)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("gagal koneksi ke kasku_billing")
 	}
 	defer billingPool.Close()
 	logger.Info().Msg("kasku_billing terhubung")
+
+	// PostgreSQL — kasku_user (owner user_profiles)
+	userPool, err := persistence.NewPostgresPool(ctx, cfg.User.DSN)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("gagal koneksi ke kasku_user")
+	}
+	defer userPool.Close()
+	logger.Info().Msg("kasku_user terhubung")
 
 	// RabbitMQ Consumer
 	consumer, err := messaging.NewRabbitMQConsumer(cfg.RabbitMQ.URL, logger)
@@ -64,10 +72,11 @@ func main() {
 
 	// Repositories
 	financeRepo := persistence.NewPostgresFinanceRepository(financePool)
-	billingRepo := persistence.NewPostgresBillingRepository(billingPool)
+	subscriptionRepo := persistence.NewPostgresSubscriptionRepository(billingPool)
+	profileRepo := persistence.NewPostgresUserProfileRepository(userPool)
 
 	// Use Cases
-	provisionUC := usecase.NewProvisionTenantUseCase(financeRepo, billingRepo, logger)
+	provisionUC := usecase.NewProvisionTenantUseCase(financeRepo, subscriptionRepo, profileRepo, logger)
 
 	// Event Handler adapter
 	eventHandler := &eventHandlerAdapter{provisionUC: provisionUC, log: logger}
@@ -85,9 +94,10 @@ func main() {
 	healthChecker := &appHealthChecker{
 		financePool: financePool,
 		billingPool: billingPool,
+		userPool:    userPool,
 		consumer:    consumer,
 	}
-	userHandler := handler.NewUserHandler(healthChecker, cfg.App.ServiceVersion, logger)
+	userHandler := handler.NewUserHandler(healthChecker, profileRepo, cfg.App.ServiceVersion, logger)
 	router := deliveryhttp.NewRouter(userHandler, cfg.IsDevelopment(), logger)
 
 	srv := &http.Server{
@@ -140,13 +150,14 @@ type eventHandlerAdapter struct {
 }
 
 func (a *eventHandlerAdapter) HandleUserRegistered(ctx context.Context, event messaging.UserRegisteredEvent) error {
-	return a.provisionUC.Execute(ctx, event.UserID)
+	return a.provisionUC.Execute(ctx, event.UserID, event.Email, event.Username)
 }
 
 // appHealthChecker mengimplementasikan handler.HealthChecker.
 type appHealthChecker struct {
 	financePool *pgxpool.Pool
 	billingPool *pgxpool.Pool
+	userPool    *pgxpool.Pool
 	consumer    *messaging.RabbitMQConsumer
 }
 
@@ -156,6 +167,10 @@ func (h *appHealthChecker) PingFinanceDB(ctx context.Context) error {
 
 func (h *appHealthChecker) PingBillingDB(ctx context.Context) error {
 	return persistence.PingPostgres(ctx, h.billingPool)
+}
+
+func (h *appHealthChecker) PingUserDB(ctx context.Context) error {
+	return persistence.PingPostgres(ctx, h.userPool)
 }
 
 func (h *appHealthChecker) PingRabbitMQ() error {

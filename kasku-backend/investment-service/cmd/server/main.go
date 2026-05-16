@@ -11,7 +11,9 @@ import (
 	"github.com/TubagusAldiMY/kasku/investment-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http/handler"
+	grpcserver "github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/persistence"
+	priceinfra "github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/price"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
@@ -47,9 +49,10 @@ func main() {
 
 	// Dependency injection: wiring semua layer
 	assetRepo := persistence.NewPostgresInvestmentRepository(pool)
+	priceClient := priceinfra.NewHTTPClient(cfg.Price.HTTPURL, cfg.Price.Timeout)
 
 	createUC := usecase.NewCreateAssetUseCase(assetRepo)
-	listUC := usecase.NewListAssetsUseCase(assetRepo)
+	listUC := usecase.NewListAssetsUseCase(assetRepo, priceClient)
 	getUC := usecase.NewGetAssetUseCase(assetRepo)
 	updateUC := usecase.NewUpdateAssetUseCase(assetRepo)
 	deleteUC := usecase.NewDeleteAssetUseCase(assetRepo)
@@ -72,6 +75,11 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	grpcSrv := grpcserver.NewInvestmentGRPCServer(pool, logger)
+	if err := grpcSrv.Start(cfg.Server.GRPCPort); err != nil {
+		logger.Fatal().Err(err).Msg("gagal start investment gRPC server")
+	}
+
 	go func() {
 		logger.Info().Str("port", cfg.Server.Port).Msg("investment-service HTTP server listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -84,6 +92,8 @@ func main() {
 	<-quit
 
 	logger.Info().Msg("graceful shutdown dimulai (timeout: 30s)")
+	grpcSrv.Stop()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 

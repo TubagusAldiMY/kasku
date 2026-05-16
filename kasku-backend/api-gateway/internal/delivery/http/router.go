@@ -47,6 +47,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 
 	// Health check (public, tanpa auth)
 	r.GET("/health", cfg.HealthHandler.Health)
+	r.GET("/metrics", metrics("api-gateway"))
 
 	// ── /v1/auth/** ───────────────────────────────────────────────────────────
 	// Catatan: sebagian besar auth endpoint adalah public (tidak butuh JWT),
@@ -69,6 +70,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	v1Users := r.Group("/v1/users")
 	v1Users.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Users.Any("", cfg.ProxyHandler.ProxyTo("user"))
 		v1Users.Any("/*path", cfg.ProxyHandler.ProxyTo("user"))
 	}
 
@@ -93,6 +95,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	v1Accounts := r.Group("/v1/accounts")
 	v1Accounts.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Accounts.Any("", cfg.ProxyHandler.ProxyTo("finance"))
 		v1Accounts.Any("/*path", cfg.ProxyHandler.ProxyTo("finance"))
 	}
 
@@ -100,6 +103,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	v1Transactions := r.Group("/v1/transactions")
 	v1Transactions.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Transactions.Any("", cfg.ProxyHandler.ProxyTo("transaction"))
 		v1Transactions.Any("/*path", cfg.ProxyHandler.ProxyTo("transaction"))
 	}
 
@@ -107,23 +111,51 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	v1Categories := r.Group("/v1/categories")
 	v1Categories.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Categories.Any("", cfg.ProxyHandler.ProxyTo("transaction"))
 		v1Categories.Any("/*path", cfg.ProxyHandler.ProxyTo("transaction"))
 	}
 	// ── /v1/investments/** ────────────────────────────────────────────────
 	v1Investments := r.Group("/v1/investments")
 	v1Investments.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Investments.Any("", cfg.ProxyHandler.ProxyTo("investment"))
 		v1Investments.Any("/*path", cfg.ProxyHandler.ProxyTo("investment"))
+	}
+
+	// ── /v1/prices/** ───────────────────────────────────────────────────
+	v1Prices := r.Group("/v1/prices")
+	v1Prices.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
+	{
+		v1Prices.GET("/:symbol", cfg.ProxyHandler.ProxyTo("price"))
 	}
 
 	// ── /v1/sync/** ───────────────────────────────────────────────────────
 	v1Sync := r.Group("/v1/sync")
 	v1Sync.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
 	{
+		v1Sync.Any("", cfg.ProxyHandler.ProxyTo("sync"))
 		v1Sync.Any("/*path", cfg.ProxyHandler.ProxyTo("sync"))
 	}
 
+	// ── /v1/notifications/** ────────────────────────────────────────────
+	v1Notifications := r.Group("/v1/notifications")
+	v1Notifications.Use(cfg.AuthMiddleware, cfg.RateLimitMiddleware)
+	{
+		v1Notifications.Any("", cfg.ProxyHandler.ProxyTo("notification"))
+		v1Notifications.Any("/*path", cfg.ProxyHandler.ProxyTo("notification"))
+	}
+
 	return r
+}
+
+func metrics(service string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
+			"# HELP kasku_service_info KasKu service metadata\n"+
+				"# TYPE kasku_service_info gauge\n"+
+				"kasku_service_info{service=\""+service+"\"} 1\n",
+		))
+	}
 }
 
 // securityHeaders meng-inject OWASP security headers ke setiap response.

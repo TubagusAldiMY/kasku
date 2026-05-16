@@ -11,6 +11,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/finance-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http/handler"
+	grpcserver "github.com/TubagusAldiMY/kasku/finance-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -72,6 +73,11 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	grpcSrv := grpcserver.NewFinanceGRPCServer(pool, logger)
+	if err := grpcSrv.Start(cfg.Server.GRPCPort); err != nil {
+		logger.Fatal().Err(err).Msg("gagal start finance gRPC server")
+	}
+
 	go func() {
 		logger.Info().Str("port", cfg.Server.Port).Msg("finance-service HTTP server listening")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -84,6 +90,8 @@ func main() {
 	<-quit
 
 	logger.Info().Msg("graceful shutdown dimulai (timeout: 30s)")
+	grpcSrv.Stop()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 

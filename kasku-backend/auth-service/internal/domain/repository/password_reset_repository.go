@@ -8,6 +8,8 @@ import (
 )
 
 // PasswordResetRepository mendefinisikan kontrak akses data untuk token reset password.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../../tests/mocks/mock_password_reset_repository.go -package=mocks
 type PasswordResetRepository interface {
 	// Create menyimpan token reset password baru.
 	Create(ctx context.Context, token *entity.PasswordResetToken) error

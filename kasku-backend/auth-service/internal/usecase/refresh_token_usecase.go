@@ -12,9 +12,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// RefreshTokenUseCase mengimplementasikan alur refresh access token dengan rotasi.
+// RefreshTokenUseCase adalah kontrak alur refresh access token dengan rotasi.
 // Mendeteksi token reuse attack menggunakan "refresh token rotation" pattern.
-type RefreshTokenUseCase struct {
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_refresh_token_usecase.go -package=mocks
+type RefreshTokenUseCase interface {
+	Execute(ctx context.Context, input RefreshInput) (*LoginOutput, error)
+}
+
+// refreshTokenUseCase mengimplementasikan RefreshTokenUseCase.
+type refreshTokenUseCase struct {
 	userRepo         repository.UserRepository
 	refreshTokenRepo repository.RefreshTokenRepository
 	jwtPrivateKey    *rsa.PrivateKey
@@ -29,8 +36,8 @@ func NewRefreshTokenUseCase(
 	jwtPrivateKey *rsa.PrivateKey,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
-) *RefreshTokenUseCase {
-	return &RefreshTokenUseCase{
+) RefreshTokenUseCase {
+	return &refreshTokenUseCase{
 		userRepo:         userRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		jwtPrivateKey:    jwtPrivateKey,
@@ -53,7 +60,7 @@ type RefreshInput struct {
 // 3. Jika is_revoked=true → TOKEN_REUSE_DETECTED → revoke semua token user
 // 4. Jika expired → 401 TOKEN_EXPIRED
 // 5. Revoke token lama, issue token baru (rotasi)
-func (uc *RefreshTokenUseCase) Execute(ctx context.Context, input RefreshInput) (*LoginOutput, error) {
+func (uc *refreshTokenUseCase) Execute(ctx context.Context, input RefreshInput) (*LoginOutput, error) {
 	if input.RawRefreshToken == "" {
 		return nil, domainerrors.ErrInvalidToken
 	}

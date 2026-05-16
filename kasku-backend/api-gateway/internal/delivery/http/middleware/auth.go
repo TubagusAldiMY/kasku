@@ -16,6 +16,7 @@ import (
 const (
 	// Header keys yang diinject ke downstream service
 	HeaderUserID           = "X-User-ID"
+	HeaderUserEmail        = "X-User-Email"
 	HeaderTenantSchema     = "X-Tenant-Schema"
 	HeaderSubscriptionTier = "X-Subscription-Tier"
 
@@ -74,6 +75,7 @@ func Auth(verifier JWTVerifier, tierProvider TierLimitsProvider) gin.HandlerFunc
 
 		// Inject identity headers
 		c.Request.Header.Set(HeaderUserID, userIDStr)
+		c.Request.Header.Set(HeaderUserEmail, parsedToken.Email)
 		c.Request.Header.Set(HeaderTenantSchema, parsedToken.TenantSchema)
 		c.Request.Header.Set(HeaderSubscriptionTier, parsedToken.SubscriptionTier)
 

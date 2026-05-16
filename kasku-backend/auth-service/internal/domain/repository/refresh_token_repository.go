@@ -8,6 +8,8 @@ import (
 )
 
 // RefreshTokenRepository mendefinisikan kontrak akses data untuk entitas RefreshToken.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../../tests/mocks/mock_refresh_token_repository.go -package=mocks
 type RefreshTokenRepository interface {
 	// Create menyimpan refresh token baru.
 	Create(ctx context.Context, token *entity.RefreshToken) error

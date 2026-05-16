@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: kasku-go-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "kasku-api-gateway:8080"
+          - "kasku-auth-service:8081"
+          - "kasku-user-service:8082"
+          - "kasku-billing-service:8083"
+          - "kasku-finance-service:8084"
+          - "kasku-transaction-service:8085"
+          - "kasku-investment-service:8086"
+          - "kasku-notification-service:8089"
+
+  - job_name: kasku-rust-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "kasku-price-service:8087"
+          - "kasku-sync-service:8088"
+
+  - job_name: kasku-admin-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "kasku-admin-service:8090"

@@ -10,6 +10,7 @@ import (
 // FinanceRepository mendefinisikan operasi ke kasku_finance.
 type FinanceRepository interface {
 	ProvisionTenant(ctx context.Context, userID string) error
+	EnsureTenantRuntimeObjects(ctx context.Context, tenantSchema string) error
 }
 
 type postgresFinanceRepository struct {
@@ -26,6 +27,14 @@ func (r *postgresFinanceRepository) ProvisionTenant(ctx context.Context, userID 
 	_, err := r.pool.Exec(ctx, "SELECT provision_tenant($1::uuid)", userID)
 	if err != nil {
 		return fmt.Errorf("gagal panggil provision_tenant untuk user %s: %w", userID, err)
+	}
+	return nil
+}
+
+func (r *postgresFinanceRepository) EnsureTenantRuntimeObjects(ctx context.Context, tenantSchema string) error {
+	_, err := r.pool.Exec(ctx, "SELECT ensure_tenant_runtime_objects($1)", tenantSchema)
+	if err != nil {
+		return fmt.Errorf("gagal ensure runtime objects untuk tenant %s: %w", tenantSchema, err)
 	}
 	return nil
 }

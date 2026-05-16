@@ -3,23 +3,31 @@ use tracing::{info, warn};
 
 use crate::domain::entity::{PushResponse, SyncOperation, SyncResult, SyncStatus};
 use crate::domain::error::DomainError;
+use crate::infrastructure::grpc::SyncGrpcClients;
 use crate::infrastructure::repository::SyncRepository;
 use crate::infrastructure::tenant::{validate_tenant_schema, verify_tenant_ownership};
+use crate::proto::{
+    common::SyncUpsertItem,
+    finance::UpsertFinancialAccountsRequest,
+    investment::UpsertInvestmentAssetsRequest,
+    transaction::UpsertTransactionsRequest,
+};
 
-/// Use case: Process a batch of offline sync operations.
+/// Push sync use case.
 ///
-/// For each operation:
-/// 1. Check sync_id for idempotency (skip if already processed)
-/// 2. Check for conflicts: if server entity updated_at > client_timestamp → SERVER WINS
-/// 3. Otherwise, apply the operation
-/// 4. Log to sync_log
+/// Alur:
+/// 1. Idempotency check via sync_log (direct DB)
+/// 2. Conflict detection: baca updated_at entity dari DB (direct DB, Server Wins)
+/// 3. Apply operation: panggil owning service via gRPC
+/// 4. Log ke sync_log (direct DB)
 pub struct PushSyncUseCase {
     repo: SyncRepository,
+    grpc: SyncGrpcClients,
 }
 
 impl PushSyncUseCase {
-    pub fn new(repo: SyncRepository) -> Self {
-        Self { repo }
+    pub fn new(repo: SyncRepository, grpc: SyncGrpcClients) -> Self {
+        Self { repo, grpc }
     }
 
     pub async fn execute(
@@ -28,7 +36,6 @@ impl PushSyncUseCase {
         tenant_schema: &str,
         operations: Vec<SyncOperation>,
     ) -> Result<PushResponse, DomainError> {
-        // Security: validate tenant schema and ownership
         validate_tenant_schema(tenant_schema)?;
         verify_tenant_ownership(user_id, tenant_schema)?;
 
@@ -53,11 +60,7 @@ impl PushSyncUseCase {
             }
 
             // Step 1: Idempotency check
-            if self
-                .repo
-                .sync_id_exists(tenant_schema, &op.sync_id)
-                .await?
-            {
+            if self.repo.sync_id_exists(tenant_schema, &op.sync_id).await? {
                 skipped += 1;
                 results.push(SyncResult {
                     sync_id: op.sync_id,
@@ -69,7 +72,7 @@ impl PushSyncUseCase {
                 continue;
             }
 
-            // Step 2: Conflict detection (for update/delete operations)
+            // Step 2: Conflict detection (update/delete only)
             if op.operation == "update" || op.operation == "delete" {
                 if let Some((server_data, server_updated_at)) = self
                     .repo
@@ -77,7 +80,6 @@ impl PushSyncUseCase {
                     .await?
                 {
                     if server_updated_at > op.client_timestamp {
-                        // SERVER WINS — return server data to client
                         conflicts += 1;
                         self.repo
                             .log_sync(
@@ -109,11 +111,11 @@ impl PushSyncUseCase {
                 }
             }
 
-            // Step 3: Apply operation (log only — actual entity mutation
-            // is done by the owning service via API calls)
-            let log_operation = match op.operation.as_str() {
-                "create" | "update" | "delete" => "PUSH",
-                _ => {
+            // Step 3: Apply via gRPC ke owning service
+            let payload_bytes = match serde_json::to_vec(&op.payload) {
+                Ok(b) => b,
+                Err(e) => {
+                    warn!(sync_id = %op.sync_id, error = %e, "gagal serialize payload");
                     results.push(SyncResult {
                         sync_id: op.sync_id,
                         entity_type: op.entity_type.clone(),
@@ -125,12 +127,41 @@ impl PushSyncUseCase {
                 }
             };
 
-            // Step 4: Log to sync_log
+            let item = SyncUpsertItem {
+                sync_id: op.sync_id.to_string(),
+                entity_id: op.entity_id.to_string(),
+                operation: op.operation.clone(),
+                payload: payload_bytes,
+                client_ts_ms: op.client_timestamp.timestamp_millis(),
+            };
+
+            if let Err(err) = self
+                .apply_via_grpc(tenant_schema, user_id, &op.entity_type, item)
+                .await
+            {
+                warn!(
+                    sync_id = %op.sync_id,
+                    entity_type = op.entity_type.as_str(),
+                    entity_id = %op.entity_id,
+                    error = %err,
+                    "gagal apply operasi sync via gRPC"
+                );
+                results.push(SyncResult {
+                    sync_id: op.sync_id,
+                    entity_type: op.entity_type.clone(),
+                    entity_id: op.entity_id,
+                    status: SyncStatus::Error,
+                    server_data: None,
+                });
+                continue;
+            }
+
+            // Step 4: Log ke sync_log
             self.repo
                 .log_sync(
                     tenant_schema,
                     &op.sync_id,
-                    log_operation,
+                    "PUSH",
                     &op.entity_type,
                     &op.entity_id,
                     Some("NO_CONFLICT"),
@@ -162,5 +193,75 @@ impl PushSyncUseCase {
             results,
             server_timestamp: Utc::now(),
         })
+    }
+
+    async fn apply_via_grpc(
+        &self,
+        tenant_schema: &str,
+        user_id: &str,
+        entity_type: &str,
+        item: SyncUpsertItem,
+    ) -> Result<(), DomainError> {
+        let schema = tenant_schema.to_string();
+        let uid = user_id.to_string();
+
+        match entity_type {
+            "financial_account" => {
+                let resp = self
+                    .grpc
+                    .finance
+                    .upsert_financial_accounts(UpsertFinancialAccountsRequest {
+                        tenant_schema: schema,
+                        user_id: uid,
+                        items: vec![item],
+                    })
+                    .await
+                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+
+                if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
+                    return Err(DomainError::GrpcError(
+                        "finance-service menolak operasi sync".into(),
+                    ));
+                }
+            }
+            "transaction" => {
+                let resp = self
+                    .grpc
+                    .transaction
+                    .upsert_transactions(UpsertTransactionsRequest {
+                        tenant_schema: schema,
+                        user_id: uid,
+                        items: vec![item],
+                    })
+                    .await
+                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+
+                if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
+                    return Err(DomainError::GrpcError(
+                        "transaction-service menolak operasi sync".into(),
+                    ));
+                }
+            }
+            "investment_asset" => {
+                let resp = self
+                    .grpc
+                    .investment
+                    .upsert_investment_assets(UpsertInvestmentAssetsRequest {
+                        tenant_schema: schema,
+                        user_id: uid,
+                        items: vec![item],
+                    })
+                    .await
+                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+
+                if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
+                    return Err(DomainError::GrpcError(
+                        "investment-service menolak operasi sync".into(),
+                    ));
+                }
+            }
+            other => return Err(DomainError::UnsupportedEntityType(other.to_string())),
+        }
+        Ok(())
     }
 }

@@ -8,8 +8,15 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/repository"
 )
 
-// VerifyEmailUseCase mengimplementasikan alur verifikasi email.
-type VerifyEmailUseCase struct {
+// VerifyEmailUseCase adalah kontrak alur verifikasi email.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_verify_email_usecase.go -package=mocks
+type VerifyEmailUseCase interface {
+	Execute(ctx context.Context, rawToken string) error
+}
+
+// verifyEmailUseCase mengimplementasikan VerifyEmailUseCase.
+type verifyEmailUseCase struct {
 	emailVerifRepo repository.EmailVerificationRepository
 	userRepo       repository.UserRepository
 }
@@ -18,8 +25,8 @@ type VerifyEmailUseCase struct {
 func NewVerifyEmailUseCase(
 	emailVerifRepo repository.EmailVerificationRepository,
 	userRepo repository.UserRepository,
-) *VerifyEmailUseCase {
-	return &VerifyEmailUseCase{
+) VerifyEmailUseCase {
+	return &verifyEmailUseCase{
 		emailVerifRepo: emailVerifRepo,
 		userRepo:       userRepo,
 	}
@@ -29,7 +36,7 @@ func NewVerifyEmailUseCase(
 // 1. SHA256(token) → lookup email_verifications aktif
 // 2. Tandai token sebagai verified
 // 3. Update user: is_active=true, email_verified=true
-func (uc *VerifyEmailUseCase) Execute(ctx context.Context, rawToken string) error {
+func (uc *verifyEmailUseCase) Execute(ctx context.Context, rawToken string) error {
 	if rawToken == "" {
 		return fmt.Errorf("%w: token tidak boleh kosong", domainerrors.ErrInvalidToken)
 	}

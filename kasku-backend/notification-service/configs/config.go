@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Server   ServerConfig
+	Postgres PostgresConfig
 	RabbitMQ RabbitMQConfig
 	SMTP     SMTPConfig
 	App      AppConfig
@@ -19,6 +20,10 @@ type ServerConfig struct {
 
 type RabbitMQConfig struct {
 	URL string
+}
+
+type PostgresConfig struct {
+	DSN string
 }
 
 type SMTPConfig struct {
@@ -45,6 +50,9 @@ func Load() (*Config, error) {
 	return &Config{
 		Server: ServerConfig{
 			Port: getEnvOrDefault("SERVER_PORT", "8089"),
+		},
+		Postgres: PostgresConfig{
+			DSN: requireEnv("POSTGRES_DSN"),
 		},
 		RabbitMQ: RabbitMQConfig{
 			URL: requireEnv("RABBITMQ_URL"),

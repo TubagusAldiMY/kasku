@@ -52,3 +52,4 @@ url = "2"
 
 [build-dependencies]
 tonic-build = "0.12"
+protoc-bin-vendored = "3"

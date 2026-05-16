@@ -2,39 +2,69 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/entity"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/repository"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/messaging"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/ratelimit"
 	"github.com/google/uuid"
 )
 
-// ResendVerificationUseCase mengimplementasikan alur pengiriman ulang email verifikasi.
-type ResendVerificationUseCase struct {
+// ResendVerificationUseCase adalah kontrak alur pengiriman ulang email verifikasi.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_resend_verification_usecase.go -package=mocks
+type ResendVerificationUseCase interface {
+	Execute(ctx context.Context, email string) error
+}
+
+// resendVerificationUseCase mengimplementasikan ResendVerificationUseCase.
+type resendVerificationUseCase struct {
 	userRepo       repository.UserRepository
 	emailVerifRepo repository.EmailVerificationRepository
 	publisher      messaging.EventPublisher
+	limiter        ratelimit.Limiter
+	limit          EmailRateLimit
 }
 
 // NewResendVerificationUseCase membuat instance ResendVerificationUseCase.
+//
+// Jika limiter == nil, rate-limit per-email dinonaktifkan (cocok untuk test/dev).
 func NewResendVerificationUseCase(
 	userRepo repository.UserRepository,
 	emailVerifRepo repository.EmailVerificationRepository,
 	publisher messaging.EventPublisher,
-) *ResendVerificationUseCase {
-	return &ResendVerificationUseCase{
+	limiter ratelimit.Limiter,
+	limit EmailRateLimit,
+) ResendVerificationUseCase {
+	return &resendVerificationUseCase{
 		userRepo:       userRepo,
 		emailVerifRepo: emailVerifRepo,
 		publisher:      publisher,
+		limiter:        limiter,
+		limit:          limit,
 	}
 }
 
 // Execute menjalankan alur resend verifikasi:
 // - Selalu return sukses untuk mencegah email enumeration attack
 // - Jika user ditemukan dan belum terverifikasi: invalidate token lama, buat token baru, publish event
-func (uc *ResendVerificationUseCase) Execute(ctx context.Context, email string) error {
+//
+// Per-email rate limit dicek SEBELUM DB lookup untuk mencegah penyerang spam email
+// resend ke korban. Saat rate-limit terlampaui, tetap return nil (silent).
+func (uc *resendVerificationUseCase) Execute(ctx context.Context, email string) error {
+	if uc.limiter != nil && uc.limit.Limit > 0 && uc.limit.Window > 0 {
+		key := fmt.Sprintf("ratelimit:%s:%s", uc.limit.Endpoint, hashEmailForKey(email))
+		if _, err := uc.limiter.Check(ctx, key, uc.limit.Limit, uc.limit.Window); err != nil {
+			if errors.Is(err, ratelimit.ErrLimitExceeded) {
+				return nil
+			}
+			// Infra error → fail-open
+		}
+	}
+
 	user, err := uc.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("gagal lookup user: %w", err)

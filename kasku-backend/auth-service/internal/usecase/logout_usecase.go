@@ -19,8 +19,15 @@ type LogoutInput struct {
 	RawRefreshToken string
 }
 
-// LogoutUseCase mengimplementasikan alur logout user.
-type LogoutUseCase struct {
+// LogoutUseCase adalah kontrak alur logout user.
+//
+//go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_logout_usecase.go -package=mocks
+type LogoutUseCase interface {
+	Execute(ctx context.Context, input LogoutInput) error
+}
+
+// logoutUseCase mengimplementasikan LogoutUseCase.
+type logoutUseCase struct {
 	refreshTokenRepo repository.RefreshTokenRepository
 	jwtPublicKey     *rsa.PublicKey
 	blacklist        TokenBlacklister
@@ -31,8 +38,8 @@ func NewLogoutUseCase(
 	refreshTokenRepo repository.RefreshTokenRepository,
 	jwtPublicKey *rsa.PublicKey,
 	blacklist TokenBlacklister,
-) *LogoutUseCase {
-	return &LogoutUseCase{
+) LogoutUseCase {
+	return &logoutUseCase{
 		refreshTokenRepo: refreshTokenRepo,
 		jwtPublicKey:     jwtPublicKey,
 		blacklist:        blacklist,
@@ -43,7 +50,7 @@ func NewLogoutUseCase(
 // 1. Blacklist JTI access token di Redis (agar token tidak bisa dipakai lagi meski belum expired)
 // 2. Revoke refresh token di DB
 // Selalu return nil — error saat logout tidak boleh gagalkan response.
-func (uc *LogoutUseCase) Execute(ctx context.Context, input LogoutInput) error {
+func (uc *logoutUseCase) Execute(ctx context.Context, input LogoutInput) error {
 	// Blacklist access token JTI jika tersedia
 	if input.AccessToken != "" {
 		claims, err := ParseAccessToken(input.AccessToken, uc.jwtPublicKey)
