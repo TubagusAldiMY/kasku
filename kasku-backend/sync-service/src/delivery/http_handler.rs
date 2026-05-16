@@ -6,6 +6,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::domain::entity::SyncOperation;
@@ -13,12 +14,23 @@ use crate::domain::error::DomainError;
 use crate::usecase::pull_sync::PullSyncUseCase;
 use crate::usecase::push_sync::PushSyncUseCase;
 
+/// Counters exposed via /metrics (Prometheus text format).
+#[derive(Default)]
+pub struct SyncMetrics {
+    pub push_total: AtomicU64,
+    pub push_conflicts_total: AtomicU64,
+    pub push_skipped_total: AtomicU64,
+    pub pull_total: AtomicU64,
+    pub errors_total: AtomicU64,
+}
+
 /// Shared application state.
 pub struct AppState {
     pub push_uc: PushSyncUseCase,
     pub pull_uc: PullSyncUseCase,
     pub service_version: String,
     pub db_pool: sqlx::PgPool,
+    pub metrics: SyncMetrics,
 }
 
 // ── Header constants ────────────────────────────────────────────────────
@@ -43,25 +55,56 @@ fn extract_request_context(headers: &HeaderMap) -> Result<(String, String), Doma
 }
 
 /// Map domain errors to HTTP responses.
+/// Response body kept generic — no upstream library trace or internal address leaks.
 fn domain_error_response(err: DomainError) -> impl IntoResponse {
-    let (status, code) = match &err {
-        DomainError::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
-        DomainError::InvalidTenantSchema(_) => (StatusCode::BAD_REQUEST, "INVALID_TENANT_SCHEMA"),
-        DomainError::TenantMismatch { .. } => (StatusCode::FORBIDDEN, "TENANT_MISMATCH"),
-        DomainError::UnsupportedEntityType(_) => {
-            (StatusCode::BAD_REQUEST, "UNSUPPORTED_ENTITY_TYPE")
-        }
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+    let (status, code, message) = match &err {
+        DomainError::Unauthorized => (
+            StatusCode::UNAUTHORIZED,
+            "UNAUTHORIZED",
+            "header autentikasi tidak ditemukan".to_string(),
+        ),
+        DomainError::InvalidTenantSchema(s) => (
+            StatusCode::BAD_REQUEST,
+            "INVALID_TENANT_SCHEMA",
+            format!("tenant schema tidak valid: {s}"),
+        ),
+        DomainError::TenantMismatch { .. } => (
+            StatusCode::FORBIDDEN,
+            "TENANT_MISMATCH",
+            "tenant schema tidak cocok dengan user".to_string(),
+        ),
+        DomainError::UnsupportedEntityType(t) => (
+            StatusCode::BAD_REQUEST,
+            "UNSUPPORTED_ENTITY_TYPE",
+            format!("tipe entitas tidak didukung: {t}"),
+        ),
+        DomainError::UpstreamTimeout => (
+            StatusCode::GATEWAY_TIMEOUT,
+            "UPSTREAM_TIMEOUT",
+            "upstream service timeout".to_string(),
+        ),
+        DomainError::UpstreamUnavailable => (
+            StatusCode::BAD_GATEWAY,
+            "UPSTREAM_UNAVAILABLE",
+            "upstream service unavailable".to_string(),
+        ),
+        DomainError::UpstreamInvalidResponse => (
+            StatusCode::BAD_GATEWAY,
+            "UPSTREAM_INVALID_RESPONSE",
+            "upstream response invalid".to_string(),
+        ),
+        DomainError::DatabaseError(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "INTERNAL_ERROR",
+            "internal server error".to_string(),
+        ),
     };
 
     (
         status,
         Json(serde_json::json!({
             "success": false,
-            "error": {
-                "code": code,
-                "message": err.to_string()
-            }
+            "error": { "code": code, "message": message }
         })),
     )
 }
@@ -94,12 +137,40 @@ pub async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     )
 }
 
-/// GET /metrics — minimal Prometheus scrape endpoint.
-pub async fn metrics() -> impl IntoResponse {
+/// GET /metrics — Prometheus text format.
+pub async fn metrics(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let m = &state.metrics;
+    let body = format!(
+        "# HELP kasku_service_info KasKu service metadata\n\
+         # TYPE kasku_service_info gauge\n\
+         kasku_service_info{{service=\"sync-service\",version=\"{ver}\"}} 1\n\
+         # HELP kasku_sync_push_total Jumlah operasi push yang berhasil di-apply\n\
+         # TYPE kasku_sync_push_total counter\n\
+         kasku_sync_push_total {push}\n\
+         # HELP kasku_sync_push_conflicts_total Jumlah operasi push yang resolve via Server Wins\n\
+         # TYPE kasku_sync_push_conflicts_total counter\n\
+         kasku_sync_push_conflicts_total {conflicts}\n\
+         # HELP kasku_sync_push_skipped_total Jumlah operasi push yang skipped (idempotency hit)\n\
+         # TYPE kasku_sync_push_skipped_total counter\n\
+         kasku_sync_push_skipped_total {skipped}\n\
+         # HELP kasku_sync_pull_total Jumlah request pull yang sukses\n\
+         # TYPE kasku_sync_pull_total counter\n\
+         kasku_sync_pull_total {pull}\n\
+         # HELP kasku_sync_errors_total Jumlah request yang berakhir error\n\
+         # TYPE kasku_sync_errors_total counter\n\
+         kasku_sync_errors_total {errors}\n",
+        ver = state.service_version,
+        push = m.push_total.load(Ordering::Relaxed),
+        conflicts = m.push_conflicts_total.load(Ordering::Relaxed),
+        skipped = m.push_skipped_total.load(Ordering::Relaxed),
+        pull = m.pull_total.load(Ordering::Relaxed),
+        errors = m.errors_total.load(Ordering::Relaxed),
+    );
+
     (
-		[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
-		"# HELP kasku_service_info KasKu service metadata\n# TYPE kasku_service_info gauge\nkasku_service_info{service=\"sync-service\"} 1\n",
-	)
+        [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        body,
+    )
 }
 
 /// Push request body.
@@ -116,7 +187,10 @@ pub async fn push_sync(
 ) -> impl IntoResponse {
     let (user_id, tenant_schema) = match extract_request_context(&headers) {
         Ok(ctx) => ctx,
-        Err(err) => return domain_error_response(err).into_response(),
+        Err(err) => {
+            state.metrics.errors_total.fetch_add(1, Ordering::Relaxed);
+            return domain_error_response(err).into_response();
+        }
     };
 
     match state
@@ -124,12 +198,29 @@ pub async fn push_sync(
         .execute(&user_id, &tenant_schema, body.operations)
         .await
     {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"success": true, "data": result})),
-        )
-            .into_response(),
-        Err(err) => domain_error_response(err).into_response(),
+        Ok(result) => {
+            state
+                .metrics
+                .push_total
+                .fetch_add(result.processed as u64, Ordering::Relaxed);
+            state
+                .metrics
+                .push_conflicts_total
+                .fetch_add(result.conflicts as u64, Ordering::Relaxed);
+            state
+                .metrics
+                .push_skipped_total
+                .fetch_add(result.skipped as u64, Ordering::Relaxed);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"success": true, "data": result})),
+            )
+                .into_response()
+        }
+        Err(err) => {
+            state.metrics.errors_total.fetch_add(1, Ordering::Relaxed);
+            domain_error_response(err).into_response()
+        }
     }
 }
 
@@ -147,7 +238,10 @@ pub async fn pull_sync(
 ) -> impl IntoResponse {
     let (user_id, tenant_schema) = match extract_request_context(&headers) {
         Ok(ctx) => ctx,
-        Err(err) => return domain_error_response(err).into_response(),
+        Err(err) => {
+            state.metrics.errors_total.fetch_add(1, Ordering::Relaxed);
+            return domain_error_response(err).into_response();
+        }
     };
 
     match state
@@ -155,11 +249,17 @@ pub async fn pull_sync(
         .execute(&user_id, &tenant_schema, query.since)
         .await
     {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(serde_json::json!({"success": true, "data": result})),
-        )
-            .into_response(),
-        Err(err) => domain_error_response(err).into_response(),
+        Ok(result) => {
+            state.metrics.pull_total.fetch_add(1, Ordering::Relaxed);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"success": true, "data": result})),
+            )
+                .into_response()
+        }
+        Err(err) => {
+            state.metrics.errors_total.fetch_add(1, Ordering::Relaxed);
+            domain_error_response(err).into_response()
+        }
     }
 }

@@ -29,6 +29,11 @@ pub struct Config {
     /// gRPC address untuk investment-service (e.g. "http://investment-service:9086")
     #[serde(default = "default_investment_grpc_addr")]
     pub investment_service_grpc_addr: String,
+
+    /// Per-RPC timeout untuk panggilan ke owning service (ms).
+    /// Default 5000 (5 detik). Override via env GRPC_REQUEST_TIMEOUT_MS.
+    #[serde(default = "default_grpc_timeout_ms")]
+    pub grpc_request_timeout_ms: u64,
 }
 
 impl Config {
@@ -54,4 +59,7 @@ fn default_transaction_grpc_addr() -> String {
 }
 fn default_investment_grpc_addr() -> String {
     "http://localhost:9086".to_string()
+}
+fn default_grpc_timeout_ms() -> u64 {
+    5000
 }

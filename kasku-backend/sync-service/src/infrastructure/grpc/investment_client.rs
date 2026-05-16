@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use tonic::codec::ProstCodec;
 use tonic::transport::Channel;
 
@@ -12,11 +14,12 @@ const LIST_PATH: &str = "/investment.v1.InvestmentInternal/ListInvestmentAssets"
 #[derive(Clone)]
 pub struct InvestmentInternalClient {
     channel: Channel,
+    timeout: Duration,
 }
 
 impl InvestmentInternalClient {
-    pub fn new(channel: Channel) -> Self {
-        Self { channel }
+    pub fn new(channel: Channel, timeout: Duration) -> Self {
+        Self { channel, timeout }
     }
 
     pub async fn upsert_investment_assets(
@@ -24,16 +27,20 @@ impl InvestmentInternalClient {
         request: UpsertInvestmentAssetsRequest,
     ) -> Result<UpsertInvestmentAssetsResponse, tonic::Status> {
         let mut grpc = tonic::client::Grpc::new(self.channel.clone());
-        grpc.ready().await.map_err(|e| {
-            tonic::Status::unavailable(format!("investment-service gRPC not ready: {e}"))
-        })?;
+        tokio::time::timeout(self.timeout, grpc.ready())
+            .await
+            .map_err(|_| tonic::Status::deadline_exceeded("upstream timeout"))?
+            .map_err(|_| tonic::Status::unavailable("upstream unavailable"))?;
         let codec =
             ProstCodec::<UpsertInvestmentAssetsRequest, UpsertInvestmentAssetsResponse>::default();
         let path = UPSERT_PATH
             .parse::<http::uri::PathAndQuery>()
             .map_err(|_| tonic::Status::internal("invalid gRPC path constant"))?;
-        grpc.unary(tonic::Request::new(request), path, codec)
+        let mut tonic_req = tonic::Request::new(request);
+        tonic_req.set_timeout(self.timeout);
+        tokio::time::timeout(self.timeout, grpc.unary(tonic_req, path, codec))
             .await
+            .map_err(|_| tonic::Status::deadline_exceeded("upstream timeout"))?
             .map(|r| r.into_inner())
     }
 
@@ -42,16 +49,20 @@ impl InvestmentInternalClient {
         request: ListInvestmentAssetsRequest,
     ) -> Result<ListInvestmentAssetsResponse, tonic::Status> {
         let mut grpc = tonic::client::Grpc::new(self.channel.clone());
-        grpc.ready().await.map_err(|e| {
-            tonic::Status::unavailable(format!("investment-service gRPC not ready: {e}"))
-        })?;
+        tokio::time::timeout(self.timeout, grpc.ready())
+            .await
+            .map_err(|_| tonic::Status::deadline_exceeded("upstream timeout"))?
+            .map_err(|_| tonic::Status::unavailable("upstream unavailable"))?;
         let codec =
             ProstCodec::<ListInvestmentAssetsRequest, ListInvestmentAssetsResponse>::default();
         let path = LIST_PATH
             .parse::<http::uri::PathAndQuery>()
             .map_err(|_| tonic::Status::internal("invalid gRPC path constant"))?;
-        grpc.unary(tonic::Request::new(request), path, codec)
+        let mut tonic_req = tonic::Request::new(request);
+        tonic_req.set_timeout(self.timeout);
+        tokio::time::timeout(self.timeout, grpc.unary(tonic_req, path, codec))
             .await
+            .map_err(|_| tonic::Status::deadline_exceeded("upstream timeout"))?
             .map(|r| r.into_inner())
     }
 }

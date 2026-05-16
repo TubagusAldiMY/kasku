@@ -1,5 +1,5 @@
 use chrono::Utc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::domain::entity::{PushResponse, SyncOperation, SyncResult, SyncStatus};
 use crate::domain::error::DomainError;
@@ -139,12 +139,14 @@ impl PushSyncUseCase {
                 .apply_via_grpc(tenant_schema, user_id, &op.entity_type, item)
                 .await
             {
+                // Error sudah di-log secara terstruktur di apply_via_grpc.
+                // Hanya catat ringkasan + tandai operasi sebagai Error tanpa membocorkan detail upstream.
                 warn!(
                     sync_id = %op.sync_id,
                     entity_type = op.entity_type.as_str(),
                     entity_id = %op.entity_id,
-                    error = %err,
-                    "gagal apply operasi sync via gRPC"
+                    error_kind = ?err_kind(&err),
+                    "operasi sync gagal di-apply"
                 );
                 results.push(SyncResult {
                     sync_id: op.sync_id,
@@ -216,12 +218,11 @@ impl PushSyncUseCase {
                         items: vec![item],
                     })
                     .await
-                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+                    .map_err(|status| map_grpc_status(status, "finance-service"))?;
 
                 if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
-                    return Err(DomainError::GrpcError(
-                        "finance-service menolak operasi sync".into(),
-                    ));
+                    error!(service = "finance-service", "upstream menolak operasi sync");
+                    return Err(DomainError::UpstreamInvalidResponse);
                 }
             }
             "transaction" => {
@@ -234,12 +235,11 @@ impl PushSyncUseCase {
                         items: vec![item],
                     })
                     .await
-                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+                    .map_err(|status| map_grpc_status(status, "transaction-service"))?;
 
                 if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
-                    return Err(DomainError::GrpcError(
-                        "transaction-service menolak operasi sync".into(),
-                    ));
+                    error!(service = "transaction-service", "upstream menolak operasi sync");
+                    return Err(DomainError::UpstreamInvalidResponse);
                 }
             }
             "investment_asset" => {
@@ -252,16 +252,45 @@ impl PushSyncUseCase {
                         items: vec![item],
                     })
                     .await
-                    .map_err(|e| DomainError::GrpcError(e.to_string()))?;
+                    .map_err(|status| map_grpc_status(status, "investment-service"))?;
 
                 if resp.results.first().map(|r| r.status.as_str()) != Some("applied") {
-                    return Err(DomainError::GrpcError(
-                        "investment-service menolak operasi sync".into(),
-                    ));
+                    error!(service = "investment-service", "upstream menolak operasi sync");
+                    return Err(DomainError::UpstreamInvalidResponse);
                 }
             }
             other => return Err(DomainError::UnsupportedEntityType(other.to_string())),
         }
         Ok(())
+    }
+}
+
+/// Map tonic::Status ke DomainError sambil log detail tetap di server log saja.
+/// Pesan error yang dikembalikan ke caller sudah disanitasi (tidak bocorkan
+/// internal address atau library trace).
+fn map_grpc_status(status: tonic::Status, service: &'static str) -> DomainError {
+    error!(
+        service = service,
+        code = ?status.code(),
+        message = status.message(),
+        "gRPC call gagal"
+    );
+    match status.code() {
+        tonic::Code::DeadlineExceeded => DomainError::UpstreamTimeout,
+        tonic::Code::Unavailable => DomainError::UpstreamUnavailable,
+        _ => DomainError::UpstreamUnavailable,
+    }
+}
+
+fn err_kind(err: &DomainError) -> &'static str {
+    match err {
+        DomainError::UpstreamTimeout => "upstream_timeout",
+        DomainError::UpstreamUnavailable => "upstream_unavailable",
+        DomainError::UpstreamInvalidResponse => "upstream_invalid_response",
+        DomainError::UnsupportedEntityType(_) => "unsupported_entity_type",
+        DomainError::DatabaseError(_) => "database_error",
+        DomainError::InvalidTenantSchema(_) => "invalid_tenant_schema",
+        DomainError::TenantMismatch { .. } => "tenant_mismatch",
+        DomainError::Unauthorized => "unauthorized",
     }
 }

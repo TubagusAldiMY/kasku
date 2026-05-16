@@ -32,8 +32,7 @@ impl SyncRepository {
         let exists: bool = sqlx::query_scalar(&query)
             .bind(sync_id)
             .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
+            .await?;
         Ok(exists)
     }
 
@@ -62,8 +61,7 @@ impl SyncRepository {
         let row: Option<(JsonValue, DateTime<Utc>)> = sqlx::query_as(&query)
             .bind(entity_id)
             .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
+            .await?;
 
         Ok(row)
     }
@@ -91,9 +89,7 @@ impl SyncRepository {
             .bind(entity_id)
             .bind(resolution)
             .execute(&self.pool)
-            .await
-            .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
+            .await?;
         Ok(())
     }
 }
-

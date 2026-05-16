@@ -14,9 +14,15 @@ pub enum DomainError {
     #[error("header autentikasi tidak ditemukan")]
     Unauthorized,
 
-    #[error("kesalahan database: {0}")]
-    DatabaseError(String),
+    #[error("kesalahan database")]
+    DatabaseError(#[from] sqlx::Error),
 
-    #[error("gRPC error: {0}")]
-    GrpcError(String),
+    #[error("upstream service unavailable")]
+    UpstreamUnavailable,
+
+    #[error("upstream service timeout")]
+    UpstreamTimeout,
+
+    #[error("upstream response invalid")]
+    UpstreamInvalidResponse,
 }

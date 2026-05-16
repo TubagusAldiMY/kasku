@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use tracing::error;
 use uuid::Uuid;
 
 use crate::domain::entity::{EntityChange, PullResponse};
@@ -53,12 +54,9 @@ impl PullSyncUseCase {
             }),
         );
 
-        let finance_resp = finance_result
-            .map_err(|e| DomainError::GrpcError(format!("finance-service: {e}")))?;
-        let tx_resp = tx_result
-            .map_err(|e| DomainError::GrpcError(format!("transaction-service: {e}")))?;
-        let invest_resp = invest_result
-            .map_err(|e| DomainError::GrpcError(format!("investment-service: {e}")))?;
+        let finance_resp = finance_result.map_err(|s| map_grpc_status(s, "finance-service"))?;
+        let tx_resp = tx_result.map_err(|s| map_grpc_status(s, "transaction-service"))?;
+        let invest_resp = invest_result.map_err(|s| map_grpc_status(s, "investment-service"))?;
 
         let mut changes: Vec<EntityChange> = Vec::new();
 
@@ -81,22 +79,39 @@ impl PullSyncUseCase {
     }
 }
 
+fn map_grpc_status(status: tonic::Status, service: &'static str) -> DomainError {
+    error!(
+        service = service,
+        code = ?status.code(),
+        message = status.message(),
+        "gRPC pull call gagal"
+    );
+    match status.code() {
+        tonic::Code::DeadlineExceeded => DomainError::UpstreamTimeout,
+        tonic::Code::Unavailable => DomainError::UpstreamUnavailable,
+        _ => DomainError::UpstreamUnavailable,
+    }
+}
+
 fn proto_to_domain_change(
     c: ProtoEntityChange,
     entity_type: &str,
 ) -> Result<EntityChange, DomainError> {
-    let entity_id = Uuid::parse_str(&c.entity_id)
-        .map_err(|_| DomainError::GrpcError(format!("invalid uuid dari server: {}", c.entity_id)))?;
+    let entity_id = Uuid::parse_str(&c.entity_id).map_err(|_| {
+        error!(entity_id = %c.entity_id, "upstream mengembalikan UUID invalid");
+        DomainError::UpstreamInvalidResponse
+    })?;
 
     let data = if c.data.is_empty() {
         serde_json::Value::Null
     } else {
-        serde_json::from_slice(&c.data)
-            .map_err(|e| DomainError::GrpcError(format!("invalid JSON data dari server: {e}")))?
+        serde_json::from_slice(&c.data).map_err(|e| {
+            error!(error = %e, "upstream mengembalikan JSON data invalid");
+            DomainError::UpstreamInvalidResponse
+        })?
     };
 
-    let updated_at = DateTime::from_timestamp_millis(c.updated_at_ms)
-        .unwrap_or_else(Utc::now);
+    let updated_at = DateTime::from_timestamp_millis(c.updated_at_ms).unwrap_or_else(Utc::now);
 
     Ok(EntityChange {
         entity_type: entity_type.to_string(),

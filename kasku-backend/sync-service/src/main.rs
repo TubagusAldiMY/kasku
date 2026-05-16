@@ -16,7 +16,7 @@ use tokio::signal;
 use tracing::{error, info};
 
 use config::Config;
-use delivery::http_handler::{self, AppState};
+use delivery::http_handler::{self, AppState, SyncMetrics};
 use infrastructure::db;
 use infrastructure::grpc::SyncGrpcClients;
 use infrastructure::repository::SyncRepository;
@@ -56,6 +56,7 @@ async fn main() {
         &cfg.finance_service_grpc_addr,
         &cfg.transaction_service_grpc_addr,
         &cfg.investment_service_grpc_addr,
+        cfg.grpc_request_timeout_ms,
     )
     .expect("gagal inisialisasi gRPC clients");
 
@@ -63,6 +64,7 @@ async fn main() {
         finance_addr = cfg.finance_service_grpc_addr.as_str(),
         transaction_addr = cfg.transaction_service_grpc_addr.as_str(),
         investment_addr = cfg.investment_service_grpc_addr.as_str(),
+        grpc_timeout_ms = cfg.grpc_request_timeout_ms,
         "gRPC clients terkonfigurasi (lazy-connect)"
     );
 
@@ -76,6 +78,7 @@ async fn main() {
         pull_uc,
         service_version: "1.0.0".to_string(),
         db_pool: pool,
+        metrics: SyncMetrics::default(),
     });
 
     // ── Axum HTTP Server ────────────────────────────────────────────────

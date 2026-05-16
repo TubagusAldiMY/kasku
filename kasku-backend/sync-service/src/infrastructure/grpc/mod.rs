@@ -6,6 +6,8 @@ pub use finance_client::FinanceInternalClient;
 pub use investment_client::InvestmentInternalClient;
 pub use transaction_client::TransactionInternalClient;
 
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use tonic::transport::Endpoint;
 
@@ -23,7 +25,10 @@ impl SyncGrpcClients {
         finance_addr: &str,
         transaction_addr: &str,
         investment_addr: &str,
+        request_timeout_ms: u64,
     ) -> Result<Self> {
+        let timeout = Duration::from_millis(request_timeout_ms);
+
         let finance_channel = Endpoint::new(finance_addr.to_string())
             .context("finance_service_grpc_addr tidak valid")?
             .connect_lazy();
@@ -37,9 +42,9 @@ impl SyncGrpcClients {
             .connect_lazy();
 
         Ok(Self {
-            finance: FinanceInternalClient::new(finance_channel),
-            transaction: TransactionInternalClient::new(transaction_channel),
-            investment: InvestmentInternalClient::new(investment_channel),
+            finance: FinanceInternalClient::new(finance_channel, timeout),
+            transaction: TransactionInternalClient::new(transaction_channel, timeout),
+            investment: InvestmentInternalClient::new(investment_channel, timeout),
         })
     }
 }

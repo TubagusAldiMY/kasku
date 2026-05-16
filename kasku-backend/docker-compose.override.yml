@@ -22,6 +22,24 @@ services:
       - "5672:5672"    # AMQP — Go/Rust services
       - "15672:15672"  # Management UI — http://localhost:15672
 
+  # Expose api-gateway so the frontend dev server (browser) can reach localhost:8080
+  api-gateway:
+    ports:
+      - "8080:8080"
+
+  # Expose sync-service so integration smoke test (sync_smoke.sh) bisa fetch /metrics
+  # langsung tanpa lewat docker exec. Internal-only di production.
+  sync-service:
+    ports:
+      - "8088:8088"
+
+  # notification-service: gunakan SMTP sungguhan di local dev
+  # (APP_ENV=development di .env global → NoOpSender; override ke production supaya email terkirim)
+  notification-service:
+    environment:
+      APP_ENV: production
+      APP_BASE_URL: http://localhost:5173
+
   # Disable Traefik in local dev (services expose ports directly via override)
   traefik:
     profiles:
