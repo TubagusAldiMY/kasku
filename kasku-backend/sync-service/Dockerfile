@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────────
 # KasKu sync-service — Multi-stage Rust build
 # ──────────────────────────────────────────────────
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.88-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
@@ -18,7 +18,7 @@ RUN rm -rf src
 
 # Copy actual source and build
 COPY src/ src/
-RUN cargo build --release
+RUN find src -name "*.rs" -exec touch {} + && cargo build --release
 
 # ──────────────────────────────────────────────────
 # Runtime stage — minimal image

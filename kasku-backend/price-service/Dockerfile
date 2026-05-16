@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────────
 # KasKu price-service — Multi-stage Rust build
 # ──────────────────────────────────────────────────
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.88-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y \
     protobuf-compiler \
@@ -23,7 +23,10 @@ RUN rm -rf src
 # Copy actual source and build
 COPY src/ src/
 COPY migrations/ migrations/
-RUN cargo build --release
+# Touch source files so cargo sees them as newer than the dummy-build binary.
+# Docker COPY sets mtime=0 (epoch), which is older than the dummy binary — cargo
+# would incorrectly skip recompilation without this.
+RUN find src -name "*.rs" -exec touch {} + && cargo build --release
 
 # ──────────────────────────────────────────────────
 # Runtime stage — minimal image

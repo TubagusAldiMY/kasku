@@ -300,9 +300,12 @@ func (s *TransactionGRPCServer) Stop() {
 	}
 }
 
+// transactionInternalServer is a marker interface satisfying grpc.ServiceDesc.HandlerType.
+type transactionInternalServer any
+
 var transactionInternalDesc = grpc.ServiceDesc{
 	ServiceName: "transaction.v1.TransactionInternal",
-	HandlerType: (*TransactionGRPCServer)(nil),
+	HandlerType: (*transactionInternalServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{MethodName: "UpsertTransactions", Handler: upsertTransactionsHandler},
 		{MethodName: "ListTransactions", Handler: listTransactionsHandler},

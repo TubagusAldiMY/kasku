@@ -327,9 +327,13 @@ func (s *FinanceGRPCServer) Stop() {
 	}
 }
 
+// financeInternalServer is a marker interface satisfying grpc.ServiceDesc.HandlerType —
+// must be an interface pointer, not a concrete type.
+type financeInternalServer any
+
 var financeInternalDesc = grpc.ServiceDesc{
 	ServiceName: "finance.v1.FinanceInternal",
-	HandlerType: (*FinanceGRPCServer)(nil),
+	HandlerType: (*financeInternalServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{MethodName: "UpsertFinancialAccounts", Handler: upsertFinancialAccountsHandler},
 		{MethodName: "ListFinancialAccounts", Handler: listFinancialAccountsHandler},

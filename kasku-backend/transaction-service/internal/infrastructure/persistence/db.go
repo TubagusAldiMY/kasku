@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -12,8 +13,11 @@ import (
 )
 
 const (
-	migrationSourceURL = "file://migrations"
-	maxPoolConnections = 20
+	migrationSourceURL    = "file://migrations"
+	maxPoolConnections    = 20
+	// migrationsTable uses a service-specific name to avoid conflicts with
+	// finance-service which shares the same kasku_finance database.
+	migrationsTable = "transaction_schema_migrations"
 )
 
 var tenantSchemaRegex = regexp.MustCompile(`^tenant_[0-9a-f_]{32,36}$`)
@@ -47,7 +51,15 @@ func NewPostgresPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 }
 
 func RunMigrations(dsn string) error {
-	m, err := migrate.New(migrationSourceURL, dsn)
+	// Append x-migrations-table so transaction-service tracks its versions
+	// independently from finance-service (both share kasku_finance database).
+	sep := "&"
+	if !strings.Contains(dsn, "?") {
+		sep = "?"
+	}
+	migrateURL := dsn + sep + "x-migrations-table=" + migrationsTable
+
+	m, err := migrate.New(migrationSourceURL, migrateURL)
 	if err != nil {
 		return fmt.Errorf("gagal inisialisasi migrate: %w", err)
 	}
