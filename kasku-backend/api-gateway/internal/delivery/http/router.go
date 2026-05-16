@@ -145,6 +145,17 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 		v1Notifications.Any("/*path", cfg.ProxyHandler.ProxyTo("notification"))
 	}
 
+	// ── /v1/admin/** ────────────────────────────────────────────────────
+	// CATATAN: admin-service verify JWT HS256 sendiri (terpisah dari user RS256 JWT).
+	// Gateway TIDAK pasang AuthMiddleware di sini — biarkan request langsung ke admin-service.
+	// Tetap kena RateLimitMiddleware untuk DoS protection.
+	v1Admin := r.Group("/v1/admin")
+	v1Admin.Use(cfg.RateLimitMiddleware)
+	{
+		v1Admin.Any("", cfg.ProxyHandler.ProxyTo("admin"))
+		v1Admin.Any("/*path", cfg.ProxyHandler.ProxyTo("admin"))
+	}
+
 	return r
 }
 

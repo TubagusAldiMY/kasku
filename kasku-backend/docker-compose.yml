@@ -238,6 +238,7 @@ services:
       PRICE_SERVICE_URL: http://kasku-price-service:8087
       SYNC_SERVICE_URL: http://kasku-sync-service:8088
       NOTIFICATION_SERVICE_URL: http://kasku-notification-service:8089
+      ADMIN_SERVICE_URL: http://kasku-admin-service:8090
     networks:
       - kasku-public
       - kasku-internal
@@ -548,8 +549,29 @@ services:
       SERVER_PORT: "8090"
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Cross-DB credential — admin-service membonceng credential service pemilik.
+      # Lihat admin-service/README.md untuk trade-off-nya.
+      POSTGRES_ADMIN_DSN: postgres://kasku_admin_svc:${KASKU_ADMIN_DB_PASS}@postgres:5432/kasku_admin?sslmode=disable
+      POSTGRES_AUTH_ADMIN_DSN: postgres://kasku_auth_svc:${KASKU_AUTH_DB_PASS}@postgres:5432/kasku_auth?sslmode=disable
+      POSTGRES_BILLING_ADMIN_DSN: postgres://kasku_billing_svc:${KASKU_BILLING_DB_PASS}@postgres:5432/kasku_billing?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      ADMIN_JWT_TTL: ${ADMIN_JWT_TTL:-8h}
+      ADMIN_BOOTSTRAP_USERNAME: ${ADMIN_BOOTSTRAP_USERNAME:-superadmin}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD}
+      ARGON2_TIME: ${ARGON2_TIME:-3}
+      ARGON2_MEMORY_KB: ${ARGON2_MEMORY_KB:-65536}
+      ARGON2_THREADS: ${ARGON2_THREADS:-4}
+      ARGON2_KEY_LENGTH: ${ARGON2_KEY_LENGTH:-32}
     networks:
       - kasku-admin
+      - kasku-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8090/health || exit 1"]
       interval: 15s

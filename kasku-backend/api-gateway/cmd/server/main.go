@@ -87,6 +87,7 @@ func main() {
 		"price":        cfg.Proxy.PriceServiceURL,
 		"sync":         cfg.Proxy.SyncServiceURL,
 		"notification": cfg.Proxy.NotificationServiceURL,
+		"admin":        cfg.Proxy.AdminServiceURL,
 	}
 	proxyHandler, err := handler.NewProxyHandler(upstreams, logger)
 	if err != nil {

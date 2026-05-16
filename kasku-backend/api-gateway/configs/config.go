@@ -63,6 +63,7 @@ type ProxyConfig struct {
 	PriceServiceURL        string
 	SyncServiceURL         string
 	NotificationServiceURL string
+	AdminServiceURL        string
 }
 
 // Load membaca seluruh konfigurasi dari environment variables.
@@ -116,6 +117,7 @@ func Load() (*Config, error) {
 	cfg.Proxy.PriceServiceURL = getEnvOrDefault("PRICE_SERVICE_URL", "http://price-service:8087")
 	cfg.Proxy.SyncServiceURL = getEnvOrDefault("SYNC_SERVICE_URL", "http://sync-service:8088")
 	cfg.Proxy.NotificationServiceURL = getEnvOrDefault("NOTIFICATION_SERVICE_URL", "http://notification-service:8089")
+	cfg.Proxy.AdminServiceURL = getEnvOrDefault("ADMIN_SERVICE_URL", "http://admin-service:8090")
 
 	return cfg, nil
 }
