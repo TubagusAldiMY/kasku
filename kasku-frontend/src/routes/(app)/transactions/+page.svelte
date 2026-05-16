@@ -9,14 +9,17 @@
 
 	// Data pendukung untuk form
 	let myAccounts = $state<any[]>([]);
-	const categories = ['Makanan', 'Transportasi', 'Belanja', 'Gaji', 'Tagihan', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
+	let allCategories = $state<any[]>([]);
+	
+	// Filter kategori berdasarkan tipe yang sedang dipilih di form
+	const filteredCategories = $derived(allCategories.filter(c => c.category_type === newTx.type));
 
 	// State untuk form tambah transaksi
 	let newTx = $state({
 		title: '',
 		amount: 0,
 		type: 'EXPENSE',
-		category: 'Makanan',
+		category_id: '',
 		account_id: '',
 		date: new Date().toISOString().split('T')[0]
 	});
@@ -40,24 +43,36 @@
 					{ id: 'acc-2', name: 'Mandiri' },
 					{ id: 'acc-3', name: 'Dompet' }
 				];
+				allCategories = [
+					{ id: 'cat-1', name: 'Makanan', category_type: 'EXPENSE' },
+					{ id: 'cat-2', name: 'Transportasi', category_type: 'EXPENSE' },
+					{ id: 'cat-3', name: 'Gaji', category_type: 'INCOME' }
+				];
 				if (myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
+				if (filteredCategories.length > 0) newTx.category_id = filteredCategories[0].id;
 				loading = false;
 			}, 800);
 			return;
 		}
 
 		try {
-			const [txRes, accRes] = await Promise.all([
+			const [txRes, accRes, catRes] = await Promise.all([
 				apiFetch('/transactions'),
-				apiFetch('/accounts')
+				apiFetch('/accounts'),
+				apiFetch('/categories')
 			]);
 			const txData = await txRes.json();
 			const accData = await accRes.json();
+			const catData = await catRes.json();
 			
 			if (txData.success) transactions = txData.data || [];
 			if (accData.success) {
 				myAccounts = accData.data || [];
 				if (myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
+			}
+			if (catData.success) {
+				allCategories = catData.data || [];
+				if (filteredCategories.length > 0) newTx.category_id = filteredCategories[0].id;
 			}
 		} catch (err) {
 			console.error(err);
@@ -72,9 +87,11 @@
 
 		if (isMock) {
 			const selectedAccount = myAccounts.find(a => a.id === newTx.account_id);
+			const selectedCategory = allCategories.find(c => c.id === newTx.category_id);
 			const mockNew = {
 				id: Math.random().toString(),
 				...newTx,
+				category: selectedCategory?.name || 'Unknown',
 				account: selectedAccount?.name || 'Unknown',
 				amount: newTx.type === 'EXPENSE' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount)
 			};
@@ -87,7 +104,14 @@
 			const finalAmount = newTx.type === 'EXPENSE' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount);
 			const res = await apiFetch('/transactions', {
 				method: 'POST',
-				body: JSON.stringify({ ...newTx, amount: finalAmount })
+				body: JSON.stringify({
+					account_id: newTx.account_id,
+					category_id: newTx.category_id,
+					transaction_type: newTx.type,
+					amount_idr: Math.abs(finalAmount),
+					transaction_date: newTx.date,
+					notes: newTx.title
+				})
 			});
 			const result = await res.json();
 			if (result.success) {
@@ -192,14 +216,22 @@
 					<div class="flex p-1.5 bg-gray-50 rounded-2xl border border-gray-100">
 						<button 
 							type="button"
-							onclick={() => { newTx.type = 'EXPENSE'; newTx.category = 'Makanan'; }}
+							onclick={() => { 
+								newTx.type = 'EXPENSE'; 
+								const first = allCategories.find(c => c.category_type === 'EXPENSE');
+								newTx.category_id = first ? first.id : '';
+							}}
 							class="flex-1 py-3 text-sm font-bold rounded-xl transition-all {newTx.type === 'EXPENSE' ? 'bg-white shadow-sm text-red-500' : 'text-gray-400'}"
 						>
 							Pengeluaran
 						</button>
 						<button 
 							type="button"
-							onclick={() => { newTx.type = 'INCOME'; newTx.category = 'Gaji'; }}
+							onclick={() => { 
+								newTx.type = 'INCOME'; 
+								const first = allCategories.find(c => c.category_type === 'INCOME');
+								newTx.category_id = first ? first.id : '';
+							}}
 							class="flex-1 py-3 text-sm font-bold rounded-xl transition-all {newTx.type === 'INCOME' ? 'bg-white shadow-sm text-green-600' : 'text-gray-400'}"
 						>
 							Pemasukan
@@ -231,9 +263,9 @@
 
 						<div>
 							<label for="category" class="block text-xs font-bold text-[#0a2e31] uppercase tracking-wider mb-2 px-1">Kategori</label>
-							<select id="category" bind:value={newTx.category} class="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all appearance-none cursor-pointer">
-								{#each categories as cat}
-									<option value={cat}>{cat}</option>
+							<select id="category" bind:value={newTx.category_id} class="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all appearance-none cursor-pointer">
+								{#each filteredCategories as cat}
+									<option value={cat.id}>{cat.name}</option>
 								{/each}
 							</select>
 						</div>

@@ -5,6 +5,36 @@
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let message = $state('Sedang memverifikasi email Anda...');
+	let email = $state('');
+	let resendLoading = $state(false);
+	let resendMessage = $state<string | null>(null);
+
+	async function handleResendVerification() {
+		if (!email) {
+			resendMessage = 'Silakan masukkan email Anda.';
+			return;
+		}
+
+		resendLoading = true;
+		resendMessage = null;
+		try {
+			const response = await apiFetch('/auth/resend-verification', {
+				method: 'POST',
+				body: JSON.stringify({ email }),
+				skipAuth: true
+			});
+			const result = await response.json();
+			if (result.success) {
+				resendMessage = 'Email verifikasi telah dikirim ulang!';
+			} else {
+				resendMessage = result.error?.message || 'Gagal mengirim ulang email verifikasi.';
+			}
+		} catch (err) {
+			resendMessage = 'Terjadi kesalahan koneksi.';
+		} finally {
+			resendLoading = false;
+		}
+	}
 
 	onMount(async () => {
 		const token = page.url.searchParams.get('token');
@@ -75,7 +105,7 @@
 				</div>
 			{:else}
 				<div class="rounded-md bg-red-50 p-4">
-					<div class="flex flex-col items-center">
+					<div class="flex flex-col items-center gap-4">
 						<svg class="h-12 w-12 text-red-400" viewBox="0 0 20 20" fill="currentColor">
 							<path
 								fill-rule="evenodd"
@@ -83,11 +113,40 @@
 								clip-rule="evenodd"
 							/>
 						</svg>
-						<p class="mt-4 text-sm font-medium text-red-800">{message}</p>
-						<div class="mt-6">
+						<p class="text-sm font-medium text-red-800">{message}</p>
+						
+						<div class="w-full pt-4 border-t border-red-100 space-y-3">
+							<p class="text-xs font-bold text-[#0a2e31] uppercase tracking-wider">Kirim ulang tautan?</p>
+							<input 
+								type="email" 
+								bind:value={email} 
+								placeholder="Masukkan email Anda" 
+								class="w-full px-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+							/>
+							<button
+								onclick={handleResendVerification}
+								disabled={resendLoading}
+								class="w-full py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all"
+							>
+								{resendLoading ? 'Mengirim...' : 'Kirim Ulang Verifikasi'}
+							</button>
+							{#if resendMessage}
+								<p class="text-[11px] font-bold {resendMessage.includes('berhasil') ? 'text-green-600' : 'text-red-600'}">
+									{resendMessage}
+								</p>
+							{/if}
+						</div>
+
+						<div class="mt-2 flex gap-4">
+							<a
+								href="/login"
+								class="text-sm font-bold text-indigo-600 hover:underline"
+							>
+								Ke Halaman Login
+							</a>
 							<a
 								href="/register"
-								class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+								class="text-sm font-bold text-indigo-600 hover:underline"
 							>
 								Kembali ke Daftar
 							</a>

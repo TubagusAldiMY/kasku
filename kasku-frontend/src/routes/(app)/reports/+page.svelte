@@ -32,7 +32,42 @@
 		progress = 0;
 		message = null;
 
-		// Simulasi proses pembuatan laporan (FE Team style)
+		// Jika format CSV, panggil backend asli
+		if (reportConfig.format === 'CSV') {
+			try {
+				const res = await apiFetch('/transactions/export');
+				if (!res.ok) throw new Error('Gagal mengambil data dari server.');
+				
+				const blob = await res.blob();
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `kasku_export_${new Date().toISOString().split('T')[0]}.csv`;
+				document.body.appendChild(a);
+				a.click();
+				window.URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+
+				message = { type: 'success', text: 'Laporan CSV berhasil diunduh!' };
+				
+				// Tambah ke history
+				const newReport = {
+					id: Math.random().toString(),
+					name: `kasku_export_${new Date().toISOString().split('T')[0]}.csv`,
+					date: 'Baru saja',
+					type: 'Detail Transaksi',
+					size: `${(blob.size / 1024).toFixed(1)} KB`
+				};
+				reportHistory = [newReport, ...reportHistory];
+			} catch (err: any) {
+				message = { type: 'info', text: err.message || 'Gagal ekspor CSV.' };
+			} finally {
+				generating = false;
+			}
+			return;
+		}
+
+		// Simulasi proses pembuatan laporan untuk format lain (FE Team style)
 		const interval = setInterval(() => {
 			progress += Math.random() * 30;
 			if (progress >= 100) {
@@ -54,12 +89,6 @@
 				}, 500);
 			}
 		}, 400);
-
-		// Real implementation later:
-		// try {
-		//    const res = await apiFetch('/reports/generate', { method: 'POST', body: JSON.stringify(reportConfig) });
-		//    ...
-		// }
 	}
 </script>
 

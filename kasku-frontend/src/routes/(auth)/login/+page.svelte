@@ -8,6 +8,9 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let isBackendDown = $state(false);
+	let needsVerification = $state(false);
+	let resendLoading = $state(false);
+	let resendMessage = $state<string | null>(null);
 	let showPassword = $state(false);
 
 	async function handleLogin(e: SubmitEvent) {
@@ -15,6 +18,8 @@
 		loading = true;
 		error = null;
 		isBackendDown = false;
+		needsVerification = false;
+		resendMessage = null;
 
 		try {
 			const response = await apiFetch('/auth/login', {
@@ -31,6 +36,10 @@
 				goto('/dashboard');
 			} else {
 				error = result.error?.message || 'Email atau password salah.';
+				// Cek jika error karena verifikasi email (berdasarkan pesan error umum dari backend auth)
+				if (error.toLowerCase().includes('verifikasi') || error.toLowerCase().includes('verify')) {
+					needsVerification = true;
+				}
 			}
 		} catch (err) {
 			isBackendDown = true;
@@ -38,6 +47,28 @@
 			console.error(err);
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleResendVerification() {
+		resendLoading = true;
+		resendMessage = null;
+		try {
+			const response = await apiFetch('/auth/resend-verification', {
+				method: 'POST',
+				body: JSON.stringify({ email }),
+				skipAuth: true
+			});
+			const result = await response.json();
+			if (result.success) {
+				resendMessage = 'Email verifikasi telah dikirim ulang!';
+			} else {
+				resendMessage = result.error?.message || 'Gagal mengirim ulang email verifikasi.';
+			}
+		} catch (err) {
+			resendMessage = 'Terjadi kesalahan koneksi.';
+		} finally {
+			resendLoading = false;
 		}
 	}
 
@@ -81,6 +112,19 @@
 					</svg>
 					<p class="text-xs font-bold text-red-800">{error}</p>
 				</div>
+				{#if needsVerification}
+					<button 
+						type="button"
+						onclick={handleResendVerification}
+						disabled={resendLoading}
+						class="text-[11px] bg-[#217b84] text-white py-2 rounded-lg font-bold hover:bg-[#1a5f66] transition-colors disabled:opacity-50"
+					>
+						{resendLoading ? 'Mengirim...' : 'Kirim Ulang Link Verifikasi'}
+					</button>
+					{#if resendMessage}
+						<p class="text-[10px] font-bold text-teal-700 text-center">{resendMessage}</p>
+					{/if}
+				{/if}
 				{#if isBackendDown}
 					<button 
 						type="button"

@@ -19,6 +19,55 @@
 		confirm: ''
 	});
 
+	// Notification preferences state
+	let notificationPrefs = $state({
+		email_enabled: true,
+		payment_alerts_enabled: true,
+		expiry_alerts_enabled: true
+	});
+
+	let prefLoading = $state(false);
+
+	async function fetchPreferences() {
+		try {
+			const res = await apiFetch('/notifications/preferences');
+			const result = await res.json();
+			if (result.success && result.data) {
+				notificationPrefs = {
+					email_enabled: result.data.email_enabled,
+					payment_alerts_enabled: result.data.payment_alerts_enabled,
+					expiry_alerts_enabled: result.data.expiry_alerts_enabled
+				};
+			}
+		} catch (err) {
+			console.error('Gagal memuat preferensi:', err);
+		}
+	}
+
+	async function updatePreferences() {
+		prefLoading = true;
+		message = null;
+		try {
+			const res = await apiFetch('/notifications/preferences', {
+				method: 'PUT',
+				body: JSON.stringify(notificationPrefs)
+			});
+			const result = await res.json();
+			if (result.success) {
+				message = { type: 'success', text: 'Preferensi notifikasi berhasil diperbarui!' };
+			} else {
+				message = { type: 'error', text: result.error?.message || 'Gagal memperbarui preferensi.' };
+			}
+		} catch (err) {
+			message = { type: 'error', text: 'Gagal menghubungi server.' };
+		} finally {
+			prefLoading = false;
+		}
+	}
+
+	import { onMount } from 'svelte';
+	onMount(fetchPreferences);
+
 	async function updateProfile(e: SubmitEvent) {
 		e.preventDefault();
 		loading = true;
@@ -206,6 +255,63 @@
 						</button>
 					</div>
 				</form>
+			</div>
+
+			<!-- Notification Preferences Form -->
+			<div class="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+				<div class="flex justify-between items-center">
+					<h3 class="text-xl font-black text-[#0a2e31]">Pengaturan Notifikasi</h3>
+					<div class="h-10 w-10 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
+						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+						</svg>
+					</div>
+				</div>
+				
+				<div class="space-y-6">
+					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+						<div class="space-y-0.5">
+							<p class="text-sm font-black text-[#0a2e31]">Notifikasi Email</p>
+							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Kirim ringkasan dan berita ke email Anda</p>
+						</div>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input type="checkbox" bind:checked={notificationPrefs.email_enabled} class="sr-only peer">
+							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						</label>
+					</div>
+
+					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+						<div class="space-y-0.5">
+							<p class="text-sm font-black text-[#0a2e31]">Peringatan Pembayaran</p>
+							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Beritahu saat tagihan paket berhasil dibayar</p>
+						</div>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input type="checkbox" bind:checked={notificationPrefs.payment_alerts_enabled} class="sr-only peer">
+							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						</label>
+					</div>
+
+					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+						<div class="space-y-0.5">
+							<p class="text-sm font-black text-[#0a2e31]">Peringatan Kedaluwarsa</p>
+							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Ingatkan sebelum paket langganan habis</p>
+						</div>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input type="checkbox" bind:checked={notificationPrefs.expiry_alerts_enabled} class="sr-only peer">
+							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						</label>
+					</div>
+					
+					<div class="pt-4">
+						<button 
+							onclick={updatePreferences}
+							disabled={prefLoading}
+							class="px-8 py-3.5 bg-[#0a2e31] hover:bg-black text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+						>
+							{prefLoading ? 'Menyimpan...' : 'Simpan Preferensi'}
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
