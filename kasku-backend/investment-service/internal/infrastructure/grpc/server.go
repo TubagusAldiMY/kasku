@@ -300,9 +300,12 @@ func (s *InvestmentGRPCServer) Stop() {
 	}
 }
 
+// investmentInternalServer is a marker interface satisfying grpc.ServiceDesc.HandlerType.
+type investmentInternalServer any
+
 var investmentInternalDesc = grpc.ServiceDesc{
 	ServiceName: "investment.v1.InvestmentInternal",
-	HandlerType: (*InvestmentGRPCServer)(nil),
+	HandlerType: (*investmentInternalServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{MethodName: "UpsertInvestmentAssets", Handler: upsertInvestmentAssetsHandler},
 		{MethodName: "ListInvestmentAssets", Handler: listInvestmentAssetsHandler},
