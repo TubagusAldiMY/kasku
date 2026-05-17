@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { auth } from '$lib/stores/auth.svelte';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import { apiFetch } from '$lib/api/client';
+	import { onMount } from 'svelte';
 
 	let loading = $state(false);
-	let message = $state<{ type: 'success' | 'error', text: string } | null>(null);
+	let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
 	// User info state
 	let profile = $state({
 		username: auth.user?.username || '',
-		email: auth.user?.email || ''
+		email: auth.user?.email || '',
+		displayName: ''
 	});
 
 	// Password change state
@@ -44,6 +46,27 @@
 		}
 	}
 
+	async function fetchUserProfile() {
+		try {
+			const res = await apiFetch('/users/profile');
+			const result = await res.json();
+			if (result.success && result.data) {
+				profile.username = result.data.username || auth.user?.username || '';
+				profile.email = result.data.email || auth.user?.email || '';
+				profile.displayName = result.data.display_name || '';
+
+				// Update store
+				auth.setUser({
+					...auth.user!,
+					username: profile.username,
+					email: profile.email
+				});
+			}
+		} catch (err) {
+			console.error('Gagal memuat profil user:', err);
+		}
+	}
+
 	async function updatePreferences() {
 		prefLoading = true;
 		message = null;
@@ -58,15 +81,17 @@
 			} else {
 				message = { type: 'error', text: result.error?.message || 'Gagal memperbarui preferensi.' };
 			}
-		} catch (err) {
+		} catch {
 			message = { type: 'error', text: 'Gagal menghubungi server.' };
 		} finally {
 			prefLoading = false;
 		}
 	}
 
-	import { onMount } from 'svelte';
-	onMount(fetchPreferences);
+	onMount(() => {
+		fetchPreferences();
+		fetchUserProfile();
+	});
 
 	async function updateProfile(e: SubmitEvent) {
 		e.preventDefault();
@@ -74,18 +99,28 @@
 		message = null;
 
 		try {
-			// Mock update for now
-			setTimeout(() => {
+			const res = await apiFetch('/users/profile', {
+				method: 'PUT',
+				body: JSON.stringify({
+					username: profile.username,
+					display_name: profile.displayName
+				})
+			});
+			const result = await res.json();
+
+			if (result.success) {
 				auth.setUser({
 					...auth.user!,
 					username: profile.username,
 					email: profile.email
 				});
 				message = { type: 'success', text: 'Profil berhasil diperbarui!' };
-				loading = false;
-			}, 1000);
-		} catch (err) {
+			} else {
+				message = { type: 'error', text: result.error?.message || 'Gagal memperbarui profil.' };
+			}
+		} catch {
 			message = { type: 'error', text: 'Gagal memperbarui profil.' };
+		} finally {
 			loading = false;
 		}
 	}
@@ -101,104 +136,140 @@
 		message = null;
 
 		try {
-			// Mock change password
+			// Mock change password (endpoint change-password belum tersedia di backend)
 			setTimeout(() => {
-				message = { type: 'success', text: 'Katasandi berhasil diubah!' };
+				message = {
+					type: 'success',
+					text: 'Fitur ganti kata sandi langsung dari profil akan segera hadir. Gunakan fitur "Lupa Kata Sandi" di layar login untuk mengatur ulang kata sandi Anda.'
+				};
 				passwordData = { current: '', new: '', confirm: '' };
 				loading = false;
 			}, 1000);
-		} catch (err) {
+		} catch {
 			message = { type: 'error', text: 'Gagal mengubah katasandi.' };
 			loading = false;
 		}
 	}
 </script>
 
-<div class="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-700 pb-20">
+<div class="animate-in fade-in mx-auto max-w-4xl space-y-10 pb-20 duration-700">
 	<div class="space-y-1">
 		<h1 class="text-3xl font-black text-[#0a2e31]">Pengaturan Profil</h1>
-		<p class="text-gray-500 font-medium">Kelola informasi akun dan keamanan Anda.</p>
+		<p class="font-medium text-gray-500">Kelola informasi akun dan keamanan Anda.</p>
 	</div>
 
 	{#if message}
-		<div 
+		<div
 			in:fly={{ y: -10, duration: 400 }}
-			class="p-4 rounded-2xl border flex items-center gap-3 {message.type === 'success' ? 'bg-green-50 border-green-100 text-green-800' : 'bg-red-50 border-red-100 text-red-800'}"
+			class="flex items-center gap-3 rounded-2xl border p-4 {message.type === 'success'
+				? 'border-green-100 bg-green-50 text-green-800'
+				: 'border-red-100 bg-red-50 text-red-800'}"
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				{#if message.type === 'success'}
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2.5"
+						d="M5 13l4 4L19 7"
+					/>
 				{:else}
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2.5"
+						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
 				{/if}
 			</svg>
 			<span class="text-sm font-bold">{message.text}</span>
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+	<div class="grid grid-cols-1 gap-10 lg:grid-cols-3">
 		<!-- Sidebar Info -->
 		<div class="space-y-6">
-			<div class="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
-				<div class="h-24 w-24 rounded-full bg-teal-500/10 border-4 border-white shadow-xl mx-auto flex items-center justify-center text-teal-600 text-4xl font-black mb-4">
+			<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 text-center shadow-sm">
+				<div
+					class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-teal-500/10 text-4xl font-black text-teal-600 shadow-xl"
+				>
 					{auth.user?.username?.charAt(0).toUpperCase()}
 				</div>
 				<h2 class="text-xl font-black text-[#0a2e31]">{auth.user?.username}</h2>
-				<p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{auth.user?.email}</p>
-				
-				<div class="mt-8 pt-6 border-t border-gray-50 flex flex-col gap-2">
-					<div class="flex justify-between items-center text-xs px-2">
+				<p class="mt-1 text-xs font-bold tracking-widest text-gray-400 uppercase">
+					{auth.user?.email}
+				</p>
+
+				<div class="mt-8 flex flex-col gap-2 border-t border-gray-50 pt-6">
+					<div class="flex items-center justify-between px-2 text-xs">
 						<span class="font-bold text-gray-400 uppercase">Tier</span>
-						<span class="px-3 py-1 bg-teal-600 text-white rounded-full font-black">FREE</span>
+						<span class="rounded-full bg-teal-600 px-3 py-1 font-black text-white">FREE</span>
 					</div>
-					<div class="flex justify-between items-center text-xs px-2">
+					<div class="flex items-center justify-between px-2 text-xs">
 						<span class="font-bold text-gray-400 uppercase">Bergabung</span>
 						<span class="font-bold text-[#0a2e31]">Mei 2026</span>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-[#0a2e31] p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group">
-				<div class="absolute -right-4 -bottom-4 h-24 w-24 bg-white/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-				<h3 class="text-lg font-bold mb-2 relative z-10">Upgrade ke Pro</h3>
-				<p class="text-xs text-white/60 mb-6 relative z-10">Dapatkan kuota transaksi tak terbatas dan laporan PDF premium.</p>
-				<button class="w-full py-3 bg-[#217b84] hover:bg-[#1a5f66] rounded-xl text-xs font-black tracking-widest uppercase transition-all relative z-10">Lihat Paket</button>
+			<div
+				class="group relative overflow-hidden rounded-[2.5rem] bg-[#0a2e31] p-8 text-white shadow-xl"
+			>
+				<div
+					class="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 transition-transform duration-700 group-hover:scale-150"
+				></div>
+				<h3 class="relative z-10 mb-2 text-lg font-bold">Upgrade ke Pro</h3>
+				<p class="relative z-10 mb-6 text-xs text-white/60">
+					Dapatkan kuota transaksi tak terbatas dan laporan PDF premium.
+				</p>
+				<button
+					class="relative z-10 w-full rounded-xl bg-[#217b84] py-3 text-xs font-black tracking-widest uppercase transition-all hover:bg-[#1a5f66]"
+					>Lihat Paket</button
+				>
 			</div>
 		</div>
 
 		<!-- Forms -->
-		<div class="lg:col-span-2 space-y-8">
+		<div class="space-y-8 lg:col-span-2">
 			<!-- Account Form -->
-			<div class="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
 				<h3 class="text-xl font-black text-[#0a2e31]">Informasi Akun</h3>
-				
+
 				<form onsubmit={updateProfile} class="space-y-6">
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div class="space-y-2">
-							<label for="username" class="block text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Username</label>
-							<input 
+							<label
+								for="username"
+								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								>Username</label
+							>
+							<input
 								id="username"
-								type="text" 
+								type="text"
 								bind:value={profile.username}
-								class="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all font-medium text-[#0a2e31]"
+								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-medium text-[#0a2e31] transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
 							/>
 						</div>
 						<div class="space-y-2">
-							<label for="email" class="block text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Email</label>
-							<input 
+							<label
+								for="email"
+								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								>Email</label
+							>
+							<input
 								id="email"
-								type="email" 
+								type="email"
 								bind:value={profile.email}
-								class="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all font-medium text-[#0a2e31]"
+								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-medium text-[#0a2e31] transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
 							/>
 						</div>
 					</div>
-					
+
 					<div class="pt-4">
-						<button 
-							type="submit" 
+						<button
+							type="submit"
 							disabled={loading}
-							class="px-8 py-3.5 bg-[#0a2e31] hover:bg-black text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+							class="rounded-2xl bg-[#0a2e31] px-8 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50"
 						>
 							{loading ? 'Menyimpan...' : 'Simpan Perubahan'}
 						</button>
@@ -207,49 +278,61 @@
 			</div>
 
 			<!-- Password Form -->
-			<div class="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
 				<h3 class="text-xl font-black text-[#0a2e31]">Keamanan</h3>
-				
+
 				<form onsubmit={changePassword} class="space-y-6">
 					<div class="space-y-2">
-						<label for="current-pass" class="block text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Katasandi Saat Ini</label>
-						<input 
+						<label
+							for="current-pass"
+							class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+							>Katasandi Saat Ini</label
+						>
+						<input
 							id="current-pass"
-							type="password" 
+							type="password"
 							bind:value={passwordData.current}
-							class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all"
+							class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
 							placeholder="••••••••"
 						/>
 					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div class="space-y-2">
-							<label for="new-pass" class="block text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Katasandi Baru</label>
-							<input 
+							<label
+								for="new-pass"
+								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								>Katasandi Baru</label
+							>
+							<input
 								id="new-pass"
-								type="password" 
+								type="password"
 								bind:value={passwordData.new}
-								class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all"
+								class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
 								placeholder="••••••••"
 							/>
 						</div>
 						<div class="space-y-2">
-							<label for="confirm-pass" class="block text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Konfirmasi Baru</label>
-							<input 
+							<label
+								for="confirm-pass"
+								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								>Konfirmasi Baru</label
+							>
+							<input
 								id="confirm-pass"
-								type="password" 
+								type="password"
 								bind:value={passwordData.confirm}
-								class="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-teal-50 focus:border-[#217b84] outline-none transition-all"
+								class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
 								placeholder="••••••••"
 							/>
 						</div>
 					</div>
-					
+
 					<div class="pt-4 text-right">
-						<button 
-							type="submit" 
+						<button
+							type="submit"
 							disabled={loading || !passwordData.new}
-							class="px-8 py-3.5 bg-white border-2 border-gray-100 hover:border-teal-500 hover:text-teal-600 text-[#0a2e31] text-xs font-black uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50"
+							class="rounded-2xl border-2 border-gray-100 bg-white px-8 py-3.5 text-xs font-black tracking-widest text-[#0a2e31] uppercase transition-all hover:border-teal-500 hover:text-teal-600 active:scale-[0.98] disabled:opacity-50"
 						>
 							Ganti Katasandi
 						</button>
@@ -258,55 +341,86 @@
 			</div>
 
 			<!-- Notification Preferences Form -->
-			<div class="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
-				<div class="flex justify-between items-center">
+			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
+				<div class="flex items-center justify-between">
 					<h3 class="text-xl font-black text-[#0a2e31]">Pengaturan Notifikasi</h3>
-					<div class="h-10 w-10 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-600"
+					>
 						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+							/>
 						</svg>
 					</div>
 				</div>
-				
+
 				<div class="space-y-6">
-					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
 						<div class="space-y-0.5">
 							<p class="text-sm font-black text-[#0a2e31]">Notifikasi Email</p>
-							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Kirim ringkasan dan berita ke email Anda</p>
+							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
+								Kirim ringkasan dan berita ke email Anda
+							</p>
 						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input type="checkbox" bind:checked={notificationPrefs.email_enabled} class="sr-only peer">
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						<label class="relative inline-flex cursor-pointer items-center">
+							<input
+								type="checkbox"
+								bind:checked={notificationPrefs.email_enabled}
+								class="peer sr-only"
+							/>
+							<div
+								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+							></div>
 						</label>
 					</div>
 
-					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
 						<div class="space-y-0.5">
 							<p class="text-sm font-black text-[#0a2e31]">Peringatan Pembayaran</p>
-							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Beritahu saat tagihan paket berhasil dibayar</p>
+							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
+								Beritahu saat tagihan paket berhasil dibayar
+							</p>
 						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input type="checkbox" bind:checked={notificationPrefs.payment_alerts_enabled} class="sr-only peer">
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						<label class="relative inline-flex cursor-pointer items-center">
+							<input
+								type="checkbox"
+								bind:checked={notificationPrefs.payment_alerts_enabled}
+								class="peer sr-only"
+							/>
+							<div
+								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+							></div>
 						</label>
 					</div>
 
-					<div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
 						<div class="space-y-0.5">
 							<p class="text-sm font-black text-[#0a2e31]">Peringatan Kedaluwarsa</p>
-							<p class="text-[11px] text-gray-400 font-bold uppercase tracking-tight">Ingatkan sebelum paket langganan habis</p>
+							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
+								Ingatkan sebelum paket langganan habis
+							</p>
 						</div>
-						<label class="relative inline-flex items-center cursor-pointer">
-							<input type="checkbox" bind:checked={notificationPrefs.expiry_alerts_enabled} class="sr-only peer">
-							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+						<label class="relative inline-flex cursor-pointer items-center">
+							<input
+								type="checkbox"
+								bind:checked={notificationPrefs.expiry_alerts_enabled}
+								class="peer sr-only"
+							/>
+							<div
+								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+							></div>
 						</label>
 					</div>
-					
+
 					<div class="pt-4">
-						<button 
+						<button
 							onclick={updatePreferences}
 							disabled={prefLoading}
-							class="px-8 py-3.5 bg-[#0a2e31] hover:bg-black text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
+							class="rounded-2xl bg-[#0a2e31] px-8 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50"
 						>
 							{prefLoading ? 'Menyimpan...' : 'Simpan Preferensi'}
 						</button>
