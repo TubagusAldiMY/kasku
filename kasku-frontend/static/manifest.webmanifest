@@ -1,0 +1,21 @@
+{
+	"name": "KasKu — Finance Tracker",
+	"short_name": "KasKu",
+	"description": "Pencatat keuangan multi-rekening offline-first. Sinkronisasi otomatis saat online.",
+	"id": "/",
+	"start_url": "/dashboard",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "portrait",
+	"background_color": "#0a2e31",
+	"theme_color": "#0a2e31",
+	"lang": "id",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		}
+	]
+}
