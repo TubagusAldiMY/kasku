@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { apiFetch } from '$lib/api/client';
+	import { initSyncTriggers, teardownSyncTriggers, triggerManualSync, syncStatus } from '$lib/sync';
 
 	let { children } = $props();
 
@@ -16,6 +17,11 @@
 			auth.setToken('mock-jwt-token');
 			auth.setUser({ id: 'mock-uid', email: 'demo@kasku.id', username: 'Juragan Demo' });
 		}
+		initSyncTriggers();
+	});
+
+	onDestroy(() => {
+		teardownSyncTriggers();
 	});
 
 	$effect(() => {
@@ -75,29 +81,9 @@
 		notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
 	}
 
-	// Offline Sync State
-	let syncLoading = $state(false);
+	const syncLoading = $derived(syncStatus.running);
 	async function handleSync() {
-		syncLoading = true;
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-
-		if (isMock) {
-			await new Promise((done) => setTimeout(done, 2000));
-			syncLoading = false;
-			return;
-		}
-
-		try {
-			// Real sync calls
-			await Promise.all([
-				apiFetch('/sync/pull?since=' + new Date(Date.now() - 86400000).toISOString()),
-				apiFetch('/sync/push', { method: 'POST', body: JSON.stringify({ operations: [] }) })
-			]);
-		} catch (err) {
-			console.error('Sync failed:', err);
-		} finally {
-			syncLoading = false;
-		}
+		await triggerManualSync();
 	}
 </script>
 
