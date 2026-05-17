@@ -97,6 +97,27 @@
 		</div>
 	</div>
 {:else}
+	{#if !syncStatus.online}
+		<div
+			class="fixed top-0 right-0 left-0 z-[80] flex items-center justify-center gap-2 bg-[#0a2e31] py-2 text-[11px] font-bold tracking-wider text-white uppercase"
+			role="status"
+		>
+			<svg
+				class="h-3.5 w-3.5"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2.5"
+				><path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M18.364 5.636l-12.728 12.728m0-12.728l12.728 12.728"
+				/></svg
+			>
+			<span>Mode Offline · Perubahan tersimpan, disinkronkan otomatis saat tersambung</span>
+		</div>
+	{/if}
+
 	<div class="relative flex min-h-screen overflow-hidden bg-gray-50">
 		<!-- Notification Drawer Overlay -->
 		{#if showNotifications}
@@ -337,7 +358,14 @@
 							onclick={handleSync}
 							disabled={syncLoading}
 							class="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border border-gray-100 bg-white text-[#0a2e31] shadow-sm transition-colors hover:text-teal-600 disabled:opacity-50"
-							title="Sinkronisasi Data Offline"
+							title={syncStatus.error
+								? `Sinkron gagal: ${syncStatus.error}`
+								: syncLoading
+									? 'Sinkronisasi berjalan…'
+									: syncStatus.queuedCount > 0
+										? `${syncStatus.queuedCount} perubahan menunggu sinkronisasi`
+										: 'Sinkronisasi data offline'}
+							aria-label="Sinkronisasi data"
 						>
 							<svg
 								class="h-3 w-3 {syncLoading ? 'animate-spin' : ''}"
@@ -353,6 +381,19 @@
 								/>
 							</svg>
 						</button>
+						{#if syncStatus.queuedCount > 0}
+							<span
+								class="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full border border-[#0a2e31] bg-orange-400 px-1 text-[9px] font-black text-[#0a2e31]"
+								aria-label="{syncStatus.queuedCount} perubahan menunggu sync"
+							>
+								{syncStatus.queuedCount > 9 ? '9+' : syncStatus.queuedCount}
+							</span>
+						{:else if syncStatus.error}
+							<span
+								class="absolute -top-1 -right-1 h-3 w-3 rounded-full border border-[#0a2e31] bg-red-500"
+								aria-label="Sinkron gagal"
+							></span>
+						{/if}
 					</div>
 					<div class="flex-1 overflow-hidden">
 						<p class="truncate text-sm font-bold">{auth.user?.username}</p>

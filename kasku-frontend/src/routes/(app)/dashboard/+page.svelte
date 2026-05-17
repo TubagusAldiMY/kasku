@@ -4,6 +4,15 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { resolve } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
+	import {
+		accountsRepo,
+		transactionsRepo,
+		categoriesRepo,
+		type AccountRow,
+		type TransactionRow,
+		type CategoryRow
+	} from '$lib/db';
+	import { syncStatus, triggerManualSync } from '$lib/sync';
 
 	type RecentTransaction = {
 		id: string;
@@ -17,16 +26,14 @@
 		balance: number;
 		color: string;
 	};
-	type BackendCategory = { id: string; name: string };
-	type BackendAccount = { id: string; name: string; balance: number };
-	type BackendTransaction = {
-		id: string;
-		notes?: string;
-		transaction_type: 'INCOME' | 'EXPENSE';
-		category_id: string;
-		amount_idr: number;
-		transaction_date: string;
-	};
+
+	const ACCOUNT_COLORS = [
+		'bg-blue-600',
+		'bg-orange-500',
+		'bg-teal-500',
+		'bg-purple-500',
+		'bg-red-500'
+	];
 
 	let stats = $state({
 		totalBalance: 0,
@@ -40,161 +47,129 @@
 	let loading = $state(true);
 
 	let weeklyData = $state([
-		{ day: 'Sen', amount: 450000 },
-		{ day: 'Sel', amount: 1200000 },
-		{ day: 'Rab', amount: 300000 },
-		{ day: 'Kam', amount: 850000 },
-		{ day: 'Jum', amount: 2100000 },
-		{ day: 'Sab', amount: 950000 },
-		{ day: 'Min', amount: 500000 }
+		{ day: 'Sen', amount: 0 },
+		{ day: 'Sel', amount: 0 },
+		{ day: 'Rab', amount: 0 },
+		{ day: 'Kam', amount: 0 },
+		{ day: 'Jum', amount: 0 },
+		{ day: 'Sab', amount: 0 },
+		{ day: 'Min', amount: 0 }
 	]);
 
-	let maxAmount = $derived(Math.max(...weeklyData.map((d) => d.amount)));
+	let maxAmount = $derived(Math.max(1, ...weeklyData.map((d) => d.amount)));
 
-	async function loadDashboardData() {
-		loading = true;
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
+	function projectAccounts(rows: AccountRow[]): { summaries: AccountSummary[]; total: number } {
+		let total = 0;
+		const summaries = rows.map((a, i) => {
+			total += a.balance;
+			return {
+				name: a.name,
+				balance: a.balance,
+				color: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
+			};
+		});
+		return { summaries, total };
+	}
 
-		if (isMock) {
-			// Simulasi data dashboard
-			setTimeout(() => {
-				stats = {
-					totalBalance: 128450000,
-					monthlyIncome: 15000000,
-					monthlyExpense: 4250000,
-					savingsRate: 71
-				};
-				recentTransactions = [
-					{
-						id: '1',
-						title: 'Kopi Kenangan',
-						category: 'Makanan',
-						amount: -25000,
-						date: 'Hari ini'
-					},
-					{ id: '2', title: 'Gaji Mei', category: 'Gaji', amount: 15000000, date: 'Kemarin' },
-					{ id: '3', title: 'Listrik Token', category: 'Tagihan', amount: -500000, date: '9 Mei' }
-				];
-				accounts = [
-					{ name: 'BCA Utama', balance: 85000000, color: 'bg-blue-600' },
-					{ name: 'Mandiri', balance: 40450000, color: 'bg-orange-500' },
-					{ name: 'Dompet Jajan', balance: 3000000, color: 'bg-teal-500' }
-				];
-				loading = false;
-			}, 800);
-			return;
+	function projectDashboard(
+		accRows: AccountRow[],
+		txRows: TransactionRow[],
+		catRows: CategoryRow[]
+	) {
+		const categoryMap = new Map(catRows.map((c) => [c.id, c.name]));
+
+		const { summaries, total } = projectAccounts(accRows);
+		accounts = summaries;
+
+		const sortedTx = [...txRows].sort((a, b) => (a.transaction_date < b.transaction_date ? 1 : -1));
+
+		recentTransactions = sortedTx.slice(0, 5).map((t) => ({
+			id: t.id,
+			title: t.notes ?? t.transaction_type,
+			category: categoryMap.get(t.category_id) ?? 'Umum',
+			amount: t.transaction_type === 'INCOME' ? t.amount_idr : -t.amount_idr,
+			date: new SvelteDate(t.transaction_date).toLocaleDateString('id-ID', {
+				day: 'numeric',
+				month: 'short'
+			})
+		}));
+
+		const now = new SvelteDate();
+		const currentMonth = now.getMonth();
+		const currentYear = now.getFullYear();
+
+		let mIncome = 0;
+		let mExpense = 0;
+		for (const t of txRows) {
+			const d = new SvelteDate(t.transaction_date);
+			if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+				if (t.transaction_type === 'INCOME') mIncome += t.amount_idr;
+				else if (t.transaction_type === 'EXPENSE') mExpense += t.amount_idr;
+			}
 		}
 
+		const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+		const last7Days = Array.from({ length: 7 }, (_unused, i) => {
+			const d = new SvelteDate();
+			d.setDate(d.getDate() - i);
+			d.setHours(0, 0, 0, 0);
+			return d;
+		}).reverse();
+
+		weeklyData = last7Days.map((date) => {
+			const dayAmount = txRows
+				.filter((t) => {
+					const td = new SvelteDate(t.transaction_date);
+					td.setHours(0, 0, 0, 0);
+					return td.getTime() === date.getTime() && t.transaction_type === 'EXPENSE';
+				})
+				.reduce((sum, t) => sum + t.amount_idr, 0);
+			return { day: days[date.getDay()], amount: dayAmount };
+		});
+
+		const savings = mIncome - mExpense;
+		const sRate = mIncome > 0 && savings > 0 ? Math.round((savings / mIncome) * 100) : 0;
+
+		stats = {
+			totalBalance: total,
+			monthlyIncome: mIncome,
+			monthlyExpense: mExpense,
+			savingsRate: sRate
+		};
+	}
+
+	async function reloadFromLocal() {
 		try {
-			// Fetch accounts, transactions and categories
-			const [accRes, txRes, catRes] = await Promise.all([
-				apiFetch('/accounts'),
-				apiFetch('/transactions'),
-				apiFetch('/categories')
+			const [accRows, txRows, catRows] = await Promise.all([
+				accountsRepo.getAll(),
+				transactionsRepo.getAll(),
+				categoriesRepo.getAll()
 			]);
-
-			const accData = await accRes.json();
-			const txData = await txRes.json();
-			const catData = await catRes.json();
-
-			const categoryMap: Record<string, string> = {};
-			if (catData.success && catData.data) {
-				catData.data.forEach((c: BackendCategory) => {
-					categoryMap[c.id] = c.name;
-				});
-			}
-
-			let totalBal = 0;
-			if (accData.success && accData.data) {
-				const colors = [
-					'bg-blue-600',
-					'bg-orange-500',
-					'bg-teal-500',
-					'bg-purple-500',
-					'bg-red-500'
-				];
-				accounts = accData.data.map((a: BackendAccount, i: number) => {
-					totalBal += a.balance;
-					return {
-						name: a.name,
-						balance: a.balance,
-						color: colors[i % colors.length]
-					};
-				});
-			}
-
-			let mIncome = 0;
-			let mExpense = 0;
-
-			if (txData.success && txData.data) {
-				const now = new SvelteDate();
-				const currentMonth = now.getMonth();
-				const currentYear = now.getFullYear();
-
-				recentTransactions = txData.data.slice(0, 5).map((t: BackendTransaction) => ({
-					id: t.id,
-					title: t.notes || t.transaction_type,
-					category: categoryMap[t.category_id] || 'Umum',
-					amount: t.transaction_type === 'INCOME' ? t.amount_idr : -t.amount_idr,
-					date: new SvelteDate(t.transaction_date).toLocaleDateString('id-ID', {
-						day: 'numeric',
-						month: 'short'
-					})
-				}));
-
-				txData.data.forEach((t: BackendTransaction) => {
-					const txDate = new SvelteDate(t.transaction_date);
-					if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
-						if (t.transaction_type === 'INCOME') {
-							mIncome += t.amount_idr;
-						} else if (t.transaction_type === 'EXPENSE') {
-							mExpense += t.amount_idr;
-						}
-					}
-				});
-
-				const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-				const last7Days = Array.from({ length: 7 }, (_unused, i) => {
-					const d = new SvelteDate();
-					d.setDate(d.getDate() - i);
-					d.setHours(0, 0, 0, 0);
-					return d;
-				}).reverse();
-
-				weeklyData = last7Days.map((date) => {
-					const dayAmount = txData.data
-						.filter((t: BackendTransaction) => {
-							const txDate = new SvelteDate(t.transaction_date);
-							txDate.setHours(0, 0, 0, 0);
-							return txDate.getTime() === date.getTime() && t.transaction_type === 'EXPENSE';
-						})
-						.reduce((sum: number, t: BackendTransaction) => sum + t.amount_idr, 0);
-
-					return {
-						day: days[date.getDay()],
-						amount: dayAmount
-					};
-				});
-			}
-
-			let sRate = 0;
-			if (mIncome > 0) {
-				const savings = mIncome - mExpense;
-				sRate = savings > 0 ? Math.round((savings / mIncome) * 100) : 0;
-			}
-
-			stats = {
-				totalBalance: totalBal,
-				monthlyIncome: mIncome,
-				monthlyExpense: mExpense,
-				savingsRate: sRate
-			};
-		} catch (e) {
-			console.error(e);
-		} finally {
-			loading = false;
+			projectDashboard(accRows, txRows, catRows);
+		} catch (err) {
+			console.error('Gagal memuat dashboard dari penyimpanan lokal:', err);
 		}
 	}
+
+	async function hydrateCategoriesFromServer() {
+		// Categories belum ikut sync engine — fetch on-demand & cache ke IDB.
+		// TODO(sync): integrasikan categories ke SyncableResource saat siap.
+		try {
+			const res = await apiFetch('/categories');
+			const result = await res.json();
+			if (result.success && Array.isArray(result.data)) {
+				await categoriesRepo.putMany(result.data as CategoryRow[]);
+				await reloadFromLocal();
+			}
+		} catch {
+			// Offline → cukup pakai cache IDB.
+		}
+	}
+
+	$effect(() => {
+		void syncStatus.dataVersion;
+		void reloadFromLocal();
+	});
 
 	function formatCurrency(val: number) {
 		return new Intl.NumberFormat('id-ID', {
@@ -204,7 +179,12 @@
 		}).format(val);
 	}
 
-	onMount(loadDashboardData);
+	onMount(async () => {
+		await reloadFromLocal();
+		loading = false;
+		void hydrateCategoriesFromServer();
+		void triggerManualSync();
+	});
 </script>
 
 <div class="animate-in fade-in space-y-10 duration-700">

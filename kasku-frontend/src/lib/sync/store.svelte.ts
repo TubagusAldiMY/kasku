@@ -10,6 +10,7 @@ type SyncStatus = {
 	queuedCount: number;
 	error: string | null;
 	online: boolean;
+	dataVersion: number;
 };
 
 const initialOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -19,7 +20,8 @@ const state = $state<SyncStatus>({
 	lastSyncAt: null,
 	queuedCount: 0,
 	error: null,
-	online: initialOnline
+	online: initialOnline,
+	dataVersion: 0
 });
 
 export const syncStatus = {
@@ -38,6 +40,9 @@ export const syncStatus = {
 	get online() {
 		return state.online;
 	},
+	get dataVersion() {
+		return state.dataVersion;
+	},
 
 	setRunning(v: boolean) {
 		state.running = v;
@@ -53,5 +58,8 @@ export const syncStatus = {
 	},
 	setOnline(v: boolean) {
 		state.online = v;
+	},
+	bumpDataVersion() {
+		state.dataVersion += 1;
 	}
 };

@@ -103,6 +103,8 @@ async function pullDelta(
 		}
 	}
 
+	if (applied > 0) syncStatus.bumpDataVersion();
+
 	await syncMetaRepo.set(resource, envelope.data.server_timestamp || now());
 	return { applied, conflicts };
 }
@@ -174,6 +176,7 @@ async function pushPending(
 					updated_at: envelope.data.server_timestamp
 				});
 				await typedPut(resource, entity);
+				syncStatus.bumpDataVersion();
 			}
 		} else {
 			await syncQueueRepo.markFailed(result.sync_id, 'server reported error status');

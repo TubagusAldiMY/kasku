@@ -1,22 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
+	import { accountsRepo, type AccountRow } from '$lib/db';
+	import { enqueueCreate, enqueueDelete, syncStatus, triggerManualSync } from '$lib/sync';
 
-	type Account = {
-		id: string;
-		name: string;
-		account_type: string;
-		balance: number;
-		currency: string;
-		color?: string;
-	};
-
-	let accounts = $state<Account[]>([]);
+	let accounts = $state<AccountRow[]>([]);
 	let loading = $state(true);
 	let showAddModal = $state(false);
 
-	// State untuk form tambah akun
 	let newAccount = $state({
 		name: '',
 		account_type: 'BANK',
@@ -25,41 +16,38 @@
 		color: '#217b84'
 	});
 
-	async function fetchAccounts() {
-		loading = true;
+	async function reloadFromLocal() {
 		try {
-			const res = await apiFetch('/accounts'); // Endpoint finance-service via gateway
-			const result = await res.json();
-			if (result.success) {
-				accounts = result.data || [];
-			}
+			accounts = await accountsRepo.getAll();
 		} catch (err) {
-			console.error('Gagal mengambil data akun:', err);
-		} finally {
-			loading = false;
+			console.error('Gagal membaca akun dari penyimpanan lokal:', err);
 		}
 	}
+
+	$effect(() => {
+		// Re-fetch dari IDB setiap kali engine apply server data atau user mutate.
+		void syncStatus.dataVersion;
+		void reloadFromLocal();
+	});
 
 	async function handleAddAccount(e: SubmitEvent) {
 		e.preventDefault();
 		try {
-			const res = await apiFetch('/accounts', {
-				method: 'POST',
-				body: JSON.stringify(newAccount)
+			await enqueueCreate<AccountRow>('accounts', {
+				name: newAccount.name,
+				account_type: newAccount.account_type,
+				balance: newAccount.balance,
+				currency: newAccount.currency,
+				color: newAccount.color
 			});
-			const result = await res.json();
-			if (result.success) {
-				showAddModal = false;
-				fetchAccounts(); // Refresh daftar
-				// Reset form
-				newAccount = {
-					name: '',
-					account_type: 'BANK',
-					balance: 0,
-					currency: 'IDR',
-					color: '#217b84'
-				};
-			}
+			showAddModal = false;
+			newAccount = {
+				name: '',
+				account_type: 'BANK',
+				balance: 0,
+				currency: 'IDR',
+				color: '#217b84'
+			};
 		} catch (err) {
 			console.error('Gagal menambah akun:', err);
 		}
@@ -73,17 +61,18 @@
 		)
 			return;
 		try {
-			const res = await apiFetch(`/accounts/${id}`, { method: 'DELETE' });
-			const result = await res.json();
-			if (result.success) {
-				fetchAccounts();
-			}
+			await enqueueDelete('accounts', id);
 		} catch (err) {
 			console.error('Gagal menghapus akun:', err);
 		}
 	}
 
-	onMount(fetchAccounts);
+	onMount(async () => {
+		await reloadFromLocal();
+		loading = false;
+		// Stale-while-revalidate: kick async sync untuk refresh dari server.
+		void triggerManualSync();
+	});
 
 	const accountTypes = [
 		{

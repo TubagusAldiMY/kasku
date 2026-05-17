@@ -2,17 +2,22 @@
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
+	import {
+		transactionsRepo,
+		accountsRepo,
+		categoriesRepo,
+		type TransactionRow,
+		type AccountRow,
+		type CategoryRow
+	} from '$lib/db';
+	import { enqueueCreate, enqueueDelete, syncStatus, triggerManualSync } from '$lib/sync';
 
 	type Transaction = {
 		id: string;
 		date: string;
 		title: string;
-		category?: string;
-		category_id?: string;
-		category_name?: string;
-		account?: string;
-		account_id?: string;
-		account_name?: string;
+		category: string;
+		account: string;
 		amount: number;
 		type: 'INCOME' | 'EXPENSE';
 	};
@@ -26,164 +31,113 @@
 	let myAccounts = $state<AccountRef[]>([]);
 	let allCategories = $state<CategoryRef[]>([]);
 
-	// Filter kategori berdasarkan tipe yang sedang dipilih di form
-	const filteredCategories = $derived(allCategories.filter((c) => c.category_type === newTx.type));
-
-	// State untuk form tambah transaksi
 	let newTx = $state({
 		title: '',
 		amount: 0,
-		type: 'EXPENSE',
+		type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
 		category_id: '',
 		account_id: '',
 		date: new Date().toISOString().split('T')[0]
 	});
 
-	const mockTransactions: Transaction[] = [
-		{
-			id: '1',
-			date: '2026-05-10',
-			title: 'Kopi Kenangan',
-			category: 'Makanan',
-			account: 'BCA Utama',
-			amount: -25000,
-			type: 'EXPENSE'
-		},
-		{
-			id: '2',
-			date: '2026-05-10',
-			title: 'Gaji Mei',
-			category: 'Gaji',
-			account: 'BCA Utama',
-			amount: 15000000,
-			type: 'INCOME'
-		},
-		{
-			id: '3',
-			date: '2026-05-09',
-			title: 'Listrik Token',
-			category: 'Tagihan',
-			account: 'Mandiri',
-			amount: -500000,
-			type: 'EXPENSE'
-		}
-	];
+	const filteredCategories = $derived(allCategories.filter((c) => c.category_type === newTx.type));
 
-	async function fetchData() {
-		loading = true;
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
+	function projectTransaction(
+		row: TransactionRow,
+		accounts: AccountRow[],
+		categories: CategoryRow[]
+	): Transaction {
+		const acc = accounts.find((a) => a.id === row.account_id);
+		const cat = categories.find((c) => c.id === row.category_id);
+		const signed = row.transaction_type === 'EXPENSE' ? -row.amount_idr : row.amount_idr;
+		return {
+			id: row.id,
+			date: row.transaction_date,
+			title: row.notes ?? row.transaction_type,
+			category: cat?.name ?? 'Umum',
+			account: acc?.name ?? '—',
+			amount: signed,
+			type: row.transaction_type
+		};
+	}
 
-		if (isMock) {
-			setTimeout(() => {
-				transactions = mockTransactions;
-				myAccounts = [
-					{ id: 'acc-1', name: 'BCA Utama' },
-					{ id: 'acc-2', name: 'Mandiri' },
-					{ id: 'acc-3', name: 'Dompet' }
-				];
-				allCategories = [
-					{ id: 'cat-1', name: 'Makanan', category_type: 'EXPENSE' },
-					{ id: 'cat-2', name: 'Transportasi', category_type: 'EXPENSE' },
-					{ id: 'cat-3', name: 'Gaji', category_type: 'INCOME' }
-				];
-				if (myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
-				if (filteredCategories.length > 0) newTx.category_id = filteredCategories[0].id;
-				loading = false;
-			}, 800);
-			return;
-		}
-
+	async function reloadFromLocal() {
 		try {
-			const [txRes, accRes, catRes] = await Promise.all([
-				apiFetch('/transactions'),
-				apiFetch('/accounts'),
-				apiFetch('/categories')
+			const [txRows, accRows, catRows] = await Promise.all([
+				transactionsRepo.getAll(),
+				accountsRepo.getAll(),
+				categoriesRepo.getAll()
 			]);
-			const txData = await txRes.json();
-			const accData = await accRes.json();
-			const catData = await catRes.json();
-
-			if (txData.success) transactions = txData.data || [];
-			if (accData.success) {
-				myAccounts = accData.data || [];
-				if (myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
-			}
-			if (catData.success) {
-				allCategories = catData.data || [];
-				if (filteredCategories.length > 0) newTx.category_id = filteredCategories[0].id;
-			}
+			myAccounts = accRows.map((a) => ({ id: a.id, name: a.name }));
+			allCategories = catRows.map((c) => ({
+				id: c.id,
+				name: c.name,
+				category_type: c.category_type
+			}));
+			transactions = txRows
+				.map((t) => projectTransaction(t, accRows, catRows))
+				.sort((a, b) => (a.date < b.date ? 1 : -1));
+			if (!newTx.account_id && myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
+			if (!newTx.category_id && filteredCategories.length > 0)
+				newTx.category_id = filteredCategories[0].id;
 		} catch (err) {
-			console.error(err);
-		} finally {
-			loading = false;
+			console.error('Gagal membaca transaksi dari penyimpanan lokal:', err);
 		}
 	}
 
+	async function hydrateCategoriesFromServer() {
+		// Categories belum ikut sync engine — fetch on-demand & cache ke IDB.
+		// TODO(sync): integrasikan categories ke SyncableResource saat siap.
+		try {
+			const res = await apiFetch('/categories');
+			const result = await res.json();
+			if (result.success && Array.isArray(result.data)) {
+				const rows = result.data as CategoryRow[];
+				await categoriesRepo.putMany(rows);
+				await reloadFromLocal();
+			}
+		} catch {
+			// Offline → tetap pakai cache IDB.
+		}
+	}
+
+	$effect(() => {
+		void syncStatus.dataVersion;
+		void reloadFromLocal();
+	});
+
 	async function handleAddTransaction(e: SubmitEvent) {
 		e.preventDefault();
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-
-		if (isMock) {
-			const selectedAccount = myAccounts.find((a) => a.id === newTx.account_id);
-			const selectedCategory = allCategories.find((c) => c.id === newTx.category_id);
-			const mockNew: Transaction = {
-				id: Math.random().toString(),
-				...newTx,
-				type: newTx.type as 'INCOME' | 'EXPENSE',
-				category: selectedCategory?.name || 'Unknown',
-				account: selectedAccount?.name || 'Unknown',
-				amount: newTx.type === 'EXPENSE' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount)
-			};
-			transactions = [mockNew, ...transactions];
-			showAddModal = false;
-			return;
-		}
-
 		try {
-			const finalAmount =
-				newTx.type === 'EXPENSE' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount);
-			const res = await apiFetch('/transactions', {
-				method: 'POST',
-				body: JSON.stringify({
-					account_id: newTx.account_id,
-					category_id: newTx.category_id,
-					transaction_type: newTx.type,
-					amount_idr: Math.abs(finalAmount),
-					transaction_date: newTx.date,
-					notes: newTx.title
-				})
+			await enqueueCreate<TransactionRow>('transactions', {
+				account_id: newTx.account_id,
+				category_id: newTx.category_id,
+				transaction_type: newTx.type,
+				amount_idr: Math.abs(newTx.amount),
+				transaction_date: newTx.date,
+				notes: newTx.title
 			});
-			const result = await res.json();
-			if (result.success) {
-				showAddModal = false;
-				fetchData();
-			}
+			showAddModal = false;
 		} catch (err) {
-			console.error(err);
+			console.error('Gagal menambah transaksi:', err);
 		}
 	}
 
 	async function handleDeleteTransaction(id: string) {
 		if (!confirm('Hapus transaksi ini? Saldo rekening Anda akan disesuaikan kembali.')) return;
-
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-		if (isMock) {
-			transactions = transactions.filter((t) => t.id !== id);
-			return;
-		}
-
 		try {
-			const res = await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
-			const result = await res.json();
-			if (result.success) {
-				fetchData();
-			}
+			await enqueueDelete('transactions', id);
 		} catch (err) {
 			console.error('Gagal menghapus transaksi:', err);
 		}
 	}
 
-	onMount(fetchData);
+	onMount(async () => {
+		await reloadFromLocal();
+		loading = false;
+		void hydrateCategoriesFromServer();
+		void triggerManualSync();
+	});
 
 	function formatCurrency(val: number) {
 		const absVal = Math.abs(val);
