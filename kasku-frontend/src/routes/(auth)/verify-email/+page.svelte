@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { apiFetch } from '$lib/api/client';
+	import { resolve } from '$app/paths';
 
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let message = $state('Sedang memverifikasi email Anda...');
@@ -29,7 +30,7 @@
 			} else {
 				resendMessage = result.error?.message || 'Gagal mengirim ulang email verifikasi.';
 			}
-		} catch (err) {
+		} catch {
 			resendMessage = 'Terjadi kesalahan koneksi.';
 		} finally {
 			resendLoading = false;
@@ -78,7 +79,7 @@
 			{#if status === 'loading'}
 				<div class="flex flex-col items-center">
 					<div
-						class="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-600"
+						class="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-indigo-600"
 					></div>
 					<p class="mt-4 text-gray-600">{message}</p>
 				</div>
@@ -95,7 +96,7 @@
 						<p class="mt-4 text-sm font-medium text-green-800">{message}</p>
 						<div class="mt-6">
 							<a
-								href="/login"
+								href={resolve('/login')}
 								class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
 							>
 								Lanjut ke Login
@@ -114,38 +115,41 @@
 							/>
 						</svg>
 						<p class="text-sm font-medium text-red-800">{message}</p>
-						
-						<div class="w-full pt-4 border-t border-red-100 space-y-3">
-							<p class="text-xs font-bold text-[#0a2e31] uppercase tracking-wider">Kirim ulang tautan?</p>
-							<input 
-								type="email" 
-								bind:value={email} 
-								placeholder="Masukkan email Anda" 
-								class="w-full px-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+
+						<div class="w-full space-y-3 border-t border-red-100 pt-4">
+							<p class="text-xs font-bold tracking-wider text-[#0a2e31] uppercase">
+								Kirim ulang tautan?
+							</p>
+							<input
+								type="email"
+								bind:value={email}
+								placeholder="Masukkan email Anda"
+								class="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
 							/>
 							<button
 								onclick={handleResendVerification}
 								disabled={resendLoading}
-								class="w-full py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all"
+								class="w-full rounded-xl bg-indigo-600 py-2 text-sm font-bold text-white transition-all hover:bg-indigo-700 disabled:opacity-50"
 							>
 								{resendLoading ? 'Mengirim...' : 'Kirim Ulang Verifikasi'}
 							</button>
 							{#if resendMessage}
-								<p class="text-[11px] font-bold {resendMessage.includes('berhasil') ? 'text-green-600' : 'text-red-600'}">
+								<p
+									class="text-[11px] font-bold {resendMessage.includes('berhasil')
+										? 'text-green-600'
+										: 'text-red-600'}"
+								>
 									{resendMessage}
 								</p>
 							{/if}
 						</div>
 
 						<div class="mt-2 flex gap-4">
-							<a
-								href="/login"
-								class="text-sm font-bold text-indigo-600 hover:underline"
-							>
+							<a href={resolve('/login')} class="text-sm font-bold text-indigo-600 hover:underline">
 								Ke Halaman Login
 							</a>
 							<a
-								href="/register"
+								href={resolve('/register')}
 								class="text-sm font-bold text-indigo-600 hover:underline"
 							>
 								Kembali ke Daftar
