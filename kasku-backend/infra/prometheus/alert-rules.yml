@@ -1,0 +1,78 @@
+groups:
+  - name: kasku-availability
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~".*-service|api-gateway|kasku-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.instance }} ({{ $labels.job }}) down"
+          description: "Tidak ada response dari /metrics selama 2 menit. Investigasi log: docker compose logs {{ $labels.instance }}."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum by (service) (rate(kasku_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum by (service) (rate(kasku_http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: errors
+        annotations:
+          summary: "Error rate {{ $labels.service }} > 5%"
+          description: "Service {{ $labels.service }} mengembalikan 5xx > 5% selama 5 menit (saat ini {{ $value | humanizePercentage }})."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, service) (rate(kasku_http_request_duration_seconds_bucket[5m]))
+          ) > 1.0
+        for: 10m
+        labels:
+          severity: warning
+          category: latency
+        annotations:
+          summary: "P95 latency {{ $labels.service }} > 1s"
+          description: "P95 latency {{ $labels.service }} sudah {{ $value }}s selama 10 menit."
+
+  - name: kasku-data
+    interval: 60s
+    rules:
+      - alert: RabbitMQDLQNonEmpty
+        expr: rabbitmq_queue_messages{queue="kasku.events.dlq"} > 0
+        for: 2m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "DLQ {{ $value }} pesan tertahan"
+          description: "Dead Letter Queue kasku.events.dlq punya pesan tertahan. Investigasi root cause sebelum requeue."
+
+      - alert: DBPoolNearExhaustion
+        expr: |
+          kasku_db_pool_acquired_connections / kasku_db_pool_max_connections > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: capacity
+        annotations:
+          summary: "DB pool {{ $labels.service }} > 90% utilized"
+          description: "Service {{ $labels.service }} memakai {{ $value | humanizePercentage }} dari max DB connection. Pertimbangkan tuning pool size atau cari query lambat."
+
+  - name: kasku-business
+    interval: 60s
+    rules:
+      - alert: SyncConflictSpike
+        expr: rate(kasku_sync_push_conflicts_total[10m]) > 0.5
+        for: 10m
+        labels:
+          severity: info
+          category: business
+        annotations:
+          summary: "Sync conflict rate naik (Server Wins {{ $value }}/s)"
+          description: "Banyak konflik server-wins terjadi — investigasi clock skew client atau pattern offline yang berkepanjangan."

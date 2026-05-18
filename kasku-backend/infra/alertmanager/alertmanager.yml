@@ -1,0 +1,44 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'webhook-default'
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: 'webhook-critical'
+      match:
+        severity: critical
+      continue: false
+    - receiver: 'webhook-warning'
+      match:
+        severity: warning
+      continue: false
+
+receivers:
+  - name: 'webhook-default'
+    webhook_configs:
+      - url: 'http://localhost:9999/noop'
+        send_resolved: true
+
+  - name: 'webhook-critical'
+    webhook_configs:
+      # Set ALERTMANAGER_WEBHOOK_CRITICAL_URL di .env (mis. Slack incoming webhook).
+      # Default ke noop biar alertmanager tetap start tanpa error.
+      - url: 'http://kasku-alertmanager-webhook-critical:9999/noop'
+        send_resolved: true
+
+  - name: 'webhook-warning'
+    webhook_configs:
+      - url: 'http://kasku-alertmanager-webhook-warning:9999/noop'
+        send_resolved: true
+
+inhibit_rules:
+  # Jika critical fire, suppress warning yang related supaya tidak noise.
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: [alertname, service]

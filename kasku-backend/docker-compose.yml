@@ -36,6 +36,8 @@ volumes:
     name: kasku-grafana-data
   loki-data:
     name: kasku-loki-data
+  alertmanager-data:
+    name: kasku-alertmanager-data
 
 services:
 
@@ -142,12 +144,15 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      # Aktifkan Prometheus plugin built-in agar Prometheus bisa scrape :15692/metrics.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_management_agent disable_metrics_collector false"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     networks:
       - kasku-data
+      - kasku-admin   # untuk discovery dari Prometheus di profile observability
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 15s
@@ -588,15 +593,37 @@ services:
     container_name: kasku-prometheus
     restart: unless-stopped
     profiles: ["observability"]
+    ports:
+      - "9090:9090"
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
     networks:
       - kasku-admin
       - kasku-internal
+      - kasku-data
+    stop_grace_period: 35s
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: kasku-alertmanager
+    restart: unless-stopped
+    profiles: ["observability"]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    networks:
+      - kasku-admin
     stop_grace_period: 35s
 
   loki:
