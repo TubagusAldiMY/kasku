@@ -42,3 +42,17 @@ check_optional() {
 
 check_optional "admin" "${ADMIN_URL:-http://localhost:8090}/metrics"
 check_optional "billing" "${BILLING_URL:-http://localhost:8083}/metrics"
+check_optional "auth" "${AUTH_URL:-http://localhost:8081}/metrics"
+check_optional "user" "${USER_URL:-http://localhost:8082}/metrics"
+check_optional "finance" "${FINANCE_URL:-http://localhost:8084}/metrics"
+check_optional "transaction" "${TRANSACTION_URL:-http://localhost:8085}/metrics"
+check_optional "investment" "${INVESTMENT_URL:-http://localhost:8086}/metrics"
+check_optional "price" "${PRICE_URL:-http://localhost:8087}/metrics"
+check_optional "sync" "${SYNC_URL:-http://localhost:8088}/metrics"
+check_optional "notification" "${NOTIFICATION_URL:-http://localhost:8089}/metrics"
+
+# Observability stack (hanya aktif kalau --profile observability).
+check_optional "prometheus" "${PROMETHEUS_URL:-http://localhost:9090}/-/ready"
+check_optional "alertmanager" "${ALERTMANAGER_URL:-http://localhost:9093}/-/ready"
+check_optional "grafana" "${GRAFANA_URL:-http://localhost:3000}/api/health"
+check_optional "loki" "${LOKI_URL:-http://localhost:3100}/ready"
