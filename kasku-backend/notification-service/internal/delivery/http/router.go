@@ -1,21 +1,20 @@
 package http
 
 import (
-	"net/http"
-
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/delivery/http/handler"
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
-// NewRouter membuat Gin engine dengan security headers dan health endpoint.
-func NewRouter(healthHandler *handler.HealthHandler, preferenceHandler *handler.PreferenceHandler, isDev bool, log zerolog.Logger) *gin.Engine {
+func NewRouter(healthHandler *handler.HealthHandler, preferenceHandler *handler.PreferenceHandler, isDev bool, metricsReg *metrics.Registry, log zerolog.Logger) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(metricsReg.HTTPMetrics())
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
@@ -23,7 +22,7 @@ func NewRouter(healthHandler *handler.HealthHandler, preferenceHandler *handler.
 	})
 
 	r.GET("/health", healthHandler.Health)
-	r.GET("/metrics", metrics("notification-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	v1 := r.Group("/v1/notifications")
 	{
@@ -32,14 +31,4 @@ func NewRouter(healthHandler *handler.HealthHandler, preferenceHandler *handler.
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }

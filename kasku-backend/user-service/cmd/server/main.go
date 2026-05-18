@@ -14,6 +14,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/messaging"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -98,7 +99,9 @@ func main() {
 		consumer:    consumer,
 	}
 	userHandler := handler.NewUserHandler(healthChecker, profileRepo, cfg.App.ServiceVersion, logger)
-	router := deliveryhttp.NewRouter(userHandler, cfg.IsDevelopment(), logger)
+	metricsReg := obsmetrics.NewRegistry("user-service")
+	metricsReg.RegisterDBPool(userPool)
+	router := deliveryhttp.NewRouter(userHandler, cfg.IsDevelopment(), metricsReg, logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

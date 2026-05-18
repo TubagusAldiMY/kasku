@@ -8,6 +8,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/middleware"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/ratelimit"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
@@ -17,6 +18,7 @@ func NewRouter(
 	authHandler *handler.AuthHandler,
 	cfg *configs.Config,
 	limiter ratelimit.Limiter,
+	metricsReg *obsmetrics.Registry,
 	logger zerolog.Logger,
 ) *gin.Engine {
 	isDev := cfg.IsDevelopment()
@@ -32,6 +34,9 @@ func NewRouter(
 	// Correlation ID — inject ke setiap request
 	r.Use(middleware.CorrelationID())
 
+	// Prometheus HTTP metrics — request count + duration per route
+	r.Use(metricsReg.HTTPMetrics())
+
 	// Security headers — OWASP best practices
 	r.Use(securityHeaders())
 
@@ -40,7 +45,7 @@ func NewRouter(
 
 	// Health check (public, tanpa auth)
 	r.GET("/health", authHandler.Health)
-	r.GET("/metrics", metrics("auth-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	// Auth endpoints
 	auth := r.Group("/auth")
@@ -89,16 +94,6 @@ func NewRouter(
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }
 
 // securityHeaders meng-inject security headers ke setiap response.

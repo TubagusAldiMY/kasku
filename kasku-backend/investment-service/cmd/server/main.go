@@ -15,6 +15,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/persistence"
 	priceinfra "github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/price"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -65,7 +66,9 @@ func main() {
 		healthChecker, cfg.App.ServiceVersion, logger,
 	)
 
-	router := deliveryhttp.NewRouter(investmentHandler, cfg.IsDevelopment())
+	metricsReg := obsmetrics.NewRegistry("investment-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(investmentHandler, cfg.IsDevelopment(), metricsReg)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

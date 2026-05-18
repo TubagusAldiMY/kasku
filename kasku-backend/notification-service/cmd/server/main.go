@@ -16,6 +16,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/infrastructure/persistence"
 	apptemplates "github.com/TubagusAldiMY/kasku/notification-service/internal/templates"
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -84,7 +85,9 @@ func main() {
 	preferenceRepo := persistence.NewPostgresPreferenceRepository(pool)
 	healthHandler := handler.NewHealthHandler(consumer, pool, cfg.App.ServiceVersion)
 	preferenceHandler := handler.NewPreferenceHandler(preferenceRepo)
-	router := deliveryhttp.NewRouter(healthHandler, preferenceHandler, cfg.IsDevelopment(), logger)
+	metricsReg := obsmetrics.NewRegistry("notification-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(healthHandler, preferenceHandler, cfg.IsDevelopment(), metricsReg, logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

@@ -8,6 +8,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/delivery/http/middleware"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/jwt"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/redis"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
@@ -17,6 +18,7 @@ import (
 type RouterDeps struct {
 	IsDev            bool
 	Logger           zerolog.Logger
+	Metrics          *obsmetrics.Registry
 	HealthHandler    *handler.HealthHandler
 	AuthHandler      *handler.AuthHandler
 	UserHandler      *handler.UserHandler
@@ -40,11 +42,12 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	}
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(deps.Metrics.HTTPMetrics())
 	r.Use(securityHeaders())
 	r.Use(requestLogger(deps.Logger))
 
 	r.GET("/health", deps.HealthHandler.Health)
-	r.GET("/metrics", metrics("admin-service"))
+	r.GET("/metrics", gin.WrapH(deps.Metrics.Handler()))
 
 	// Public admin endpoints (no JWT required)
 	publicAdmin := r.Group("/v1/admin")
@@ -72,16 +75,6 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }
 
 func securityHeaders() gin.HandlerFunc {

@@ -1,17 +1,15 @@
 package http
 
 import (
-	"net/http"
-
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/delivery/http/middleware"
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
 // NewRouter membuat Gin router dengan semua middleware dan route yang terkonfigurasi.
-// Mode Gin (debug/release) ditentukan berdasarkan environment.
-func NewRouter(billingHandler *handler.BillingHandler, isDev bool, log zerolog.Logger) *gin.Engine {
+func NewRouter(billingHandler *handler.BillingHandler, isDev bool, metricsReg *metrics.Registry, log zerolog.Logger) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -19,24 +17,19 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, log zerolog.L
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationID())
+	r.Use(metricsReg.HTTPMetrics())
 	r.Use(securityHeadersMiddleware())
 
-	// Health check tidak memerlukan autentikasi — diakses oleh load balancer dan Docker healthcheck
 	r.GET("/health", billingHandler.Health)
-	r.GET("/metrics", metrics("billing-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	v1 := r.Group("/v1")
 	{
 		billing := v1.Group("/billing")
 		{
-			// Public endpoint — tidak memerlukan JWT (pricing page)
 			billing.GET("/plans", billingHandler.ListPlans)
-
-			// Protected endpoint — memerlukan X-User-ID header dari api-gateway
 			billing.GET("/subscription", billingHandler.GetSubscription)
 			billing.POST("/subscribe", billingHandler.Subscribe)
-
-			// Midtrans webhook — tidak ada JWT, verifikasi via HMAC signature (Phase 2)
 			billing.POST("/webhook/midtrans", billingHandler.MidtransWebhook)
 		}
 	}
@@ -44,17 +37,6 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, log zerolog.L
 	return r
 }
 
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
-}
-
-// securityHeadersMiddleware menambahkan security headers standar OWASP ke semua response.
 func securityHeadersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")

@@ -9,6 +9,7 @@ import (
 
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/middleware"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 )
 
 // RouterConfig menyimpan semua dependency untuk membuat router.
@@ -20,6 +21,7 @@ type RouterConfig struct {
 	CORSMiddleware      gin.HandlerFunc
 	IsDev               bool
 	Logger              zerolog.Logger
+	Metrics             *obsmetrics.Registry
 }
 
 // NewRouter membuat dan mengkonfigurasi Gin router dengan semua middleware dan route.
@@ -39,6 +41,9 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	// Correlation ID — inject ke setiap request
 	r.Use(middleware.CorrelationID())
 
+	// Prometheus HTTP metrics (sebelum route apa pun)
+	r.Use(cfg.Metrics.HTTPMetrics())
+
 	// Security headers (OWASP)
 	r.Use(securityHeaders())
 
@@ -47,7 +52,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 
 	// Health check (public, tanpa auth)
 	r.GET("/health", cfg.HealthHandler.Health)
-	r.GET("/metrics", metrics("api-gateway"))
+	r.GET("/metrics", gin.WrapH(cfg.Metrics.Handler()))
 
 	// ── /v1/auth/** ───────────────────────────────────────────────────────────
 	// Catatan: sebagian besar auth endpoint adalah public (tidak butuh JWT),
@@ -157,16 +162,6 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }
 
 // securityHeaders meng-inject OWASP security headers ke setiap response.

@@ -15,6 +15,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/persistence"
 	rdsinfra "github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/redis"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -127,9 +128,12 @@ func main() {
 	statsHandler := handler.NewStatsHandler(statsUC)
 	auditLogHandler := handler.NewAuditLogHandler(listAuditUC)
 
+	metricsReg := obsmetrics.NewRegistry("admin-service")
+	metricsReg.RegisterDBPool(adminPool)
 	router := deliveryhttp.NewRouter(deliveryhttp.RouterDeps{
 		IsDev:           cfg.IsDevelopment(),
 		Logger:          logger,
+		Metrics:         metricsReg,
 		HealthHandler:   healthHandler,
 		AuthHandler:     authHandler,
 		UserHandler:     userHandler,

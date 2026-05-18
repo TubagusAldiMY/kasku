@@ -16,6 +16,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/middleware"
 	grpcinfra "github.com/TubagusAldiMY/kasku/api-gateway/internal/infrastructure/grpc"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	redisinfra "github.com/TubagusAldiMY/kasku/api-gateway/internal/infrastructure/redis"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/usecase"
 )
@@ -100,6 +101,7 @@ func main() {
 	corsMiddleware := middleware.CORS(cfg.CORS.AllowedOrigins)
 
 	// ── Router ────────────────────────────────────────────────────────────────
+	metricsReg := obsmetrics.NewRegistry("api-gateway")
 	router := deliveryhttp.NewRouter(deliveryhttp.RouterConfig{
 		HealthHandler:       healthHandler,
 		ProxyHandler:        proxyHandler,
@@ -108,6 +110,7 @@ func main() {
 		CORSMiddleware:      corsMiddleware,
 		IsDev:               cfg.IsDevelopment(),
 		Logger:              logger,
+		Metrics:             metricsReg,
 	})
 
 	// ── HTTP Server ───────────────────────────────────────────────────────────

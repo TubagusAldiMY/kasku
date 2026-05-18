@@ -1,14 +1,13 @@
 package http
 
 import (
-	"net/http"
-
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/delivery/http/middleware"
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(h *handler.AccountHandler, isDev bool) *gin.Engine {
+func NewRouter(h *handler.AccountHandler, isDev bool, metricsReg *metrics.Registry) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -16,10 +15,11 @@ func NewRouter(h *handler.AccountHandler, isDev bool) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationID())
+	r.Use(metricsReg.HTTPMetrics())
 	r.Use(securityHeaders())
 
 	r.GET("/health", h.Health)
-	r.GET("/metrics", metrics("finance-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	v1 := r.Group("/v1")
 	{
@@ -37,17 +37,6 @@ func NewRouter(h *handler.AccountHandler, isDev bool) *gin.Engine {
 	return r
 }
 
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
-}
-
-// securityHeaders menambahkan security headers standar OWASP pada semua response.
 func securityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")

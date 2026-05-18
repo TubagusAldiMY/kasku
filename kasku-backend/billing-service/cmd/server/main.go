@@ -17,6 +17,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/outbox"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 )
@@ -99,7 +100,9 @@ func main() {
 		cfg.App.ServiceVersion,
 		logger,
 	)
-	router := deliveryhttp.NewRouter(billingHandler, cfg.IsDevelopment(), logger)
+	metricsReg := obsmetrics.NewRegistry("billing-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(billingHandler, cfg.IsDevelopment(), metricsReg, logger)
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

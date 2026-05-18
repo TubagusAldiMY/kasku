@@ -14,6 +14,7 @@ import (
 	grpcserver "github.com/TubagusAldiMY/kasku/finance-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -63,7 +64,9 @@ func main() {
 		healthChecker, cfg.App.ServiceVersion, logger,
 	)
 
-	router := deliveryhttp.NewRouter(accountHandler, cfg.IsDevelopment())
+	metricsReg := obsmetrics.NewRegistry("finance-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(accountHandler, cfg.IsDevelopment(), metricsReg)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

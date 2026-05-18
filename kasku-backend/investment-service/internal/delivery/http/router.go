@@ -1,16 +1,13 @@
 package http
 
 import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http/middleware"
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
+	"github.com/gin-gonic/gin"
 )
 
-// NewRouter membuat dan mengkonfigurasi Gin router untuk investment-service.
-func NewRouter(h *handler.InvestmentHandler, isDev bool) *gin.Engine {
+func NewRouter(h *handler.InvestmentHandler, isDev bool, metricsReg *metrics.Registry) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -18,12 +15,11 @@ func NewRouter(h *handler.InvestmentHandler, isDev bool) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationID())
+	r.Use(metricsReg.HTTPMetrics())
 
-	// Health check (public)
 	r.GET("/health", h.Health)
-	r.GET("/metrics", metrics("investment-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
-	// Investment endpoints
 	v1 := r.Group("/v1/investments")
 	{
 		v1.GET("", h.ListAssets)
@@ -36,14 +32,4 @@ func NewRouter(h *handler.InvestmentHandler, isDev bool) *gin.Engine {
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }

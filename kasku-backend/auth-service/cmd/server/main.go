@@ -19,6 +19,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/ratelimit"
 	redisinfra "github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/redis"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -179,7 +180,9 @@ func main() {
 		logger,
 	)
 
-	router := deliveryhttp.NewRouter(authHandler, cfg, rateLimiter, logger)
+	metricsReg := obsmetrics.NewRegistry("auth-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(authHandler, cfg, rateLimiter, metricsReg, logger)
 
 	// ── gRPC Server (internal, port :9081) ────────────────────────────────────
 	// Reflection HANYA di dev — di prod akan diabaikan agar API schema tidak

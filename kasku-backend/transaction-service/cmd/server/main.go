@@ -14,6 +14,7 @@ import (
 	grpcserver "github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -52,7 +53,9 @@ func main() {
 	logger.Info().Msg("PostgreSQL terhubung")
 
 	txHandler := buildHandler(pool, cfg, logger)
-	router := deliveryhttp.NewRouter(txHandler, cfg.IsDevelopment(), logger)
+	metricsReg := obsmetrics.NewRegistry("transaction-service")
+	metricsReg.RegisterDBPool(pool)
+	router := deliveryhttp.NewRouter(txHandler, cfg.IsDevelopment(), metricsReg, logger)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,

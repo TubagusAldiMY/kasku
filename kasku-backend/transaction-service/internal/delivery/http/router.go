@@ -1,25 +1,25 @@
 package http
 
 import (
-	"net/http"
-
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
-func NewRouter(h *handler.TransactionHandler, isDev bool, log zerolog.Logger) *gin.Engine {
+func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Registry, log zerolog.Logger) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationID())
+	r.Use(metricsReg.HTTPMetrics())
 	r.Use(securityHeaders())
 
 	r.GET("/health", h.Health)
-	r.GET("/metrics", metrics("transaction-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	v1 := r.Group("/v1")
 	{
@@ -42,17 +42,6 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, log zerolog.Logger) *g
 	return r
 }
 
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
-}
-
-// securityHeaders agrega security response headers standar OWASP.
 func securityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")

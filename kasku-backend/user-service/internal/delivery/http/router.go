@@ -1,15 +1,14 @@
 package http
 
 import (
-	"net/http"
-
+	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
 
-func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger) *gin.Engine {
+func NewRouter(userHandler *handler.UserHandler, isDev bool, metricsReg *metrics.Registry, log zerolog.Logger) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -17,8 +16,8 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger)
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationID())
+	r.Use(metricsReg.HTTPMetrics())
 
-	// Security headers
 	r.Use(func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
@@ -28,7 +27,7 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger)
 	})
 
 	r.GET("/health", userHandler.Health)
-	r.GET("/metrics", metrics("user-service"))
+	r.GET("/metrics", gin.WrapH(metricsReg.Handler()))
 
 	v1 := r.Group("/v1")
 	{
@@ -40,14 +39,4 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, log zerolog.Logger)
 	}
 
 	return r
-}
-
-func metrics(service string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(
-			"# HELP kasku_service_info KasKu service metadata\n"+
-				"# TYPE kasku_service_info gauge\n"+
-				"kasku_service_info{service=\""+service+"\"} 1\n",
-		))
-	}
 }
