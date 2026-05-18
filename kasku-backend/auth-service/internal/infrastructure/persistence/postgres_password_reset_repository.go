@@ -128,8 +128,3 @@ func (r *postgresPasswordResetRepository) ExecuteResetPasswordTx(
 // Pastikan interface terpenuhi pada compile time
 var _ repository.PasswordResetRepository = (*postgresPasswordResetRepository)(nil)
 var _ repository.TransactionalResetPasswordRepository = (*postgresPasswordResetRepository)(nil)
-
-// notFoundErr membantu membedakan not-found dari error lain
-func isNotFound(err error) bool {
-	return errors.Is(err, pgx.ErrNoRows)
-}
