@@ -47,8 +47,9 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 				userID = token.UserID.String()
 			}
 			if userID == "" {
-				// Refresh tidak butuh auth middleware duluan — gunakan IP sebagai fallback
-				result, err = limiter.CheckRegister(c.Request.Context(), clientIP)
+				// Refresh tidak melewati auth middleware, jadi biasanya belum ada parsed token.
+				// Pakai bucket refresh berbasis IP agar tidak menghabiskan limit register.
+				result, err = limiter.CheckRefresh(c.Request.Context(), "ip:"+clientIP)
 			} else {
 				result, err = limiter.CheckRefresh(c.Request.Context(), userID)
 			}

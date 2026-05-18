@@ -15,7 +15,7 @@ import (
 
 const (
 	refreshTokenCookieName = "refresh_token"
-	refreshTokenCookiePath = "/auth/refresh"
+	refreshTokenCookiePath = "/v1/auth"
 )
 
 // HealthChecker mendefinisikan kontrak untuk dependency health check.

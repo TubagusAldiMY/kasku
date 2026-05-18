@@ -209,7 +209,7 @@ func TestAuthHandler_Login_HappySetsRefreshCookie(t *testing.T) {
 	assert.Equal(t, "refresh_token", cookie[0].Name)
 	assert.Equal(t, "refresh-raw", cookie[0].Value)
 	assert.True(t, cookie[0].HttpOnly)
-	assert.Equal(t, "/auth/refresh", cookie[0].Path)
+	assert.Equal(t, "/v1/auth", cookie[0].Path)
 }
 
 func TestAuthHandler_Login_InvalidCreds(t *testing.T) {
