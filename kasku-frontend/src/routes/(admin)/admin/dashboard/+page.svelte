@@ -1,127 +1,222 @@
 <script lang="ts">
-	import { fade, fly } from 'svelte/transition';
+	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
+	import { resolve } from '$app/paths';
+	import { adminApiFetch } from '$lib/api/admin_client';
 
-	// Mock Admin Data
-	const stats = [
-		{ label: 'Total Pengguna', value: '1,284', grow: '+12%', icon: '👥', color: 'blue' },
-		{ label: 'Pendapatan (Mei)', value: 'Rp 42.500.000', grow: '+8.4%', icon: '💰', color: 'green' },
-		{ label: 'Total Transaksi', value: '14,802', grow: '+24%', icon: '💳', color: 'purple' },
-		{ label: 'Aset Dipantau', value: 'Rp 8,2 Miliar', grow: '+15%', icon: '📈', color: 'teal' }
-	];
+	type DashboardStats = {
+		total_users: number;
+		total_active_users: number;
+		new_users_last_7_days: number;
+		tier_distribution: Record<string, number>;
+		mrr_idr: number;
+		churn_rate_30d_pct: number;
+	};
 
-	const recentRegistrations = [
-		{ id: 1, user: 'budi_hartono', email: 'budi@gmail.com', date: '2 menit lalu', status: 'Active' },
-		{ id: 2, user: 'susi_susanti', email: 'susi.s@outlook.com', date: '1 jam lalu', status: 'Pending' },
-		{ id: 3, user: 'eko_wijaya', email: 'eko.w@perusahaan.id', date: '3 jam lalu', status: 'Active' },
-		{ id: 4, user: 'ani_lestari', email: 'ani_cute88@yahoo.com', date: '5 jam lalu', status: 'Active' }
-	];
+	type UserListItem = {
+		id: string;
+		email: string;
+		username: string;
+		is_active: boolean;
+		email_verified: boolean;
+		subscription_tier: string;
+		subscription_status: string;
+		created_at: string;
+	};
+
+	let stats = $state<DashboardStats | null>(null);
+	let recentUsers = $state<UserListItem[]>([]);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+
+	function formatCurrency(val: number) {
+		return new Intl.NumberFormat('id-ID', {
+			style: 'currency',
+			currency: 'IDR',
+			minimumFractionDigits: 0
+		}).format(val);
+	}
+
+	function formatNumber(val: number) {
+		return new Intl.NumberFormat('id-ID').format(val);
+	}
+
+	function relativeDate(iso: string): string {
+		try {
+			const dt = new Date(iso);
+			return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+		} catch {
+			return iso;
+		}
+	}
+
+	async function loadDashboard() {
+		loading = true;
+		error = null;
+		try {
+			const [statsRes, usersRes] = await Promise.all([
+				adminApiFetch('/admin/stats/dashboard'),
+				adminApiFetch('/admin/users?page=1&page_size=5')
+			]);
+
+			const statsEnvelope = (await statsRes.json()) as {
+				success: boolean;
+				data?: DashboardStats;
+				error?: { message?: string };
+			};
+			if (!statsRes.ok || !statsEnvelope.success || !statsEnvelope.data) {
+				throw new Error(statsEnvelope.error?.message ?? `stats HTTP ${statsRes.status}`);
+			}
+			stats = statsEnvelope.data;
+
+			const usersEnvelope = (await usersRes.json()) as {
+				success: boolean;
+				data?: { items: UserListItem[]; meta?: unknown };
+				error?: { message?: string };
+			};
+			if (!usersRes.ok || !usersEnvelope.success) {
+				throw new Error(usersEnvelope.error?.message ?? `users HTTP ${usersRes.status}`);
+			}
+			recentUsers = usersEnvelope.data?.items ?? [];
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Gagal memuat data dashboard';
+		} finally {
+			loading = false;
+		}
+	}
+
+	onMount(loadDashboard);
+
+	const tierEntries = $derived(stats ? Object.entries(stats.tier_distribution) : []);
 </script>
 
-<div class="space-y-10 animate-in fade-in duration-700">
-	<div class="flex justify-between items-end">
+<div class="animate-in fade-in space-y-10 duration-700">
+	<div class="flex items-end justify-between">
 		<div class="space-y-1">
 			<h1 class="text-3xl font-black text-[#0a2e31]">Ringkasan Sistem</h1>
-			<p class="text-gray-500 font-medium">Pantau performa global dan kesehatan infrastruktur KasKu.</p>
+			<p class="font-medium text-gray-500">
+				Pantau performa global dan kesehatan infrastruktur KasKu.
+			</p>
 		</div>
-		<div class="flex gap-2">
-			<span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
-				<div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-				Backend: Healthy
-			</span>
-		</div>
+		<button
+			type="button"
+			onclick={loadDashboard}
+			disabled={loading}
+			class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[11px] font-bold text-[#0a2e31] transition-colors hover:bg-gray-50 disabled:opacity-60"
+		>
+			{loading ? 'Memuat…' : 'Muat Ulang'}
+		</button>
 	</div>
 
+	{#if error}
+		<div
+			class="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-xs font-bold text-red-700"
+		>
+			{error}
+		</div>
+	{/if}
+
 	<!-- Stats Grid -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-		{#each stats as stat, i}
-			<div 
-				in:fly={{ y: 20, delay: i * 100, duration: 500 }}
-				class="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm space-y-4 hover:shadow-lg transition-all"
+	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+		{#each [{ label: 'Total Pengguna', value: stats ? formatNumber(stats.total_users) : '…' }, { label: 'Pengguna Aktif', value: stats ? formatNumber(stats.total_active_users) : '…' }, { label: 'Baru (7 hari)', value: stats ? formatNumber(stats.new_users_last_7_days) : '…' }, { label: 'MRR', value: stats ? formatCurrency(stats.mrr_idr) : '…' }] as item, i (item.label)}
+			<div
+				in:fly={{ y: 20, delay: i * 80, duration: 400 }}
+				class="space-y-3 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-lg"
 			>
-				<div class="flex justify-between items-start">
-					<div class="h-12 w-12 rounded-2xl bg-gray-50 flex items-center justify-center text-xl">
-						{stat.icon}
-					</div>
-					<span class="text-[10px] font-black text-green-500 bg-green-50 px-2 py-1 rounded-lg">
-						{stat.grow}
-					</span>
-				</div>
-				<div>
-					<p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-					<p class="text-xl font-black text-[#0a2e31] mt-1">{stat.value}</p>
-				</div>
+				<p class="text-[11px] font-black tracking-widest text-gray-400 uppercase">{item.label}</p>
+				<p class="text-2xl font-black text-[#0a2e31] tabular-nums">{item.value}</p>
 			</div>
 		{/each}
 	</div>
 
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-		<!-- Table -->
-		<div class="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-			<div class="p-8 border-b border-gray-50 flex justify-between items-center">
-				<h3 class="font-black text-[#0a2e31] uppercase text-xs tracking-widest">Pendaftaran Terbaru</h3>
-				<button class="text-[10px] font-black text-[#217b84] hover:underline">Lihat Semua</button>
+	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+		<!-- Recent users -->
+		<div
+			class="flex flex-col overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-sm lg:col-span-2"
+		>
+			<div class="flex items-center justify-between border-b border-gray-50 p-8">
+				<div class="space-y-1">
+					<h3 class="text-lg font-black text-[#0a2e31]">Registrasi Terbaru</h3>
+					<p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
+						5 pengguna terakhir
+					</p>
+				</div>
+				<a href={resolve('/admin/users')} class="text-xs font-bold text-[#217b84] hover:underline"
+					>Kelola Semua →</a
+				>
 			</div>
-			<div class="overflow-x-auto flex-1">
-				<table class="w-full text-left">
-					<thead>
-						<tr class="bg-gray-50/50">
-							<th class="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Pengguna</th>
-							<th class="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Waktu</th>
-							<th class="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-50">
-						{#each recentRegistrations as reg}
-							<tr class="hover:bg-gray-50/50 transition-colors">
-								<td class="px-8 py-5">
-									<p class="text-sm font-black text-[#0a2e31]">{reg.user}</p>
-									<p class="text-[10px] text-gray-400 font-bold">{reg.email}</p>
-								</td>
-								<td class="px-8 py-5 text-xs font-bold text-gray-500">{reg.date}</td>
-								<td class="px-8 py-5">
-									<span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tight {reg.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}">
-										{reg.status}
-									</span>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+			<div class="divide-y divide-gray-50">
+				{#if loading && recentUsers.length === 0}
+					{#each [0, 1, 2] as i (i)}
+						<div class="h-16 animate-pulse bg-gray-50"></div>
+					{/each}
+				{:else if recentUsers.length === 0}
+					<div class="px-8 py-10 text-center text-xs font-bold text-gray-400">
+						Belum ada pengguna terdaftar.
+					</div>
+				{:else}
+					{#each recentUsers as u (u.id)}
+						<a
+							href={resolve(`/admin/users/${u.id}`)}
+							class="flex items-center justify-between gap-4 px-8 py-5 transition-colors hover:bg-gray-50"
+						>
+							<div class="min-w-0">
+								<p class="truncate text-sm font-black text-[#0a2e31]">{u.username}</p>
+								<p class="truncate text-xs font-medium text-gray-500">{u.email}</p>
+							</div>
+							<div class="flex flex-col items-end gap-1">
+								<span
+									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase
+									{u.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}"
+								>
+									{u.is_active ? 'Aktif' : 'Suspended'}
+								</span>
+								<span class="text-[10px] font-bold text-gray-400">{relativeDate(u.created_at)}</span
+								>
+							</div>
+						</a>
+					{/each}
+				{/if}
 			</div>
 		</div>
 
-		<!-- Infrastructure Status -->
-		<div class="bg-[#0a2e31] p-10 rounded-[2.5rem] text-white shadow-xl space-y-8 relative overflow-hidden group">
-			<div class="absolute -right-10 -top-10 h-40 w-40 bg-white/5 rounded-full group-hover:scale-110 transition-transform duration-1000"></div>
-			
-			<h3 class="font-black text-teal-400 uppercase text-xs tracking-[0.2em] relative z-10">Infrastruktur</h3>
-			
-			<div class="space-y-6 relative z-10">
-				<div class="flex justify-between items-center">
-					<span class="text-sm font-bold text-white/70">Database (Postgres)</span>
-					<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-				</div>
-				<div class="flex justify-between items-center">
-					<span class="text-sm font-bold text-white/70">Message Bus (RMQ)</span>
-					<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-				</div>
-				<div class="flex justify-between items-center">
-					<span class="text-sm font-bold text-white/70">Cache (Redis)</span>
-					<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-				</div>
-				<div class="flex justify-between items-center">
-					<span class="text-sm font-bold text-white/70">Auth Service</span>
-					<span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-				</div>
-				<div class="flex justify-between items-center">
-					<span class="text-sm font-bold text-white/70">Price Scraper</span>
-					<span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-				</div>
+		<!-- Tier distribution -->
+		<div class="space-y-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
+			<div class="space-y-1">
+				<h3 class="text-lg font-black text-[#0a2e31]">Distribusi Tier</h3>
+				<p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
+					Snapshot saat ini
+				</p>
 			</div>
 
-			<button class="w-full py-4 bg-[#217b84] hover:bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all relative z-10 mt-4 shadow-lg shadow-black/20">
-				Buka Monitoring Grafana
-			</button>
+			{#if loading && tierEntries.length === 0}
+				<div class="h-32 animate-pulse rounded-2xl bg-gray-50"></div>
+			{:else if tierEntries.length === 0}
+				<p class="text-xs font-bold text-gray-400">Belum ada subscription tercatat.</p>
+			{:else}
+				<div class="space-y-3">
+					{#each tierEntries as [tier, count] (tier)}
+						<div class="flex items-center justify-between">
+							<span class="text-xs font-black tracking-widest text-[#0a2e31] uppercase">{tier}</span
+							>
+							<span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-700"
+								>{formatNumber(count)}</span
+							>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			{#if stats}
+				<div class="rounded-2xl bg-[#0a2e31] p-5 text-white">
+					<p class="text-[10px] font-bold tracking-widest text-teal-300/80 uppercase">
+						Churn 30 hari
+					</p>
+					<p class="mt-1 text-2xl font-black tabular-nums">
+						{stats.churn_rate_30d_pct.toFixed(1)}%
+					</p>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
