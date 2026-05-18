@@ -25,3 +25,20 @@ check "investment" "${INVESTMENT_URL:-http://localhost:8086}/health"
 check "price" "${PRICE_URL:-http://localhost:8087}/health"
 check "sync" "${SYNC_URL:-http://localhost:8088}/health"
 check "notification" "${NOTIFICATION_URL:-http://localhost:8089}/health"
+check "admin" "${ADMIN_URL:-http://localhost:8090}/health"
+
+# Metrics endpoints (Prometheus scrape target untuk service yang sudah implement).
+# Tidak fail kalau service belum expose /metrics — pakai check_optional.
+check_optional() {
+  name="$1"
+  url="$2"
+  code="$(curl -sS -o /tmp/kasku-smoke-response -w '%{http_code}' "$url" || echo 000)"
+  if [ "$code" = "200" ]; then
+    echo "OK $name (metrics)"
+  else
+    echo "SKIP $name (metrics): HTTP $code"
+  fi
+}
+
+check_optional "admin" "${ADMIN_URL:-http://localhost:8090}/metrics"
+check_optional "billing" "${BILLING_URL:-http://localhost:8083}/metrics"
