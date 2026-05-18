@@ -4,7 +4,12 @@
 	import { onMount } from 'svelte';
 
 	type BackendPlan = { name: string; price_idr: number };
-	type Subscription = { plan_id: string };
+	type Subscription = {
+		plan_id: string;
+		status?: string;
+		expires_at?: string | null;
+		started_at?: string | null;
+	};
 	type Plan = {
 		id: string;
 		name: string;
@@ -19,8 +24,22 @@
 
 	let billingCycle = $state<'monthly' | 'yearly'>('monthly');
 	let loading = $state(true);
+	let subscribing = $state<string | null>(null);
 	let currentSub = $state<Subscription | null>(null);
-	let message = $state<string | null>(null);
+	let message = $state<{ tone: 'info' | 'error' | 'success'; text: string } | null>(null);
+
+	function formatDate(iso?: string | null) {
+		if (!iso) return '—';
+		try {
+			return new Date(iso).toLocaleDateString('id-ID', {
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric'
+			});
+		} catch {
+			return iso;
+		}
+	}
 
 	let plans = $state<Plan[]>([
 		{
@@ -109,17 +128,42 @@
 
 	async function handleSubscribe(planId: string) {
 		message = null;
+		subscribing = planId;
 		try {
 			const res = await apiFetch('/billing/subscribe', {
 				method: 'POST',
 				body: JSON.stringify({ plan_id: planId })
 			});
-			const result = await res.json();
-			if (!result.success) {
-				message = result.error?.message || 'Gagal berlangganan.';
+			const result = (await res.json()) as {
+				success: boolean;
+				data?: { snap_url?: string; redirect_url?: string };
+				error?: { code?: string; message?: string };
+			};
+
+			if (result.success && (result.data?.snap_url || result.data?.redirect_url)) {
+				const target = result.data.snap_url ?? result.data.redirect_url;
+				if (target) {
+					window.location.href = target;
+					return;
+				}
 			}
+
+			if (result.error?.code === 'COMING_SOON') {
+				message = {
+					tone: 'info',
+					text: 'Pembayaran Midtrans masih dalam tahap pengerjaan akhir. Sementara, hubungi admin@tubsamy.tech untuk aktivasi manual.'
+				};
+				return;
+			}
+
+			message = {
+				tone: 'error',
+				text: result.error?.message ?? 'Gagal memulai langganan. Silakan coba lagi.'
+			};
 		} catch {
-			message = 'Terjadi kesalahan koneksi.';
+			message = { tone: 'error', text: 'Terjadi kesalahan koneksi.' };
+		} finally {
+			subscribing = null;
 		}
 	}
 
@@ -145,11 +189,38 @@
 		</p>
 
 		{#if message}
+			{@const tone = message.tone}
 			<div
 				in:fly={{ y: -10 }}
-				class="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700"
+				class="rounded-2xl border p-4 text-left text-sm font-bold
+				{tone === 'error'
+					? 'border-red-100 bg-red-50 text-red-700'
+					: tone === 'success'
+						? 'border-green-100 bg-green-50 text-green-700'
+						: 'border-amber-100 bg-amber-50 text-amber-800'}"
 			>
-				{message}
+				{message.text}
+			</div>
+		{/if}
+
+		{#if currentSub && currentSub.plan_id && !currentSub.plan_id.includes('free')}
+			<div
+				class="rounded-2xl border border-teal-100 bg-teal-50 p-4 text-left text-xs font-bold text-teal-800"
+			>
+				<div class="flex items-center justify-between gap-3">
+					<div class="space-y-1">
+						<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+							Langganan Aktif
+						</p>
+						<p class="text-sm font-black text-teal-900">{currentSub.plan_id}</p>
+					</div>
+					<div class="space-y-1 text-right">
+						<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+							Aktif Hingga
+						</p>
+						<p class="text-sm font-bold text-teal-900">{formatDate(currentSub.expires_at)}</p>
+					</div>
+				</div>
 			</div>
 		{/if}
 
@@ -258,12 +329,18 @@
 
 				<button
 					onclick={() => handleSubscribe(plan.id)}
-					disabled={loading || isCurrent || plan.id === 'FREE'}
+					disabled={loading || isCurrent || plan.id === 'FREE' || subscribing !== null}
 					class="w-full rounded-xl py-3.5 text-[11px] font-black tracking-widest uppercase transition-all active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm {plan.isPopular
 						? 'bg-[#217b84] text-white shadow-xl shadow-teal-900/20 hover:bg-[#1a5f66]'
 						: 'border border-gray-100 bg-gray-50 text-[#0a2e31] hover:bg-gray-100'} disabled:cursor-default disabled:opacity-50"
 				>
-					{isCurrent ? 'Paket Saat Ini' : plan.btnText}
+					{#if subscribing === plan.id}
+						Menyiapkan…
+					{:else if isCurrent}
+						Paket Saat Ini
+					{:else}
+						{plan.btnText}
+					{/if}
 				</button>
 			</div>
 		{/each}
