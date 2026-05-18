@@ -13,6 +13,31 @@ scrape_configs:
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 10s
+
     relabel_configs:
+      # Ambil nama container (mis. /kasku-auth-service) → label `container`.
       - source_labels: ["__meta_docker_container_name"]
+        regex: "/?(.*)"
         target_label: container
+
+      # Ekstrak service name dari nama container (kasku-XXX → XXX).
+      # Akan jadi label primary untuk filter di Grafana.
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/?kasku-(.+)"
+        target_label: service
+
+    pipeline_stages:
+      # Service Go (zerolog) dan Rust (tracing) output JSON ke stdout.
+      # Parse json untuk akses field message + level + correlation_id.
+      - json:
+          expressions:
+            level: level
+            correlation_id: correlation_id
+            method: method
+            status: status
+
+      # Promote level + correlation_id ke label biar bisa difilter cepat
+      # via LogQL: {service="auth-service"} | correlation_id="abc-123"
+      - labels:
+          level:
+          correlation_id:
