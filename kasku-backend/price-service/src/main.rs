@@ -23,11 +23,25 @@ use proto_gen::price::v1::price_service_server::PriceServiceServer;
 use usecase::fetch_external::{CoinGeckoClient, MetalsLiveClient};
 use usecase::get_price::GetPriceUseCase;
 
+use std::sync::atomic::AtomicU64;
+
+/// Counters exposed via /metrics (Prometheus text format).
+/// Pakai AtomicU64 supaya lock-free dan increment cepat dari background scheduler.
+#[derive(Default)]
+pub struct PriceMetrics {
+    pub fetch_success_total: AtomicU64,
+    pub fetch_failure_total: AtomicU64,
+    pub cache_hit_total: AtomicU64,
+    pub cache_miss_total: AtomicU64,
+    pub stale_fallback_total: AtomicU64,
+}
+
 /// Shared application state passed to all Axum handlers.
 pub struct AppState {
     pub get_price_uc: Arc<GetPriceUseCase>,
     pub service_version: String,
     pub db_pool: sqlx::PgPool,
+    pub metrics: Arc<PriceMetrics>,
 }
 
 #[tokio::main]
@@ -93,10 +107,12 @@ async fn main() {
     );
 
     // ── Axum HTTP Server ────────────────────────────────────────────────
+    let metrics = Arc::new(PriceMetrics::default());
     let app_state = Arc::new(AppState {
         get_price_uc: get_price_uc.clone(),
         service_version: "1.0.0".to_string(),
         db_pool: pool.clone(),
+        metrics: metrics.clone(),
     });
 
     let http_app = Router::new()

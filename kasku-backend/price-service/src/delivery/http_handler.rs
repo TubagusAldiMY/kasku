@@ -53,12 +53,40 @@ pub async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     )
 }
 
-/// GET /metrics — minimal Prometheus scrape endpoint.
-pub async fn metrics() -> impl IntoResponse {
+/// GET /metrics — Prometheus text format.
+pub async fn metrics(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    use std::sync::atomic::Ordering;
+    let m = &state.metrics;
+    let body = format!(
+        "# HELP kasku_service_info KasKu service metadata\n\
+         # TYPE kasku_service_info gauge\n\
+         kasku_service_info{{service=\"price-service\",version=\"{ver}\"}} 1\n\
+         # HELP kasku_price_fetch_success_total Jumlah fetch external sukses (CoinGecko/metals.live).\n\
+         # TYPE kasku_price_fetch_success_total counter\n\
+         kasku_price_fetch_success_total {fs}\n\
+         # HELP kasku_price_fetch_failure_total Jumlah fetch external yang gagal.\n\
+         # TYPE kasku_price_fetch_failure_total counter\n\
+         kasku_price_fetch_failure_total {ff}\n\
+         # HELP kasku_price_cache_hit_total Jumlah request yang dilayani dari cache valid.\n\
+         # TYPE kasku_price_cache_hit_total counter\n\
+         kasku_price_cache_hit_total {ch}\n\
+         # HELP kasku_price_cache_miss_total Jumlah request yang miss cache (perlu fetch external).\n\
+         # TYPE kasku_price_cache_miss_total counter\n\
+         kasku_price_cache_miss_total {cm}\n\
+         # HELP kasku_price_stale_fallback_total Jumlah request yang fallback ke cache stale saat external down.\n\
+         # TYPE kasku_price_stale_fallback_total counter\n\
+         kasku_price_stale_fallback_total {sf}\n",
+        ver = state.service_version,
+        fs = m.fetch_success_total.load(Ordering::Relaxed),
+        ff = m.fetch_failure_total.load(Ordering::Relaxed),
+        ch = m.cache_hit_total.load(Ordering::Relaxed),
+        cm = m.cache_miss_total.load(Ordering::Relaxed),
+        sf = m.stale_fallback_total.load(Ordering::Relaxed),
+    );
     (
-		[(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
-		"# HELP kasku_service_info KasKu service metadata\n# TYPE kasku_service_info gauge\nkasku_service_info{service=\"price-service\"} 1\n",
-	)
+        [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        body,
+    )
 }
 
 /// Price response for REST API.
@@ -99,22 +127,35 @@ pub async fn get_price(
     Path(symbol): Path<String>,
     Query(query): Query<PriceQuery>,
 ) -> impl IntoResponse {
+    use std::sync::atomic::Ordering;
     match state.get_price_uc.execute(&symbol, &query.source).await {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(PriceResponse {
-                success: true,
-                data: Some(PriceData {
-                    symbol: result.symbol,
-                    price_idr: result.price_idr,
-                    price_usd: result.price_usd,
-                    is_fresh: result.is_fresh,
-                    updated_at: result.updated_at.to_rfc3339(),
+        Ok(result) => {
+            // Cache accounting: is_fresh=true berarti dilayani dari cache valid
+            // ATAU baru saja di-fetch sukses. Untuk membedakan dengan stale fallback,
+            // kita gunakan ini sebagai heuristik: is_fresh=false ⇒ stale fallback.
+            if result.is_fresh {
+                state.metrics.cache_hit_total.fetch_add(1, Ordering::Relaxed);
+            } else {
+                state.metrics.stale_fallback_total.fetch_add(1, Ordering::Relaxed);
+            }
+            (
+                StatusCode::OK,
+                Json(PriceResponse {
+                    success: true,
+                    data: Some(PriceData {
+                        symbol: result.symbol,
+                        price_idr: result.price_idr,
+                        price_usd: result.price_usd,
+                        is_fresh: result.is_fresh,
+                        updated_at: result.updated_at.to_rfc3339(),
+                    }),
+                    error: None,
                 }),
-                error: None,
-            }),
-        ),
+            )
+        }
         Err(err) => {
+            state.metrics.cache_miss_total.fetch_add(1, Ordering::Relaxed);
+            state.metrics.fetch_failure_total.fetch_add(1, Ordering::Relaxed);
             let (status, code) = match &err {
                 crate::domain::error::DomainError::PriceNotFound(_) => {
                     (StatusCode::NOT_FOUND, "PRICE_NOT_FOUND")
