@@ -87,7 +87,7 @@ func (r *postgresCategoryRepository) Update(ctx context.Context, tenantSchema st
 	}
 	query := fmt.Sprintf(`
 		UPDATE %s.categories SET name = $2, icon = $3, color = $4, category_type = $5, updated_at = $6
-		WHERE id = $1 AND is_default = false AND is_deleted = false
+		WHERE id = $1 AND is_deleted = false
 	`, tenantSchema)
 	result, err := r.pool.Exec(ctx, query, cat.ID, cat.Name, cat.Icon,
 		cat.Color, string(cat.CategoryType), time.Now().UTC())
@@ -106,7 +106,7 @@ func (r *postgresCategoryRepository) SoftDelete(ctx context.Context, tenantSchem
 	}
 	query := fmt.Sprintf(`
 		UPDATE %s.categories SET is_deleted = true, deleted_at = now(), updated_at = now()
-		WHERE id = $1 AND is_default = false AND is_deleted = false
+		WHERE id = $1 AND is_deleted = false
 	`, tenantSchema)
 	result, err := r.pool.Exec(ctx, query, id)
 	if err != nil {

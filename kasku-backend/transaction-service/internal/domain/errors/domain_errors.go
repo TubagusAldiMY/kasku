@@ -1,6 +1,9 @@
 package errors
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type DomainError struct {
 	Code    string
@@ -12,16 +15,20 @@ func (e *DomainError) Error() string {
 }
 
 var (
-	ErrTransactionNotFound     = &DomainError{Code: "TRANSACTION_NOT_FOUND", Message: "Transaksi tidak ditemukan."}
-	ErrCategoryNotFound        = &DomainError{Code: "CATEGORY_NOT_FOUND", Message: "Kategori tidak ditemukan."}
-	ErrCategoryHasTransactions = &DomainError{Code: "CATEGORY_HAS_TRANSACTIONS", Message: "Kategori tidak dapat dihapus karena masih memiliki transaksi aktif."}
-	ErrTransactionLimitReached = &DomainError{Code: "TRANSACTION_LIMIT_REACHED", Message: "Batas jumlah transaksi bulanan tercapai. Upgrade subscription untuk melanjutkan."}
-	ErrExportNotAllowed        = &DomainError{Code: "EXPORT_NOT_ALLOWED", Message: "Ekspor CSV tidak tersedia di plan Anda."}
-	ErrInvalidInput            = &DomainError{Code: "INVALID_INPUT", Message: "Input tidak valid."}
-	ErrInternal                = &DomainError{Code: "INTERNAL_ERROR", Message: "Terjadi kesalahan internal."}
+	ErrTransactionNotFound            = &DomainError{Code: "TRANSACTION_NOT_FOUND", Message: "Transaksi tidak ditemukan."}
+	ErrCategoryNotFound               = &DomainError{Code: "CATEGORY_NOT_FOUND", Message: "Kategori tidak ditemukan."}
+	ErrCategoryHasTransactions        = &DomainError{Code: "CATEGORY_HAS_TRANSACTIONS", Message: "Kategori tidak dapat dihapus karena masih memiliki transaksi aktif."}
+	ErrDefaultCategoryCannotBeDeleted = &DomainError{Code: "DEFAULT_CATEGORY_CANNOT_BE_DELETED", Message: "Kategori default tidak dapat dihapus."}
+	ErrTransactionLimitReached        = &DomainError{Code: "TRANSACTION_LIMIT_REACHED", Message: "Batas jumlah transaksi bulanan tercapai. Upgrade subscription untuk melanjutkan."}
+	ErrExportNotAllowed               = &DomainError{Code: "EXPORT_NOT_ALLOWED", Message: "Ekspor CSV tidak tersedia di plan Anda."}
+	ErrInvalidInput                   = &DomainError{Code: "INVALID_INPUT", Message: "Input tidak valid."}
+	ErrInternal                       = &DomainError{Code: "INTERNAL_ERROR", Message: "Terjadi kesalahan internal."}
 )
 
 func IsDomainError(err error) (*DomainError, bool) {
-	de, ok := err.(*DomainError)
-	return de, ok
+	var de *DomainError
+	if errors.As(err, &de) {
+		return de, true
+	}
+	return nil, false
 }

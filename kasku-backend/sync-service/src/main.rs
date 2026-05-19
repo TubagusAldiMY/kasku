@@ -51,6 +51,10 @@ async fn main() {
         .await
         .expect("gagal koneksi ke PostgreSQL");
 
+    db::run_migrations(&pool)
+        .await
+        .expect("gagal menjalankan database migrations");
+
     // ── gRPC Clients (lazy-connect) ─────────────────────────────────────
     let grpc_clients = SyncGrpcClients::connect(
         &cfg.finance_service_grpc_addr,

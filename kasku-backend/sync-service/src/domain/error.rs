@@ -17,6 +17,11 @@ pub enum DomainError {
     #[error("kesalahan database")]
     DatabaseError(#[from] sqlx::Error),
 
+    // Tenant schema ada tapi sync_log belum di-provision oleh finance-service.
+    // Terjadi jika provision_tenant() belum selesai saat sync pertama dilakukan.
+    #[error("tenant '{0}' belum di-provisioning, coba beberapa saat lagi")]
+    TenantNotProvisioned(String),
+
     #[error("upstream service unavailable")]
     UpstreamUnavailable,
 

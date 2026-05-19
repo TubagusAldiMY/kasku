@@ -29,6 +29,7 @@ type NotificationHandler interface {
 	HandlePaymentFailed(ctx context.Context, e event.PaymentFailedEvent) error
 	HandleSubscriptionExpiring(ctx context.Context, e event.SubscriptionExpiringEvent) error
 	HandleSubscriptionExpired(ctx context.Context, e event.SubscriptionExpiredEvent) error
+	HandleSubscriptionCancelled(ctx context.Context, e event.SubscriptionCancelledEvent) error
 }
 
 // RabbitMQConsumer mengkonsumsi notification events dari exchange kasku.events.
@@ -74,6 +75,7 @@ func NewRabbitMQConsumer(amqpURL string, log zerolog.Logger) (*RabbitMQConsumer,
 		"payment.failed",
 		"subscription.expiring",
 		"subscription.expired",
+		"subscription.cancelled",
 	}
 	for _, key := range routingKeys {
 		if err := ch.QueueBind(queueName, key, exchangeName, false, nil); err != nil {
@@ -175,6 +177,15 @@ func (c *RabbitMQConsumer) processMessage(ctx context.Context, msg amqp.Delivery
 			return
 		}
 		processErr = handler.HandleSubscriptionExpired(ctx, e)
+
+	case "subscription.cancelled":
+		var e event.SubscriptionCancelledEvent
+		if err := json.Unmarshal(msg.Body, &e); err != nil {
+			c.log.Error().Err(err).Msg("gagal unmarshal SubscriptionCancelledEvent")
+			_ = msg.Nack(false, false)
+			return
+		}
+		processErr = handler.HandleSubscriptionCancelled(ctx, e)
 
 	default:
 		c.log.Warn().Str("routing_key", msg.RoutingKey).Msg("routing key tidak dikenal, pesan diabaikan")

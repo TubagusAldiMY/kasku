@@ -158,6 +158,7 @@
 			const res = await apiFetch('/categories');
 			const result = await res.json();
 			if (result.success && Array.isArray(result.data)) {
+				await categoriesRepo.clear();
 				await categoriesRepo.putMany(result.data as CategoryRow[]);
 				await reloadFromLocal();
 			}

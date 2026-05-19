@@ -22,7 +22,7 @@
 		type: 'INCOME' | 'EXPENSE';
 	};
 	type AccountRef = { id: string; name: string };
-	type CategoryRef = { id: string; name: string; category_type: 'INCOME' | 'EXPENSE' };
+	type CategoryRef = { id: string; name: string; category_type: 'INCOME' | 'EXPENSE' | 'BOTH' };
 
 	let transactions = $state<Transaction[]>([]);
 	let loading = $state(true);
@@ -40,7 +40,9 @@
 		date: new Date().toISOString().split('T')[0]
 	});
 
-	const filteredCategories = $derived(allCategories.filter((c) => c.category_type === newTx.type));
+	const filteredCategories = $derived(
+		allCategories.filter((c) => c.category_type === newTx.type || c.category_type === 'BOTH')
+	);
 
 	function projectTransaction(
 		row: TransactionRow,
@@ -93,6 +95,7 @@
 			const result = await res.json();
 			if (result.success && Array.isArray(result.data)) {
 				const rows = result.data as CategoryRow[];
+				await categoriesRepo.clear();
 				await categoriesRepo.putMany(rows);
 				await reloadFromLocal();
 			}

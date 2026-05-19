@@ -53,3 +53,11 @@ type SubscriptionExpiredEvent struct {
 	Email    string `json:"email"`
 	PlanName string `json:"plan_name"`
 }
+
+// SubscriptionCancelledEvent adalah payload event subscription dibatalkan oleh user (NOTIF-FR-006).
+type SubscriptionCancelledEvent struct {
+	UserID      string `json:"user_id"`
+	Email       string `json:"email"`
+	PlanName    string `json:"plan_name"`
+	CancelledAt string `json:"cancelled_at"` // RFC3339
+}

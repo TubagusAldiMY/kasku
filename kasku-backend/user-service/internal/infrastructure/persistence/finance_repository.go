@@ -11,6 +11,7 @@ import (
 type FinanceRepository interface {
 	ProvisionTenant(ctx context.Context, userID string) error
 	EnsureTenantRuntimeObjects(ctx context.Context, tenantSchema string) error
+	RemoveDefaultCategorySeeds(ctx context.Context, tenantSchema string) error
 }
 
 type postgresFinanceRepository struct {
@@ -35,6 +36,14 @@ func (r *postgresFinanceRepository) EnsureTenantRuntimeObjects(ctx context.Conte
 	_, err := r.pool.Exec(ctx, "SELECT ensure_tenant_runtime_objects($1)", tenantSchema)
 	if err != nil {
 		return fmt.Errorf("gagal ensure runtime objects untuk tenant %s: %w", tenantSchema, err)
+	}
+	return nil
+}
+
+func (r *postgresFinanceRepository) RemoveDefaultCategorySeeds(ctx context.Context, tenantSchema string) error {
+	_, err := r.pool.Exec(ctx, "SELECT remove_default_category_seeds($1)", tenantSchema)
+	if err != nil {
+		return fmt.Errorf("gagal hapus seed kategori default untuk tenant %s: %w", tenantSchema, err)
 	}
 	return nil
 }

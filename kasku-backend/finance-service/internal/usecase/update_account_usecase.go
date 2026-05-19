@@ -37,6 +37,9 @@ func (uc *UpdateAccountUseCase) Execute(ctx context.Context, input UpdateAccount
 	if err != nil {
 		return nil, fmt.Errorf("gagal ambil akun: %w", err)
 	}
+	if existing == nil {
+		return nil, domainerrors.ErrAccountNotFound
+	}
 
 	existing.Name = input.Name
 	existing.AccountType = input.AccountType

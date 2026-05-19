@@ -182,7 +182,9 @@ services:
   # auth-service
   # ============================================================
   auth-service:
-    build: ./auth-service
+    build:
+      context: .
+      dockerfile: ./auth-service/Dockerfile
     container_name: kasku-auth-service
     restart: unless-stopped
     env_file:
@@ -221,7 +223,9 @@ services:
   # api-gateway
   # ============================================================
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: .
+      dockerfile: ./api-gateway/Dockerfile
     container_name: kasku-api-gateway
     restart: unless-stopped
     env_file:
@@ -270,7 +274,9 @@ services:
   # user-service
   # ============================================================
   user-service:
-    build: ./user-service
+    build:
+      context: .
+      dockerfile: ./user-service/Dockerfile
     container_name: kasku-user-service
     restart: unless-stopped
     env_file:
@@ -306,7 +312,9 @@ services:
   # billing-service
   # ============================================================
   billing-service:
-    build: ./billing-service
+    build:
+      context: .
+      dockerfile: ./billing-service/Dockerfile
     container_name: kasku-billing-service
     restart: unless-stopped
     env_file:
@@ -338,7 +346,9 @@ services:
   # finance-service
   # ============================================================
   finance-service:
-    build: ./finance-service
+    build:
+      context: .
+      dockerfile: ./finance-service/Dockerfile
     container_name: kasku-finance-service
     restart: unless-stopped
     env_file:
@@ -369,7 +379,9 @@ services:
   # transaction-service
   # ============================================================
   transaction-service:
-    build: ./transaction-service
+    build:
+      context: .
+      dockerfile: ./transaction-service/Dockerfile
     container_name: kasku-transaction-service
     restart: unless-stopped
     env_file:
@@ -400,7 +412,9 @@ services:
   # notification-service
   # ============================================================
   notification-service:
-    build: ./notification-service
+    build:
+      context: .
+      dockerfile: ./notification-service/Dockerfile
     container_name: kasku-notification-service
     restart: unless-stopped
     env_file:
@@ -437,7 +451,9 @@ services:
   # Phase 2 — investment-service
   # ============================================================
   investment-service:
-    build: ./investment-service
+    build:
+      context: .
+      dockerfile: ./investment-service/Dockerfile
     container_name: kasku-investment-service
     restart: unless-stopped
     env_file:
@@ -545,7 +561,9 @@ services:
   # Admin service — internal admin network only
   # ============================================================
   admin-service:
-    build: ./admin-service
+    build:
+      context: .
+      dockerfile: ./admin-service/Dockerfile
     container_name: kasku-admin-service
     restart: unless-stopped
     env_file:

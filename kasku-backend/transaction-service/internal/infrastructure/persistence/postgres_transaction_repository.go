@@ -9,6 +9,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/entity"
 	domainerrors "github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/repository"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -44,18 +45,67 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
-	query := fmt.Sprintf(`
+
+	dbTx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("gagal mulai transaksi DB: %w", err)
+	}
+	defer dbTx.Rollback(ctx) //nolint:errcheck
+
+	insertQuery := fmt.Sprintf(`
 		INSERT INTO %s.transactions
 			(id, sync_id, account_id, category_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)
 		ON CONFLICT (sync_id) DO NOTHING
 	`, tenantSchema)
-	_, err := r.pool.Exec(ctx, query,
+	tag, err := dbTx.Exec(ctx, insertQuery,
 		tx.ID, tx.SyncID, tx.AccountID, tx.CategoryID,
 		string(tx.TransactionType), tx.AmountIDR, tx.TransactionDate,
 		tx.Notes, tx.ToAccountID, tx.CreatedAt, tx.UpdatedAt,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("gagal insert transaksi: %w", err)
+	}
+	// ON CONFLICT (sync_id) DO NOTHING — duplicate sync_id dianggap idempotent
+	if tag.RowsAffected() == 0 {
+		return dbTx.Commit(ctx)
+	}
+
+	if err := AdjustBalance(ctx, dbTx, tenantSchema, tx.AccountID, tx.ToAccountID, tx.TransactionType, tx.AmountIDR); err != nil {
+		return err
+	}
+
+	return dbTx.Commit(ctx)
+}
+
+// AdjustBalance mengubah saldo akun sesuai jenis transaksi.
+// INCOME: source +amount; EXPENSE: source -amount; TRANSFER: source -amount, dest +amount.
+func AdjustBalance(ctx context.Context, dbTx pgx.Tx, tenantSchema string, accountID uuid.UUID, toAccountID *uuid.UUID, txType entity.TransactionType, amount int64) error {
+	balanceQuery := fmt.Sprintf(`
+		UPDATE %s.financial_accounts SET balance = balance + $1, updated_at = now()
+		WHERE id = $2 AND is_deleted = false
+	`, tenantSchema)
+
+	var sourceDelta int64
+	switch txType {
+	case entity.TransactionIncome:
+		sourceDelta = amount
+	case entity.TransactionExpense:
+		sourceDelta = -amount
+	case entity.TransactionTransfer:
+		sourceDelta = -amount
+	}
+
+	if _, err := dbTx.Exec(ctx, balanceQuery, sourceDelta, accountID); err != nil {
+		return fmt.Errorf("gagal update saldo sumber: %w", err)
+	}
+
+	if txType == entity.TransactionTransfer && toAccountID != nil {
+		if _, err := dbTx.Exec(ctx, balanceQuery, amount, *toAccountID); err != nil {
+			return fmt.Errorf("gagal update saldo tujuan: %w", err)
+		}
+	}
+	return nil
 }
 
 func (r *postgresTransactionRepository) List(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.Transaction, error) {
@@ -148,19 +198,68 @@ func (r *postgresTransactionRepository) SoftDelete(ctx context.Context, tenantSc
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
-	query := fmt.Sprintf(`
-		UPDATE %s.transactions SET is_deleted = true, deleted_at = now(), updated_at = now()
+
+	dbTx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("gagal mulai transaksi DB: %w", err)
+	}
+	defer dbTx.Rollback(ctx) //nolint:errcheck
+
+	// Ambil detail transaksi sekaligus validasi kepemilikan user
+	selectQuery := fmt.Sprintf(`
+		SELECT transaction_type, amount_idr, account_id, to_account_id
+		FROM %s.transactions
 		WHERE id = $1 AND is_deleted = false
 		  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id = $2)
 	`, tenantSchema, tenantSchema)
-	result, err := r.pool.Exec(ctx, query, id, userID)
-	if err != nil {
-		return fmt.Errorf("gagal soft delete transaksi: %w", err)
-	}
-	if result.RowsAffected() == 0 {
+
+	var txType entity.TransactionType
+	var amount int64
+	var accountID uuid.UUID
+	var toAccountID *uuid.UUID
+	err = dbTx.QueryRow(ctx, selectQuery, id, userID).Scan(&txType, &amount, &accountID, &toAccountID)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return domainerrors.ErrTransactionNotFound
 	}
-	return nil
+	if err != nil {
+		return fmt.Errorf("gagal ambil detail transaksi: %w", err)
+	}
+
+	deleteQuery := fmt.Sprintf(`
+		UPDATE %s.transactions SET is_deleted = true, deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND is_deleted = false
+	`, tenantSchema)
+	if _, err := dbTx.Exec(ctx, deleteQuery, id); err != nil {
+		return fmt.Errorf("gagal soft delete transaksi: %w", err)
+	}
+
+	// Balik delta saldo (kebalikan dari Create)
+	var reversedType entity.TransactionType
+	switch txType {
+	case entity.TransactionIncome:
+		reversedType = entity.TransactionExpense
+	case entity.TransactionExpense:
+		reversedType = entity.TransactionIncome
+	case entity.TransactionTransfer:
+		// Untuk transfer: source mendapat kembali, dest dikurangi kembali
+		reversedType = entity.TransactionIncome // source +amount
+	}
+	if err := AdjustBalance(ctx, dbTx, tenantSchema, accountID, toAccountID, reversedType, amount); err != nil {
+		return err
+	}
+	// Khusus TRANSFER: dest dikurangi kembali (adjustBalance tadi menambah dest karena reversedType=INCOME+TRANSFER)
+	// Kita perlu override: dest -amount. Gunakan adjustBalance dengan type EXPENSE tanpa to_account.
+	if txType == entity.TransactionTransfer && toAccountID != nil {
+		balanceQuery := fmt.Sprintf(`
+			UPDATE %s.financial_accounts SET balance = balance - $1, updated_at = now()
+			WHERE id = $2 AND is_deleted = false
+		`, tenantSchema)
+		if _, err := dbTx.Exec(ctx, balanceQuery, amount, *toAccountID); err != nil {
+			return fmt.Errorf("gagal balik saldo tujuan: %w", err)
+		}
+	}
+
+	return dbTx.Commit(ctx)
 }
 
 func (r *postgresTransactionRepository) GetSummary(ctx context.Context, tenantSchema, userID string, from, to time.Time) (*entity.TransactionSummary, error) {

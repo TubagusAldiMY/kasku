@@ -43,6 +43,9 @@ func (uc *ProvisionTenantUseCase) Execute(ctx context.Context, userID, email, us
 	if err := uc.financeRepo.EnsureTenantRuntimeObjects(ctx, tenantSchema); err != nil {
 		return fmt.Errorf("gagal ensure tenant runtime objects: %w", err)
 	}
+	if err := uc.financeRepo.RemoveDefaultCategorySeeds(ctx, tenantSchema); err != nil {
+		return fmt.Errorf("gagal hapus seed kategori default: %w", err)
+	}
 
 	// 2. Buat subscription FREE di kasku_billing
 	if err := uc.subscriptionRepo.CreateFreeSubscription(ctx, userID); err != nil {

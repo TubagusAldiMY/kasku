@@ -145,6 +145,23 @@ func (uc *NotificationUseCase) HandleSubscriptionExpired(ctx context.Context, e 
 	return nil
 }
 
+func (uc *NotificationUseCase) HandleSubscriptionCancelled(ctx context.Context, e event.SubscriptionCancelledEvent) error {
+	body, err := email.RenderTemplate(uc.templates, "subscription_cancelled.html", map[string]interface{}{
+		"PlanName":    e.PlanName,
+		"CancelledAt": e.CancelledAt,
+		"RenewLink":   fmt.Sprintf("%s/billing", uc.baseURL),
+	})
+	if err != nil {
+		return fmt.Errorf("gagal render template subscription_cancelled: %w", err)
+	}
+
+	if err := uc.sender.Send(e.Email, "Langganan KasKu Kamu Telah Dibatalkan", body); err != nil {
+		return fmt.Errorf("gagal kirim subscription cancelled email ke %s: %w", maskEmail(e.Email), err)
+	}
+	uc.log.Info().Str("user_id", e.UserID).Str("plan", e.PlanName).Msg("subscription cancelled email terkirim")
+	return nil
+}
+
 // maskEmail menyembunyikan bagian lokal email untuk logging aman (u***@domain.com).
 // Tidak pernah meng-log email address secara penuh sesuai standar OWASP A02.
 func maskEmail(emailAddr string) string {

@@ -47,7 +47,7 @@ export type TransactionRow = SyncableEntity & {
 
 export type CategoryRow = SyncableEntity & {
 	name: string;
-	category_type: 'INCOME' | 'EXPENSE';
+	category_type: 'INCOME' | 'EXPENSE' | 'BOTH';
 	color?: string;
 };
 

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/entity"
@@ -46,15 +47,27 @@ func NewCreateCategoryUseCase(catRepo repository.CategoryRepository) *CreateCate
 }
 
 func (uc *CreateCategoryUseCase) Execute(ctx context.Context, input CreateCategoryInput) (*entity.Category, error) {
-	if input.Name == "" {
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
 		return nil, fmt.Errorf("%w: nama kategori wajib diisi", domainerrors.ErrInvalidInput)
+	}
+	if !input.CategoryType.IsValid() {
+		return nil, fmt.Errorf("%w: category_type harus INCOME, EXPENSE, atau BOTH", domainerrors.ErrInvalidInput)
+	}
+	icon := strings.TrimSpace(input.Icon)
+	if icon == "" {
+		icon = "tag"
+	}
+	color := strings.TrimSpace(input.Color)
+	if color == "" {
+		color = "#6366f1"
 	}
 	now := time.Now().UTC()
 	cat := &entity.Category{
 		ID:           uuid.New(),
-		Name:         input.Name,
-		Icon:         input.Icon,
-		Color:        input.Color,
+		Name:         name,
+		Icon:         icon,
+		Color:        color,
 		CategoryType: input.CategoryType,
 		IsDefault:    false,
 		IsDeleted:    false,
@@ -78,13 +91,26 @@ func NewUpdateCategoryUseCase(catRepo repository.CategoryRepository) *UpdateCate
 }
 
 func (uc *UpdateCategoryUseCase) Execute(ctx context.Context, tenantSchema, id, name, icon, color string, catType entity.CategoryType) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("%w: nama kategori wajib diisi", domainerrors.ErrInvalidInput)
+	}
+	if !catType.IsValid() {
+		return fmt.Errorf("%w: category_type harus INCOME, EXPENSE, atau BOTH", domainerrors.ErrInvalidInput)
+	}
 	existing, err := uc.catRepo.GetByID(ctx, tenantSchema, id)
 	if err != nil {
 		return err
 	}
 	existing.Name = name
-	existing.Icon = icon
-	existing.Color = color
+	existing.Icon = strings.TrimSpace(icon)
+	if existing.Icon == "" {
+		existing.Icon = "tag"
+	}
+	existing.Color = strings.TrimSpace(color)
+	if existing.Color == "" {
+		existing.Color = "#6366f1"
+	}
 	existing.CategoryType = catType
 	return uc.catRepo.Update(ctx, tenantSchema, existing)
 }
@@ -100,6 +126,13 @@ func NewDeleteCategoryUseCase(catRepo repository.CategoryRepository) *DeleteCate
 }
 
 func (uc *DeleteCategoryUseCase) Execute(ctx context.Context, tenantSchema, id string) error {
+	cat, err := uc.catRepo.GetByID(ctx, tenantSchema, id)
+	if err != nil {
+		return err
+	}
+	if cat.IsDefault {
+		return domainerrors.ErrDefaultCategoryCannotBeDeleted
+	}
 	hasActive, err := uc.catRepo.HasActiveTransactions(ctx, tenantSchema, id)
 	if err != nil {
 		return fmt.Errorf("gagal cek transaksi aktif: %w", err)

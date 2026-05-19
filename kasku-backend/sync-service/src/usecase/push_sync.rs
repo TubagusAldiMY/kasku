@@ -292,5 +292,6 @@ fn err_kind(err: &DomainError) -> &'static str {
         DomainError::InvalidTenantSchema(_) => "invalid_tenant_schema",
         DomainError::TenantMismatch { .. } => "tenant_mismatch",
         DomainError::Unauthorized => "unauthorized",
+        DomainError::TenantNotProvisioned(_) => "tenant_not_provisioned",
     }
 }

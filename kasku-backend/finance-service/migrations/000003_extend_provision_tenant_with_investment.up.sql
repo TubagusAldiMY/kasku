@@ -127,25 +127,6 @@ BEGIN
         CREATE INDEX IF NOT EXISTS idx_unit_history_asset_recorded
         ON %I.unit_history (asset_id, recorded_at DESC)', v_schema);
 
-    -- Seed default categories (idempotent via ON CONFLICT DO NOTHING)
-    EXECUTE format('
-        INSERT INTO %I.categories (name, icon, color, category_type, is_default) VALUES
-            (''Gaji'',           ''briefcase'',      ''#22c55e'', ''INCOME'',  true),
-            (''Bisnis'',         ''store'',           ''#16a34a'', ''INCOME'',  true),
-            (''Investasi'',      ''trending-up'',     ''#15803d'', ''INCOME'',  true),
-            (''Bonus'',          ''gift'',             ''#4ade80'', ''INCOME'',  true),
-            (''Makanan'',        ''utensils'',         ''#f97316'', ''EXPENSE'', true),
-            (''Transportasi'',   ''car'',              ''#3b82f6'', ''EXPENSE'', true),
-            (''Belanja'',        ''shopping-bag'',     ''#a855f7'', ''EXPENSE'', true),
-            (''Kesehatan'',      ''heart-pulse'',      ''#ef4444'', ''EXPENSE'', true),
-            (''Tagihan'',        ''file-text'',        ''#f59e0b'', ''EXPENSE'', true),
-            (''Hiburan'',        ''music'',            ''#ec4899'', ''EXPENSE'', true),
-            (''Pendidikan'',     ''book-open'',        ''#06b6d4'', ''EXPENSE'', true),
-            (''Tabungan'',       ''piggy-bank'',       ''#84cc16'', ''BOTH'',    true),
-            (''Transfer'',       ''arrow-left-right'', ''#64748b'', ''BOTH'',    true),
-            (''Lainnya'',        ''more-horizontal'',  ''#94a3b8'', ''BOTH'',    true)
-        ON CONFLICT DO NOTHING', v_schema);
-
     -- Grant akses ke semua service yang membutuhkan kasku_finance
     EXECUTE format('GRANT USAGE ON SCHEMA %I TO kasku_finance_svc, kasku_transaction_svc, kasku_investment_svc, kasku_sync_svc', v_schema);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO kasku_finance_svc, kasku_transaction_svc, kasku_investment_svc, kasku_sync_svc', v_schema);

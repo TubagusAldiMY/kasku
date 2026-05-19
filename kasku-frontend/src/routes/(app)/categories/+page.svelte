@@ -3,16 +3,39 @@
 	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
 
+	type CategoryType = 'INCOME' | 'EXPENSE' | 'BOTH';
+
 	type Category = {
 		id: string;
 		name: string;
-		category_type: 'INCOME' | 'EXPENSE';
+		category_type: CategoryType;
 		icon: string;
 		color: string;
+		is_default?: boolean;
+		updated_at?: string;
+	};
+
+	type ServerCategory = {
+		id?: string;
+		ID?: string;
+		name?: string;
+		Name?: string;
+		category_type?: CategoryType;
+		CategoryType?: CategoryType;
+		icon?: string;
+		Icon?: string;
+		color?: string;
+		Color?: string;
+		is_default?: boolean;
+		IsDefault?: boolean;
+		updated_at?: string;
+		UpdatedAt?: string;
 	};
 
 	let categories = $state<Category[]>([]);
 	let loading = $state(true);
+	let saving = $state(false);
+	let errorMessage = $state('');
 	let showModal = $state(false);
 
 	let form = $state<Category>({
@@ -22,16 +45,6 @@
 		icon: '🏷️',
 		color: '#6b7280'
 	});
-
-	// Mock Data
-	const mockCategories: Category[] = [
-		{ id: '1', name: 'Makanan & Minuman', category_type: 'EXPENSE', icon: '🍔', color: '#f59e0b' },
-		{ id: '2', name: 'Transportasi', category_type: 'EXPENSE', icon: '🚗', color: '#3b82f6' },
-		{ id: '3', name: 'Gaji', category_type: 'INCOME', icon: '💰', color: '#10b981' },
-		{ id: '4', name: 'Hiburan', category_type: 'EXPENSE', icon: '🎬', color: '#8b5cf6' },
-		{ id: '5', name: 'Investasi', category_type: 'EXPENSE', icon: '📈', color: '#14b8a6' },
-		{ id: '6', name: 'Bonus', category_type: 'INCOME', icon: '🎁', color: '#ec4899' }
-	];
 
 	const predefinedColors = [
 		'#f59e0b',
@@ -44,24 +57,57 @@
 		'#64748b'
 	];
 
+	function normalizeCategory(item: ServerCategory): Category | null {
+		const id = item.id ?? item.ID;
+		const name = item.name ?? item.Name;
+		const categoryType = item.category_type ?? item.CategoryType;
+
+		if (!id || !name || !categoryType) return null;
+
+		return {
+			id,
+			name,
+			category_type: categoryType,
+			icon: item.icon ?? item.Icon ?? '🏷️',
+			color: item.color ?? item.Color ?? '#6b7280',
+			is_default: item.is_default ?? item.IsDefault,
+			updated_at: item.updated_at ?? item.UpdatedAt
+		};
+	}
+
+	function normalizeCategories(data: unknown): Category[] {
+		if (!Array.isArray(data)) return [];
+		return data
+			.map((item) => normalizeCategory(item as ServerCategory))
+			.filter((item): item is Category => item !== null);
+	}
+
+	async function readApiResult(res: Response) {
+		try {
+			return await res.json();
+		} catch {
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
+		}
+	}
+
 	async function fetchCategories() {
 		loading = true;
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-
-		if (isMock) {
-			setTimeout(() => {
-				categories = mockCategories;
-				loading = false;
-			}, 600);
-			return;
-		}
+		errorMessage = '';
 
 		try {
 			const res = await apiFetch('/categories');
-			const result = await res.json();
-			if (result.success) categories = result.data || [];
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				categories = normalizeCategories(result.data);
+			} else {
+				errorMessage = result.error?.message || 'Gagal memuat kategori.';
+			}
 		} catch (err) {
 			console.error(err);
+			errorMessage = 'Gagal memuat kategori. Periksa koneksi atau service backend.';
 		} finally {
 			loading = false;
 		}
@@ -69,73 +115,77 @@
 
 	async function handleSaveCategory(e: SubmitEvent) {
 		e.preventDefault();
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-
-		if (isMock) {
-			if (form.id) {
-				categories = categories.map((c) => (c.id === form.id ? { ...c, ...form } : c));
-			} else {
-				categories = [...categories, { ...form, id: Math.random().toString() }];
-			}
-			showModal = false;
-			return;
-		}
+		errorMessage = '';
 
 		try {
+			saving = true;
 			const method = form.id ? 'PUT' : 'POST';
 			const url = form.id ? `/categories/${form.id}` : '/categories';
 			const res = await apiFetch(url, {
 				method,
-				body: JSON.stringify(form)
+				body: JSON.stringify({
+					name: form.name.trim(),
+					category_type: form.category_type,
+					icon: form.icon.trim(),
+					color: form.color
+				})
 			});
-			const result = await res.json();
-			if (result.success) {
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
 				showModal = false;
-				fetchCategories();
+				await fetchCategories();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menyimpan kategori.';
 			}
 		} catch (err) {
 			console.error(err);
+			errorMessage = 'Gagal menyimpan kategori. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
 	async function handleDeleteCategory(id: string) {
 		if (!confirm('Hapus kategori ini? Transaksi terkait mungkin akan terpengaruh.')) return;
 
-		const isMock = localStorage.getItem('kasku_mock_mode') === 'true';
-		if (isMock) {
-			categories = categories.filter((c) => c.id !== id);
-			showModal = false;
-			return;
-		}
-
 		try {
+			saving = true;
 			const res = await apiFetch(`/categories/${id}`, { method: 'DELETE' });
-			const result = await res.json();
-			if (result.success) {
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
 				showModal = false;
-				fetchCategories();
+				await fetchCategories();
 			} else {
-				alert(result.error?.message || 'Gagal menghapus kategori');
+				errorMessage = result.error?.message || 'Gagal menghapus kategori';
 			}
 		} catch (err) {
 			console.error(err);
+			errorMessage = 'Gagal menghapus kategori. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
-	function openAddModal(type: 'INCOME' | 'EXPENSE') {
+	function openAddModal(type: CategoryType) {
+		errorMessage = '';
 		form = { id: '', name: '', category_type: type, icon: '🏷️', color: predefinedColors[0] };
 		showModal = true;
 	}
 
 	function openEditModal(cat: Category) {
+		errorMessage = '';
 		form = { ...cat };
 		showModal = true;
 	}
 
 	onMount(fetchCategories);
 
-	const expenseCategories = $derived(categories.filter((c) => c.category_type === 'EXPENSE'));
-	const incomeCategories = $derived(categories.filter((c) => c.category_type === 'INCOME'));
+	const expenseCategories = $derived(
+		categories.filter((c) => c.category_type === 'EXPENSE' || c.category_type === 'BOTH')
+	);
+	const incomeCategories = $derived(
+		categories.filter((c) => c.category_type === 'INCOME' || c.category_type === 'BOTH')
+	);
 </script>
 
 <div class="animate-in fade-in space-y-8 pb-20 duration-500">
@@ -145,6 +195,12 @@
 			Kelola kategori untuk pencatatan keuangan yang lebih rapi.
 		</p>
 	</div>
+
+	{#if errorMessage && !showModal}
+		<div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+			{errorMessage}
+		</div>
+	{/if}
 
 	<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
 		<!-- Expense Section -->
@@ -305,6 +361,7 @@
 						>
 							<option value="EXPENSE">Pengeluaran</option>
 							<option value="INCOME">Pemasukan</option>
+							<option value="BOTH">Keduanya</option>
 						</select>
 					</div>
 
@@ -356,11 +413,20 @@
 						{/each}
 					</div>
 
+					{#if errorMessage}
+						<div
+							class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600"
+						>
+							{errorMessage}
+						</div>
+					{/if}
+
 					<div class="flex gap-3 pt-4">
 						{#if form.id}
 							<button
 								type="button"
 								onclick={() => handleDeleteCategory(form.id)}
+								disabled={saving}
 								class="rounded-xl border border-red-100 px-5 py-3 text-[10px] font-black tracking-widest text-red-500 uppercase transition-all hover:bg-red-50"
 							>
 								Hapus
@@ -368,9 +434,10 @@
 						{/if}
 						<button
 							type="submit"
-							class="flex-1 rounded-xl bg-[#0a2e31] py-3 text-[10px] font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98]"
+							disabled={saving}
+							class="flex-1 rounded-xl bg-[#0a2e31] py-3 text-[10px] font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
 						>
-							Simpan
+							{saving ? 'Menyimpan...' : 'Simpan'}
 						</button>
 					</div>
 				</form>

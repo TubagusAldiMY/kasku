@@ -16,6 +16,14 @@ pub async fn new_postgres_pool(database_url: &str) -> Result<PgPool, sqlx::Error
     Ok(pool)
 }
 
+/// Run embedded migrations (public schema metadata only).
+/// Per-tenant sync_log dikelola oleh finance-service provision_tenant().
+pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
+    sqlx::migrate!("./migrations").run(pool).await?;
+    info!("sync-service migrations applied");
+    Ok(())
+}
+
 /// Ping the database to check connectivity.
 pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT 1").execute(pool).await?;

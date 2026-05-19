@@ -114,7 +114,7 @@ func (h *TransactionHandler) handleDomainError(c *gin.Context, err error) {
 			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
 		case "TRANSACTION_LIMIT_REACHED", "EXPORT_NOT_ALLOWED":
 			c.JSON(http.StatusPaymentRequired, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
-		case "CATEGORY_HAS_TRANSACTIONS":
+		case "CATEGORY_HAS_TRANSACTIONS", "DEFAULT_CATEGORY_CANNOT_BE_DELETED":
 			c.JSON(http.StatusConflict, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
@@ -292,7 +292,7 @@ func (h *TransactionHandler) CreateCategory(c *gin.Context) {
 		Name         string              `json:"name" binding:"required"`
 		Icon         string              `json:"icon"`
 		Color        string              `json:"color"`
-		CategoryType entity.CategoryType `json:"category_type"`
+		CategoryType entity.CategoryType `json:"category_type" binding:"required,oneof=INCOME EXPENSE BOTH"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_INPUT", "message": err.Error()}})
@@ -322,7 +322,7 @@ func (h *TransactionHandler) UpdateCategory(c *gin.Context) {
 		Name         string              `json:"name" binding:"required"`
 		Icon         string              `json:"icon"`
 		Color        string              `json:"color"`
-		CategoryType entity.CategoryType `json:"category_type"`
+		CategoryType entity.CategoryType `json:"category_type" binding:"required,oneof=INCOME EXPENSE BOTH"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_INPUT", "message": err.Error()}})

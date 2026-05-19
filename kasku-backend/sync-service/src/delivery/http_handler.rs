@@ -93,6 +93,11 @@ fn domain_error_response(err: DomainError) -> impl IntoResponse {
             "UPSTREAM_INVALID_RESPONSE",
             "upstream response invalid".to_string(),
         ),
+        DomainError::TenantNotProvisioned(schema) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "TENANT_NOT_PROVISIONED",
+            format!("tenant '{schema}' belum di-provisioning, coba beberapa saat lagi"),
+        ),
         DomainError::DatabaseError(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             "INTERNAL_ERROR",

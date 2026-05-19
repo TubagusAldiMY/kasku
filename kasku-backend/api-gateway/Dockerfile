@@ -7,11 +7,15 @@ RUN apk add --no-cache ca-certificates git
 WORKDIR /build
 
 # Download dependencies terlebih dahulu (cache layer)
-COPY go.mod go.sum ./
+COPY observability-go ./observability-go
+COPY api-gateway/go.mod api-gateway/go.sum ./api-gateway/
+WORKDIR /build/api-gateway
 RUN go mod download
 
 # Copy source code
-COPY . .
+WORKDIR /build
+COPY api-gateway ./api-gateway
+WORKDIR /build/api-gateway
 
 # Build binary — CGO disabled untuk static binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
@@ -30,7 +34,7 @@ RUN addgroup -g 1001 -S kasku && \
 WORKDIR /app
 
 # Copy binary dari builder
-COPY --from=builder /build/api-gateway .
+COPY --from=builder /build/api-gateway/api-gateway .
 
 # Ganti ke non-root user
 USER kasku

@@ -1,0 +1,12 @@
+{{define "subscription_cancelled.html"}}<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Langganan Dibatalkan</title></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #ef4444;">Langganan KasKu Kamu Telah Dibatalkan</h1>
+  <p>Langganan <strong>{{.PlanName}}</strong> kamu telah berhasil dibatalkan pada <strong>{{.CancelledAt}}</strong>.</p>
+  <p>Akun kamu akan tetap aktif hingga akhir periode billing saat ini, setelah itu akan diturunkan ke paket FREE secara otomatis.</p>
+  <p>Berubah pikiran? Kamu bisa berlangganan kembali kapan saja melalui halaman billing.</p>
+  <a href="{{.RenewLink}}" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0;">Berlangganan Kembali</a>
+  <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">Jika kamu tidak merasa membatalkan langganan ini, segera hubungi kami di admin@tubsamy.tech.</p>
+</body>
+</html>{{end}}
