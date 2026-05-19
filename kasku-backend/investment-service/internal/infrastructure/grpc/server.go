@@ -378,8 +378,8 @@ func (s *InvestmentGRPCServer) applyOp(ctx context.Context, schema string, item 
 				COALESCE(NULLIF($2::jsonb->>'name',''),'Untitled'),
 				COALESCE(NULLIF($2::jsonb->>'asset_type',''),'STOCK'),
 				COALESCE(NULLIF($2::jsonb->>'symbol',''),''),
-				COALESCE(NULLIF($2::jsonb->>'quantity','')::numeric,0),
-				COALESCE(NULLIF($2::jsonb->>'avg_buy_price','')::numeric,0),
+				COALESCE(NULLIF($2::jsonb->>'units','')::numeric, NULLIF($2::jsonb->>'quantity','')::numeric, 0),
+				COALESCE(NULLIF($2::jsonb->>'avg_buy_price_idr','')::numeric, NULLIF($2::jsonb->>'avg_buy_price','')::numeric, 0),
 				COALESCE(NULLIF($2::jsonb->>'currency',''),'IDR'),
 				false,
 				COALESCE(NULLIF($2::jsonb->>'sort_order','')::int,0),
@@ -403,8 +403,8 @@ func (s *InvestmentGRPCServer) applyOp(ctx context.Context, schema string, item 
 				name=COALESCE(NULLIF($2::jsonb->>'name',''),name),
 				asset_type=COALESCE(NULLIF($2::jsonb->>'asset_type',''),asset_type),
 				symbol=COALESCE(NULLIF($2::jsonb->>'symbol',''),symbol),
-				quantity=COALESCE(NULLIF($2::jsonb->>'quantity','')::numeric,quantity),
-				avg_buy_price=COALESCE(NULLIF($2::jsonb->>'avg_buy_price','')::numeric,avg_buy_price),
+				quantity=COALESCE(NULLIF($2::jsonb->>'units','')::numeric, NULLIF($2::jsonb->>'quantity','')::numeric, quantity),
+				avg_buy_price=COALESCE(NULLIF($2::jsonb->>'avg_buy_price_idr','')::numeric, NULLIF($2::jsonb->>'avg_buy_price','')::numeric, avg_buy_price),
 				currency=COALESCE(NULLIF($2::jsonb->>'currency',''),currency),
 				sort_order=COALESCE(NULLIF($2::jsonb->>'sort_order','')::int,sort_order),
 				updated_at=now()
@@ -431,7 +431,20 @@ func (s *InvestmentGRPCServer) handleList(ctx context.Context, req listReq) ([]e
 	}
 	q := fmt.Sprintf(`
 		SELECT id::text,
-		       to_jsonb(t.*)::text,
+		       jsonb_build_object(
+		           'id',               id,
+		           'name',             name,
+		           'asset_type',       asset_type,
+		           'symbol',           symbol,
+		           'units',            quantity,
+		           'avg_buy_price_idr',avg_buy_price,
+		           'currency',         currency,
+		           'is_deleted',       is_deleted,
+		           'deleted_at',       deleted_at,
+		           'sort_order',       sort_order,
+		           'created_at',       created_at,
+		           'updated_at',       updated_at
+		       )::text,
 		       (EXTRACT(EPOCH FROM updated_at)*1000)::bigint,
 		       CASE WHEN is_deleted THEN 'delete' ELSE 'upsert' END
 		FROM %s.investment_assets t

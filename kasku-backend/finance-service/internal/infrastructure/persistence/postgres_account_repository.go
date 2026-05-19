@@ -43,8 +43,8 @@ func (r *postgresAccountRepository) Create(ctx context.Context, tenantSchema str
 	}
 	query := fmt.Sprintf(`
 		INSERT INTO %s.financial_accounts
-			(id, user_id, name, account_type, balance, currency, color, icon, is_default, is_deleted, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)
+			(id, user_id, name, account_type, balance, initial_balance, currency, color, icon, is_default, is_deleted, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $5, $6, $7, $8, $9, false, $10, $11)
 	`, tenantSchema)
 	_, err := r.pool.Exec(ctx, query,
 		account.ID, account.UserID, account.Name, string(account.AccountType),

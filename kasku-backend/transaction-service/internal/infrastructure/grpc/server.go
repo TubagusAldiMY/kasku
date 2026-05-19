@@ -10,7 +10,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/entity"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/persistence"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -411,10 +410,8 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 		}
 
 		var p struct {
-			AccountID       string `json:"account_id"`
-			ToAccountID     string `json:"to_account_id"`
-			TransactionType string `json:"transaction_type"`
-			AmountIDR       int64  `json:"amount_idr"`
+			AccountID   string `json:"account_id"`
+			ToAccountID string `json:"to_account_id"`
 		}
 		if err := json.Unmarshal(item.Payload, &p); err != nil {
 			return fmt.Errorf("gagal parse payload untuk balance update: %w", err)
@@ -430,8 +427,13 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 				toAccountID = &parsed
 			}
 		}
-		if err := persistence.AdjustBalance(ctx, dbTx, schema, accountID, toAccountID, entity.TransactionType(p.TransactionType), p.AmountIDR); err != nil {
+		if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, accountID); err != nil {
 			return err
+		}
+		if toAccountID != nil {
+			if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, *toAccountID); err != nil {
+				return err
+			}
 		}
 		return dbTx.Commit(ctx)
 
@@ -460,17 +462,15 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 		defer dbTx.Rollback(ctx) //nolint:errcheck
 
 		selectQ := fmt.Sprintf(`
-			SELECT transaction_type, amount_idr, account_id, to_account_id
+			SELECT account_id, to_account_id
 			FROM %s.transactions
 			WHERE id=$1::uuid AND is_deleted=false
 			  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id=$2::uuid)`,
 			schema, schema)
 
-		var txType entity.TransactionType
-		var amount int64
 		var accountID uuid.UUID
 		var toAccountID *uuid.UUID
-		err = dbTx.QueryRow(ctx, selectQ, item.EntityID, userID).Scan(&txType, &amount, &accountID, &toAccountID)
+		err = dbTx.QueryRow(ctx, selectQ, item.EntityID, userID).Scan(&accountID, &toAccountID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return dbTx.Commit(ctx)
 		}
@@ -486,24 +486,12 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 			return fmt.Errorf("gagal soft delete via sync: %w", err)
 		}
 
-		var reversedType entity.TransactionType
-		switch txType {
-		case entity.TransactionIncome:
-			reversedType = entity.TransactionExpense
-		case entity.TransactionExpense:
-			reversedType = entity.TransactionIncome
-		case entity.TransactionTransfer:
-			reversedType = entity.TransactionIncome // source +amount
-		}
-		if err := persistence.AdjustBalance(ctx, dbTx, schema, accountID, toAccountID, reversedType, amount); err != nil {
+		if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, accountID); err != nil {
 			return err
 		}
-		if txType == entity.TransactionTransfer && toAccountID != nil {
-			balQ := fmt.Sprintf(`
-				UPDATE %s.financial_accounts SET balance = balance - $1, updated_at = now()
-				WHERE id = $2 AND is_deleted = false`, schema)
-			if _, err := dbTx.Exec(ctx, balQ, amount, *toAccountID); err != nil {
-				return fmt.Errorf("gagal balik saldo tujuan via sync: %w", err)
+		if toAccountID != nil {
+			if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, *toAccountID); err != nil {
+				return err
 			}
 		}
 		return dbTx.Commit(ctx)

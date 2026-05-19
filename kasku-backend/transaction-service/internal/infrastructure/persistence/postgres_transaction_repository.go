@@ -71,39 +71,45 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 		return dbTx.Commit(ctx)
 	}
 
-	if err := AdjustBalance(ctx, dbTx, tenantSchema, tx.AccountID, tx.ToAccountID, tx.TransactionType, tx.AmountIDR); err != nil {
+	if err := RecalculateAccountBalance(ctx, dbTx, tenantSchema, tx.AccountID); err != nil {
 		return err
+	}
+	if tx.ToAccountID != nil {
+		if err := RecalculateAccountBalance(ctx, dbTx, tenantSchema, *tx.ToAccountID); err != nil {
+			return err
+		}
 	}
 
 	return dbTx.Commit(ctx)
 }
 
-// AdjustBalance mengubah saldo akun sesuai jenis transaksi.
-// INCOME: source +amount; EXPENSE: source -amount; TRANSFER: source -amount, dest +amount.
-func AdjustBalance(ctx context.Context, dbTx pgx.Tx, tenantSchema string, accountID uuid.UUID, toAccountID *uuid.UUID, txType entity.TransactionType, amount int64) error {
-	balanceQuery := fmt.Sprintf(`
-		UPDATE %s.financial_accounts SET balance = balance + $1, updated_at = now()
-		WHERE id = $2 AND is_deleted = false
-	`, tenantSchema)
-
-	var sourceDelta int64
-	switch txType {
-	case entity.TransactionIncome:
-		sourceDelta = amount
-	case entity.TransactionExpense:
-		sourceDelta = -amount
-	case entity.TransactionTransfer:
-		sourceDelta = -amount
-	}
-
-	if _, err := dbTx.Exec(ctx, balanceQuery, sourceDelta, accountID); err != nil {
-		return fmt.Errorf("gagal update saldo sumber: %w", err)
-	}
-
-	if txType == entity.TransactionTransfer && toAccountID != nil {
-		if _, err := dbTx.Exec(ctx, balanceQuery, amount, *toAccountID); err != nil {
-			return fmt.Errorf("gagal update saldo tujuan: %w", err)
-		}
+// RecalculateAccountBalance recomputes an account's balance from scratch:
+// balance = initial_balance + aggregate of all non-deleted transactions.
+// This is idempotent and always correct regardless of prior balance state.
+func RecalculateAccountBalance(ctx context.Context, dbTx pgx.Tx, tenantSchema string, accountID uuid.UUID) error {
+	q := fmt.Sprintf(`
+		UPDATE %s.financial_accounts fa SET
+			balance = fa.initial_balance
+				+ COALESCE((
+					SELECT SUM(CASE
+						WHEN t.transaction_type = 'INCOME'   THEN  t.amount_idr
+						WHEN t.transaction_type = 'EXPENSE'  THEN -t.amount_idr
+						WHEN t.transaction_type = 'TRANSFER' THEN -t.amount_idr
+						ELSE 0 END)
+					FROM %s.transactions t
+					WHERE t.account_id = $1 AND t.is_deleted = false
+				), 0)
+				+ COALESCE((
+					SELECT SUM(t.amount_idr)
+					FROM %s.transactions t
+					WHERE t.to_account_id = $1 AND t.is_deleted = false
+					  AND t.transaction_type = 'TRANSFER'
+				), 0),
+			updated_at = now()
+		WHERE fa.id = $1 AND fa.is_deleted = false
+	`, tenantSchema, tenantSchema, tenantSchema)
+	if _, err := dbTx.Exec(ctx, q, accountID); err != nil {
+		return fmt.Errorf("gagal recalculate saldo akun: %w", err)
 	}
 	return nil
 }
@@ -205,19 +211,17 @@ func (r *postgresTransactionRepository) SoftDelete(ctx context.Context, tenantSc
 	}
 	defer dbTx.Rollback(ctx) //nolint:errcheck
 
-	// Ambil detail transaksi sekaligus validasi kepemilikan user
+	// Ambil account_id dan to_account_id sekaligus validasi kepemilikan user
 	selectQuery := fmt.Sprintf(`
-		SELECT transaction_type, amount_idr, account_id, to_account_id
+		SELECT account_id, to_account_id
 		FROM %s.transactions
 		WHERE id = $1 AND is_deleted = false
 		  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id = $2)
 	`, tenantSchema, tenantSchema)
 
-	var txType entity.TransactionType
-	var amount int64
 	var accountID uuid.UUID
 	var toAccountID *uuid.UUID
-	err = dbTx.QueryRow(ctx, selectQuery, id, userID).Scan(&txType, &amount, &accountID, &toAccountID)
+	err = dbTx.QueryRow(ctx, selectQuery, id, userID).Scan(&accountID, &toAccountID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domainerrors.ErrTransactionNotFound
 	}
@@ -233,29 +237,12 @@ func (r *postgresTransactionRepository) SoftDelete(ctx context.Context, tenantSc
 		return fmt.Errorf("gagal soft delete transaksi: %w", err)
 	}
 
-	// Balik delta saldo (kebalikan dari Create)
-	var reversedType entity.TransactionType
-	switch txType {
-	case entity.TransactionIncome:
-		reversedType = entity.TransactionExpense
-	case entity.TransactionExpense:
-		reversedType = entity.TransactionIncome
-	case entity.TransactionTransfer:
-		// Untuk transfer: source mendapat kembali, dest dikurangi kembali
-		reversedType = entity.TransactionIncome // source +amount
-	}
-	if err := AdjustBalance(ctx, dbTx, tenantSchema, accountID, toAccountID, reversedType, amount); err != nil {
+	if err := RecalculateAccountBalance(ctx, dbTx, tenantSchema, accountID); err != nil {
 		return err
 	}
-	// Khusus TRANSFER: dest dikurangi kembali (adjustBalance tadi menambah dest karena reversedType=INCOME+TRANSFER)
-	// Kita perlu override: dest -amount. Gunakan adjustBalance dengan type EXPENSE tanpa to_account.
-	if txType == entity.TransactionTransfer && toAccountID != nil {
-		balanceQuery := fmt.Sprintf(`
-			UPDATE %s.financial_accounts SET balance = balance - $1, updated_at = now()
-			WHERE id = $2 AND is_deleted = false
-		`, tenantSchema)
-		if _, err := dbTx.Exec(ctx, balanceQuery, amount, *toAccountID); err != nil {
-			return fmt.Errorf("gagal balik saldo tujuan: %w", err)
+	if toAccountID != nil {
+		if err := RecalculateAccountBalance(ctx, dbTx, tenantSchema, *toAccountID); err != nil {
+			return err
 		}
 	}
 
