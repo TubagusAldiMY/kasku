@@ -39,10 +39,11 @@ export type AccountRow = SyncableEntity & {
 export type TransactionRow = SyncableEntity & {
 	account_id: string;
 	category_id: string;
-	transaction_type: 'INCOME' | 'EXPENSE';
+	transaction_type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
 	amount_idr: number;
 	transaction_date: string;
 	notes?: string;
+	to_account_id?: string;
 };
 
 export type CategoryRow = SyncableEntity & {

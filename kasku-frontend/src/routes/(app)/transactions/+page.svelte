@@ -18,8 +18,9 @@
 		title: string;
 		category: string;
 		account: string;
+		toAccount: string;
 		amount: number;
-		type: 'INCOME' | 'EXPENSE';
+		type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
 	};
 	type AccountRef = { id: string; name: string };
 	type CategoryRef = { id: string; name: string; category_type: 'INCOME' | 'EXPENSE' | 'BOTH' };
@@ -34,9 +35,10 @@
 	let newTx = $state({
 		title: '',
 		amount: 0,
-		type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
+		type: 'EXPENSE' as 'INCOME' | 'EXPENSE' | 'TRANSFER',
 		category_id: '',
 		account_id: '',
+		to_account_id: '',
 		date: new Date().toISOString().split('T')[0]
 	});
 
@@ -44,20 +46,33 @@
 		allCategories.filter((c) => c.category_type === newTx.type || c.category_type === 'BOTH')
 	);
 
+	// Jika rekening asal diubah dan sama dengan tujuan, reset rekening tujuan ke akun lain
+	$effect(() => {
+		if (newTx.type === 'TRANSFER' && newTx.to_account_id === newTx.account_id) {
+			const other = myAccounts.find((a) => a.id !== newTx.account_id);
+			newTx.to_account_id = other ? other.id : '';
+		}
+	});
+
 	function projectTransaction(
 		row: TransactionRow,
 		accounts: AccountRow[],
 		categories: CategoryRow[]
 	): Transaction {
 		const acc = accounts.find((a) => a.id === row.account_id);
+		const toAcc = row.to_account_id ? accounts.find((a) => a.id === row.to_account_id) : undefined;
 		const cat = categories.find((c) => c.id === row.category_id);
-		const signed = row.transaction_type === 'EXPENSE' ? -row.amount_idr : row.amount_idr;
+		const signed =
+			row.transaction_type === 'EXPENSE' || row.transaction_type === 'TRANSFER'
+				? -row.amount_idr
+				: row.amount_idr;
 		return {
 			id: row.id,
 			date: row.transaction_date,
 			title: row.notes ?? row.transaction_type,
-			category: cat?.name ?? 'Umum',
+			category: cat?.name ?? (row.transaction_type === 'TRANSFER' ? 'Transfer' : 'Umum'),
 			account: acc?.name ?? '—',
+			toAccount: toAcc?.name ?? '',
 			amount: signed,
 			type: row.transaction_type
 		};
@@ -109,17 +124,40 @@
 		void reloadFromLocal();
 	});
 
+	let transferError = $state('');
+
 	async function handleAddTransaction(e: SubmitEvent) {
 		e.preventDefault();
+		transferError = '';
+
+		if (newTx.type === 'TRANSFER') {
+			if (!newTx.to_account_id || newTx.to_account_id === newTx.account_id) {
+				transferError = 'Rekening sumber dan tujuan tidak boleh sama.';
+				return;
+			}
+			const sourceAcc = await accountsRepo.getById(newTx.account_id);
+			const amount = Math.abs(newTx.amount);
+			if (sourceAcc && amount > sourceAcc.balance) {
+				const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+				transferError = `Saldo ${sourceAcc.name} tidak mencukupi. Saldo tersedia: ${fmt.format(sourceAcc.balance)}.`;
+				return;
+			}
+		}
+
 		try {
-			await enqueueCreate<TransactionRow>('transactions', {
+			const payload: Partial<TransactionRow> = {
 				account_id: newTx.account_id,
 				category_id: newTx.category_id,
 				transaction_type: newTx.type,
 				amount_idr: Math.abs(newTx.amount),
 				transaction_date: newTx.date,
 				notes: newTx.title
-			});
+			};
+			if (newTx.type === 'TRANSFER' && newTx.to_account_id) {
+				payload.to_account_id = newTx.to_account_id;
+			}
+			await enqueueCreate<TransactionRow>('transactions', payload as TransactionRow);
+			transferError = '';
 			showAddModal = false;
 		} catch (err) {
 			console.error('Gagal menambah transaksi:', err);
@@ -231,15 +269,19 @@
 								<td class="px-8 py-5 font-bold text-[#0a2e31]">{tx.title}</td>
 								<td class="px-8 py-5">
 									<span
-										class="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold tracking-tight text-teal-700 uppercase"
+										class="rounded-full px-3 py-1 text-[11px] font-bold tracking-tight uppercase {tx.type === 'TRANSFER' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-700'}"
 										>{tx.category}</span
 									>
 								</td>
-								<td class="px-8 py-5 font-medium text-gray-500">{tx.account}</td>
+								<td class="px-8 py-5 font-medium text-gray-500">
+									{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'}<span class="text-blue-500"> → {tx.toAccount}</span>{/if}
+								</td>
 								<td
 									class="px-8 py-5 text-right font-black tracking-tight {tx.type === 'INCOME'
 										? 'text-green-600'
-										: 'text-red-500'}"
+										: tx.type === 'TRANSFER'
+											? 'text-blue-500'
+											: 'text-red-500'}"
 								>
 									{formatCurrency(tx.amount)}
 								</td>
@@ -282,7 +324,7 @@
 				<div class="flex items-center justify-between">
 					<h2 class="text-2xl font-bold text-[#0a2e31]">Catat Transaksi</h2>
 					<button
-						onclick={() => (showAddModal = false)}
+						onclick={() => { showAddModal = false; transferError = ''; }}
 						class="text-gray-400 hover:text-gray-600"
 						aria-label="Tutup modal tambah transaksi"
 					>
@@ -328,6 +370,21 @@
 						>
 							Pemasukan
 						</button>
+						<button
+							type="button"
+							onclick={() => {
+								newTx.type = 'TRANSFER';
+								newTx.category_id = '';
+								const second = myAccounts.find((a) => a.id !== newTx.account_id);
+								newTx.to_account_id = second ? second.id : '';
+							}}
+							class="flex-1 rounded-xl py-3 text-sm font-bold transition-all {newTx.type ===
+							'TRANSFER'
+								? 'bg-white text-blue-500 shadow-sm'
+								: 'text-gray-400'}"
+						>
+							Transfer
+						</button>
 					</div>
 
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -372,7 +429,7 @@
 							<label
 								for="account"
 								class="mb-2 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
-								>Pilih Rekening</label
+								>{newTx.type === 'TRANSFER' ? 'Rekening Asal' : 'Pilih Rekening'}</label
 							>
 							<select
 								id="account"
@@ -385,22 +442,42 @@
 							</select>
 						</div>
 
-						<div>
-							<label
-								for="category"
-								class="mb-2 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
-								>Kategori</label
-							>
-							<select
-								id="category"
-								bind:value={newTx.category_id}
-								class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
-							>
-								{#each filteredCategories as cat (cat.id)}
-									<option value={cat.id}>{cat.name}</option>
-								{/each}
-							</select>
-						</div>
+						{#if newTx.type === 'TRANSFER'}
+							<div>
+								<label
+									for="to_account"
+									class="mb-2 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+									>Rekening Tujuan</label
+								>
+								<select
+									id="to_account"
+									bind:value={newTx.to_account_id}
+									required
+									class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								>
+									{#each myAccounts.filter((a) => a.id !== newTx.account_id) as acc (acc.id)}
+										<option value={acc.id}>{acc.name}</option>
+									{/each}
+								</select>
+							</div>
+						{:else}
+							<div>
+								<label
+									for="category"
+									class="mb-2 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+									>Kategori</label
+								>
+								<select
+									id="category"
+									bind:value={newTx.category_id}
+									class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								>
+									{#each filteredCategories as cat (cat.id)}
+										<option value={cat.id}>{cat.name}</option>
+									{/each}
+								</select>
+							</div>
+						{/if}
 
 						<div class="col-span-2">
 							<label
@@ -417,6 +494,10 @@
 							/>
 						</div>
 					</div>
+
+					{#if transferError}
+						<p class="rounded-2xl bg-red-50 px-5 py-3 text-sm font-medium text-red-600">{transferError}</p>
+					{/if}
 
 					<button
 						type="submit"

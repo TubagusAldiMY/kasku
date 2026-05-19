@@ -374,11 +374,46 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 	payload := string(item.Payload)
 	switch item.Operation {
 	case "create":
+		var p struct {
+			AccountID       string `json:"account_id"`
+			ToAccountID     string `json:"to_account_id"`
+			TransactionType string `json:"transaction_type"`
+			AmountIDR       int64  `json:"amount_idr"`
+		}
+		if err := json.Unmarshal(item.Payload, &p); err != nil {
+			return fmt.Errorf("gagal parse payload: %w", err)
+		}
+		accountID, err := uuid.Parse(p.AccountID)
+		if err != nil {
+			return fmt.Errorf("account_id tidak valid: %w", err)
+		}
+		var toAccountID *uuid.UUID
+		if p.ToAccountID != "" {
+			if parsed, parseErr := uuid.Parse(p.ToAccountID); parseErr == nil {
+				toAccountID = &parsed
+			}
+		}
+
 		dbTx, err := s.pool.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("gagal mulai DB transaction: %w", err)
 		}
 		defer dbTx.Rollback(ctx) //nolint:errcheck
+
+		// Validasi saldo cukup untuk TRANSFER sebelum insert
+		if p.TransactionType == "TRANSFER" && p.AmountIDR > 0 {
+			var currentBalance int64
+			balanceQ := fmt.Sprintf(
+				"SELECT balance FROM %s.financial_accounts WHERE id=$1 AND user_id=$2::uuid AND is_deleted=false",
+				schema,
+			)
+			if err := dbTx.QueryRow(ctx, balanceQ, accountID, userID).Scan(&currentBalance); err != nil {
+				return fmt.Errorf("gagal cek saldo rekening asal: %w", err)
+			}
+			if p.AmountIDR > currentBalance {
+				return fmt.Errorf("saldo rekening tidak mencukupi: tersedia %d, dibutuhkan %d", currentBalance, p.AmountIDR)
+			}
+		}
 
 		q := fmt.Sprintf(`
 			INSERT INTO %s.transactions
@@ -409,24 +444,6 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 			return dbTx.Commit(ctx)
 		}
 
-		var p struct {
-			AccountID   string `json:"account_id"`
-			ToAccountID string `json:"to_account_id"`
-		}
-		if err := json.Unmarshal(item.Payload, &p); err != nil {
-			return fmt.Errorf("gagal parse payload untuk balance update: %w", err)
-		}
-		accountID, err := uuid.Parse(p.AccountID)
-		if err != nil {
-			return fmt.Errorf("account_id tidak valid: %w", err)
-		}
-		var toAccountID *uuid.UUID
-		if p.ToAccountID != "" {
-			parsed, parseErr := uuid.Parse(p.ToAccountID)
-			if parseErr == nil {
-				toAccountID = &parsed
-			}
-		}
 		if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, accountID); err != nil {
 			return err
 		}
