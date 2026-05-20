@@ -4,6 +4,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
 	import { apiFetch } from '$lib/api/client';
 	import { initSyncTriggers, teardownSyncTriggers, triggerManualSync, syncStatus } from '$lib/sync';
 
@@ -84,6 +85,10 @@
 	const syncLoading = $derived(syncStatus.running);
 	async function handleSync() {
 		await triggerManualSync();
+	}
+
+	function isActive(path: string) {
+		return $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
 	}
 </script>
 
@@ -437,11 +442,104 @@
 				</div>
 			</header>
 
-			<main class="flex-1 overflow-y-auto p-6 lg:p-12">
+			<main class="flex-1 overflow-y-auto p-6 pb-24 lg:p-12 lg:pb-12">
 				<div class="mx-auto max-w-6xl">
 					{@render children()}
 				</div>
 			</main>
+
+			<!-- Bottom Navigation — mobile only -->
+			<nav
+				class="fixed right-0 bottom-0 left-0 z-50 border-t border-gray-100 bg-white lg:hidden"
+				style="padding-bottom: env(safe-area-inset-bottom);"
+			>
+				<div class="flex items-stretch">
+					<a
+						href={resolve('/dashboard')}
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/dashboard')
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={isActive('/dashboard') ? 2.5 : 1.8}>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+						</svg>
+						<span>Dashboard</span>
+						{#if isActive('/dashboard')}
+							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-1 w-4"></span>
+						{/if}
+					</a>
+
+					<a
+						href={resolve('/transactions')}
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/transactions')
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={isActive('/transactions') ? 2.5 : 1.8}>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01" />
+						</svg>
+						<span>Transaksi</span>
+						{#if isActive('/transactions')}
+							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-1 w-4"></span>
+						{/if}
+					</a>
+
+					<a
+						href={resolve('/accounts')}
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/accounts')
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={isActive('/accounts') ? 2.5 : 1.8}>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 10V7a5 5 0 0110 0v3M4 10v10a1 1 0 001 1h14a1 1 0 001-1V10M10 14v4M14 14v4" />
+						</svg>
+						<span>Rekening</span>
+						{#if isActive('/accounts')}
+							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-1 w-4"></span>
+						{/if}
+					</a>
+
+					<a
+						href={resolve('/investments')}
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/investments')
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={isActive('/investments') ? 2.5 : 1.8}>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+						</svg>
+						<span>Investasi</span>
+						{#if isActive('/investments')}
+							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-1 w-4"></span>
+						{/if}
+					</a>
+
+					<a
+						href={resolve('/profile')}
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing')
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={isActive('/profile') ? 2.5 : 1.8}>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+						</svg>
+						<span>Profil</span>
+						{#if isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing')}
+							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-1 w-4"></span>
+						{/if}
+					</a>
+				</div>
+			</nav>
 		</div>
 	</div>
 {/if}
