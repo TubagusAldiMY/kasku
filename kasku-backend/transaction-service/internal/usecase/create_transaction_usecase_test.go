@@ -144,4 +144,24 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "gagal buat transaksi")
 	})
+
+	t.Run("TRANSFER saldo tidak cukup — ErrInsufficientBalance dipropagasi", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		txRepo := mocks.NewMockTransactionRepository(ctrl)
+		catRepo := mocks.NewMockCategoryRepository(ctrl)
+		userID := testUserID()
+
+		// Repository mengembalikan ErrInsufficientBalance (dicek di dalam DB transaction).
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(domainerrors.ErrInsufficientBalance)
+
+		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
+		input := baseInput(userID, testAccountID())
+		input.TransactionType = entity.TransactionTransfer
+		input.ToAccountID = testAccountID()
+		input.AmountIDR = 999_999_999
+
+		_, err := uc.Execute(context.Background(), input)
+		assert.ErrorIs(t, err, domainerrors.ErrInsufficientBalance)
+	})
 }

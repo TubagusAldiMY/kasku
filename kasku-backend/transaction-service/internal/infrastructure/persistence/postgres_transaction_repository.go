@@ -52,6 +52,26 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 	}
 	defer dbTx.Rollback(ctx) //nolint:errcheck
 
+	// Validasi saldo mencukupi untuk TRANSFER — dilakukan di dalam dbTx dengan FOR UPDATE
+	// agar atomik terhadap concurrent request (mencegah race condition TOCTOU).
+	if tx.TransactionType == entity.TransactionTransfer {
+		var currentBalance int64
+		balanceQ := fmt.Sprintf(
+			"SELECT balance FROM %s.financial_accounts WHERE id = $1 AND is_deleted = false FOR UPDATE",
+			tenantSchema,
+		)
+		err := dbTx.QueryRow(ctx, balanceQ, tx.AccountID).Scan(&currentBalance)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domainerrors.ErrAccountNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("gagal membaca saldo rekening asal: %w", err)
+		}
+		if tx.AmountIDR > currentBalance {
+			return domainerrors.ErrInsufficientBalance
+		}
+	}
+
 	insertQuery := fmt.Sprintf(`
 		INSERT INTO %s.transactions
 			(id, sync_id, account_id, category_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)

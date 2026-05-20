@@ -141,6 +141,7 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: kasku-rabbitmq
     restart: unless-stopped
+    entrypoint: ["sh", "/etc/rabbitmq/entrypoint.sh"]
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
@@ -150,6 +151,7 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./infra/rabbitmq/entrypoint.sh:/etc/rabbitmq/entrypoint.sh:ro
     networks:
       - kasku-data
       - kasku-admin   # untuk discovery dari Prometheus di profile observability
@@ -158,7 +160,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 45s
     stop_grace_period: 35s
 
   # ============================================================

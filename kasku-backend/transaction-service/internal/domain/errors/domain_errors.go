@@ -23,6 +23,8 @@ var (
 	ErrExportNotAllowed               = &DomainError{Code: "EXPORT_NOT_ALLOWED", Message: "Ekspor CSV tidak tersedia di plan Anda."}
 	ErrInvalidInput                   = &DomainError{Code: "INVALID_INPUT", Message: "Input tidak valid."}
 	ErrInternal                       = &DomainError{Code: "INTERNAL_ERROR", Message: "Terjadi kesalahan internal."}
+	ErrInsufficientBalance            = &DomainError{Code: "INSUFFICIENT_BALANCE", Message: "Saldo rekening asal tidak mencukupi untuk melakukan transfer."}
+	ErrAccountNotFound                = &DomainError{Code: "ACCOUNT_NOT_FOUND", Message: "Rekening tidak ditemukan."}
 )
 
 func IsDomainError(err error) (*DomainError, bool) {
