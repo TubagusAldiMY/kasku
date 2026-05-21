@@ -81,3 +81,10 @@ func (uc *RateLimitUseCase) CheckDefault(ctx context.Context, userID string) (*R
 	key := fmt.Sprintf("default:user:%s", userID)
 	return uc.store.Check(ctx, key, 200, time.Minute)
 }
+
+// CheckSync memeriksa rate limit untuk /v1/sync/** : 60 req/min/user_id.
+// Lebih ketat dari default karena setiap push bisa berisi batch operasi berat.
+func (uc *RateLimitUseCase) CheckSync(ctx context.Context, userID string) (*RateLimitCheckResult, error) {
+	key := fmt.Sprintf("sync:user:%s", userID)
+	return uc.store.Check(ctx, key, 60, time.Minute)
+}

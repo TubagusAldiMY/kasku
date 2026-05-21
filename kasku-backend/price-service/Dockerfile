@@ -36,12 +36,15 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     wget \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r kasku && useradd -r -g kasku kasku
 
 WORKDIR /app
-COPY --from=builder /app/target/release/price-service /app/price-service
-COPY migrations/ /app/migrations/
+COPY --from=builder --chown=kasku:kasku /app/target/release/price-service /app/price-service
+COPY --chown=kasku:kasku migrations/ /app/migrations/
 
+USER kasku
 EXPOSE 8087 9087
-
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:8087/health || exit 1
 CMD ["/app/price-service"]

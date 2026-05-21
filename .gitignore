@@ -43,7 +43,7 @@ Knowledge
 .github/*
 !.github/workflows/
 !.github/workflows/**
+!.github/dependabot.yml
 GEMINI.md
 deploy.md
-.github
 ui-example

@@ -21,6 +21,7 @@ type RateLimiter interface {
 	CheckRefresh(ctx context.Context, userID string) (*usecase.RateLimitCheckResult, error)
 	CheckForgotPassword(ctx context.Context, email string) (*usecase.RateLimitCheckResult, error)
 	CheckDefault(ctx context.Context, userID string) (*usecase.RateLimitCheckResult, error)
+	CheckSync(ctx context.Context, userID string) (*usecase.RateLimitCheckResult, error)
 }
 
 // RateLimit adalah middleware yang menerapkan rate limiting per endpoint.
@@ -57,6 +58,14 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 		case method == http.MethodPost && strings.HasSuffix(path, "/auth/forgot-password"):
 			email := extractEmailFromBody(c)
 			result, err = limiter.CheckForgotPassword(c.Request.Context(), email)
+
+		case strings.Contains(path, "/sync/"):
+			if token, ok := GetParsedToken(c); ok {
+				result, err = limiter.CheckSync(c.Request.Context(), token.UserID.String())
+			} else {
+				c.Next()
+				return
+			}
 
 		default:
 			// Default rate limit — butuh user ID dari parsed token

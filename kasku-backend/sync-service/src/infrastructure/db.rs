@@ -29,3 +29,28 @@ pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query("SELECT 1").execute(pool).await?;
     Ok(())
 }
+
+/// Verifikasi bahwa finance-service sudah menjalankan migration 000004
+/// yang membuat fungsi provision_tenant() dan struktur sync_log per tenant.
+/// Dipanggil saat startup — gagal jika finance-service belum migrate.
+pub async fn verify_finance_migrations_applied(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(
+            SELECT 1 FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname = 'provision_tenant'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !exists {
+        return Err(sqlx::Error::Protocol(
+            "finance-service migration 000004 belum dijalankan: fungsi provision_tenant() tidak ditemukan di kasku_finance. \
+             Pastikan finance-service sudah healthy sebelum sync-service dijalankan."
+                .to_string(),
+        ));
+    }
+
+    Ok(())
+}

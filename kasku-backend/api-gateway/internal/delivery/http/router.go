@@ -172,6 +172,14 @@ func securityHeaders() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'")
+		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		c.Header("Cross-Origin-Resource-Policy", "same-origin")
+		// HSTS hanya dikirim saat request datang via HTTPS (lewat Traefik TLS termination
+		// yang meneruskan header X-Forwarded-Proto).
+		if c.GetHeader("X-Forwarded-Proto") == "https" || c.Request.TLS != nil {
+			c.Header("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+		}
 		c.Next()
 	}
 }

@@ -1,0 +1,98 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build, push, and deploy
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Go services
+        run: |
+          GO_SERVICES=(
+            api-gateway
+            auth-service
+            user-service
+            billing-service
+            finance-service
+            transaction-service
+            notification-service
+            investment-service
+            admin-service
+          )
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA="${{ github.sha }}"
+          for svc in "${GO_SERVICES[@]}"; do
+            IMAGE="ghcr.io/${OWNER}/kasku-${svc}"
+            docker build \
+              -t "${IMAGE}:latest" \
+              -t "${IMAGE}:${SHA}" \
+              "kasku-backend/${svc}/"
+            docker push "${IMAGE}" --all-tags
+          done
+
+      - name: Build & push Rust services
+        run: |
+          RUST_SERVICES=(price-service sync-service)
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA="${{ github.sha }}"
+          for svc in "${RUST_SERVICES[@]}"; do
+            IMAGE="ghcr.io/${OWNER}/kasku-${svc}"
+            docker build \
+              -t "${IMAGE}:latest" \
+              -t "${IMAGE}:${SHA}" \
+              "kasku-backend/${svc}/"
+            docker push "${IMAGE}" --all-tags
+          done
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            # Tarik semua image terbaru
+            docker compose -f docker-compose.yml pull
+
+            # Rolling restart — --remove-orphans membersihkan container lama
+            docker compose -f docker-compose.yml up -d --remove-orphans
+
+            # Tunggu healthcheck (60s cukup untuk startup semua service)
+            sleep 60
+
+            # Verifikasi: semua service harus healthy atau tidak punya healthcheck
+            UNHEALTHY=$(docker compose -f docker-compose.yml ps --format json \
+              | python3 -c "
+            import sys, json
+            data = sys.stdin.read().strip()
+            services = [json.loads(line) for line in data.splitlines() if line.strip()]
+            unhealthy = [s['Name'] for s in services
+                         if s.get('Health') not in ('healthy', '')]
+            if unhealthy:
+                print('UNHEALTHY:', ', '.join(unhealthy))
+                sys.exit(1)
+            print('All services healthy')
+            ")
+            echo "$UNHEALTHY"

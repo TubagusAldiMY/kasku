@@ -28,11 +28,14 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     wget \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r kasku && useradd -r -g kasku kasku
 
 WORKDIR /app
-COPY --from=builder /app/target/release/sync-service /app/sync-service
+COPY --from=builder --chown=kasku:kasku /app/target/release/sync-service /app/sync-service
 
+USER kasku
 EXPOSE 8088
-
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:8088/health || exit 1
 CMD ["/app/sync-service"]

@@ -55,6 +55,10 @@ async fn main() {
         .await
         .expect("gagal menjalankan database migrations");
 
+    db::verify_finance_migrations_applied(&pool)
+        .await
+        .expect("finance-service migrations belum diterapkan — sync-service tidak dapat berjalan");
+
     // ── gRPC Clients (lazy-connect) ─────────────────────────────────────
     let grpc_clients = SyncGrpcClients::connect(
         &cfg.finance_service_grpc_addr,

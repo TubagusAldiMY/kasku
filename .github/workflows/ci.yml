@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go-services:
+    name: Go services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - user-service
+          - billing-service
+          - finance-service
+          - transaction-service
+          - investment-service
+          - notification-service
+          - admin-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+          cache-dependency-path: kasku-backend/${{ matrix.service }}/go.sum
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: kasku-backend/${{ matrix.service }}
+          args: --timeout=5m
+      - name: Test
+        run: go test ./... -race -count=1
+        working-directory: kasku-backend/${{ matrix.service }}
+
+  rust-services:
+    name: Rust services
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - price-service
+          - sync-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kasku-backend/${{ matrix.service }}
+      - name: Check
+        run: cargo check
+        working-directory: kasku-backend/${{ matrix.service }}
+      - name: Lint (cargo clippy)
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: kasku-backend/${{ matrix.service }}
+      - name: Test
+        run: cargo test
+        working-directory: kasku-backend/${{ matrix.service }}
+
+  frontend:
+    name: Frontend check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: kasku-frontend/package-lock.json
+      - run: npm ci
+        working-directory: kasku-frontend
+      - run: npm run check
+        working-directory: kasku-frontend
+      - run: npm run lint
+        working-directory: kasku-frontend
+      - run: npm run test:unit -- --run
+        working-directory: kasku-frontend
+
+  compose-config:
+    name: Docker Compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+        working-directory: kasku-backend
+      - run: docker compose config --quiet
+        working-directory: kasku-backend
+
+  security-scan:
+    name: Security scan (CVE)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck — Go services
+        run: |
+          for svc in api-gateway auth-service user-service billing-service \
+                     finance-service transaction-service investment-service \
+                     notification-service admin-service; do
+            echo "=== $svc ==="
+            (cd "$svc" && govulncheck ./...)
+          done
+        working-directory: kasku-backend
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: cargo audit — price-service
+        run: cargo audit
+        working-directory: kasku-backend/price-service
+      - name: cargo audit — sync-service
+        run: cargo audit
+        working-directory: kasku-backend/sync-service

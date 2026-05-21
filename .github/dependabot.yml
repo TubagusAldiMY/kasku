@@ -1,0 +1,71 @@
+version: 2
+updates:
+  # Go services
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/api-gateway"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/auth-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/user-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/billing-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/finance-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/transaction-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/investment-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/notification-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/kasku-backend/admin-service"
+    schedule:
+      interval: "weekly"
+
+  # Rust services
+  - package-ecosystem: "cargo"
+    directory: "/kasku-backend/price-service"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/kasku-backend/sync-service"
+    schedule:
+      interval: "weekly"
+
+  # Frontend
+  - package-ecosystem: "npm"
+    directory: "/kasku-frontend"
+    schedule:
+      interval: "weekly"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/kasku-backend/api-gateway"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "docker"
+    directory: "/kasku-backend/auth-service"
+    schedule:
+      interval: "monthly"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
