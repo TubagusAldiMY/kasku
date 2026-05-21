@@ -18,6 +18,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify required secrets
+        run: |
+          MISSING=()
+          for secret in \
+            DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PATH \
+            KASKU_AUTH_DB_PASS KASKU_BILLING_DB_PASS KASKU_FINANCE_DB_PASS \
+            KASKU_PRICE_DB_PASS KASKU_ADMIN_DB_PASS KASKU_USER_DB_PASS \
+            KASKU_SYNC_DB_PASS KASKU_INVESTMENT_DB_PASS \
+            JWT_PRIVATE_KEY JWT_PUBLIC_KEY \
+            RABBITMQ_PASS REDIS_PASSWORD \
+            MIDTRANS_SERVER_KEY; do
+            if [[ -z "${!secret:-}" ]]; then
+              MISSING+=("$secret")
+            fi
+          done
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "ERROR: Secret berikut belum dikonfigurasi di GitHub repo settings:"
+            printf '  - %s\n' "${MISSING[@]}"
+            exit 1
+          fi
+          echo "Semua required secrets tersedia"
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          KASKU_AUTH_DB_PASS: ${{ secrets.KASKU_AUTH_DB_PASS }}
+          KASKU_BILLING_DB_PASS: ${{ secrets.KASKU_BILLING_DB_PASS }}
+          KASKU_FINANCE_DB_PASS: ${{ secrets.KASKU_FINANCE_DB_PASS }}
+          KASKU_PRICE_DB_PASS: ${{ secrets.KASKU_PRICE_DB_PASS }}
+          KASKU_ADMIN_DB_PASS: ${{ secrets.KASKU_ADMIN_DB_PASS }}
+          KASKU_USER_DB_PASS: ${{ secrets.KASKU_USER_DB_PASS }}
+          KASKU_SYNC_DB_PASS: ${{ secrets.KASKU_SYNC_DB_PASS }}
+          KASKU_INVESTMENT_DB_PASS: ${{ secrets.KASKU_INVESTMENT_DB_PASS }}
+          JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
+          JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
+          RABBITMQ_PASS: ${{ secrets.RABBITMQ_PASS }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -79,20 +119,17 @@ jobs:
             # Rolling restart — --remove-orphans membersihkan container lama
             docker compose -f docker-compose.yml up -d --remove-orphans
 
-            # Tunggu healthcheck (60s cukup untuk startup semua service)
-            sleep 60
+            # Tunggu semua service healthy (max 120s) via smoke test
+            echo "Menunggu semua service healthy..."
+            if ! timeout 120 bash -c \
+              'until bash tests/integration/smoke.sh > /dev/null 2>&1; do
+                echo "  ... belum healthy, tunggu 5s"
+                sleep 5
+              done'; then
+              echo "ERROR: Service tidak healthy setelah 120s"
+              docker compose -f docker-compose.yml ps
+              docker compose -f docker-compose.yml logs --tail=50
+              exit 1
+            fi
 
-            # Verifikasi: semua service harus healthy atau tidak punya healthcheck
-            UNHEALTHY=$(docker compose -f docker-compose.yml ps --format json \
-              | python3 -c "
-            import sys, json
-            data = sys.stdin.read().strip()
-            services = [json.loads(line) for line in data.splitlines() if line.strip()]
-            unhealthy = [s['Name'] for s in services
-                         if s.get('Health') not in ('healthy', '')]
-            if unhealthy:
-                print('UNHEALTHY:', ', '.join(unhealthy))
-                sys.exit(1)
-            print('All services healthy')
-            ")
-            echo "$UNHEALTHY"
+            echo "Semua service healthy"
