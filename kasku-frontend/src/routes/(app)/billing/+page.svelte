@@ -78,12 +78,12 @@
 		{
 			id: 'ULTIMATE',
 			name: 'Enterprise',
-			priceMonthly: 99000,
-			priceYearly: 999000,
-			desc: 'Solusi lengkap untuk keluarga & bisnis.',
-			features: ['Semua Fitur Pro', 'Multi-User (5 User)', 'Analisis Prediktif AI', 'API Access'],
+			priceMonthly: 0,
+			priceYearly: 0,
+			desc: 'Solusi lengkap untuk tim, keluarga & bisnis skala besar.',
+			features: ['Semua Fitur Pro', 'Multi-User (5 User)', 'Analisis Prediktif AI', 'API Access', 'Dukungan Prioritas'],
 			isPopular: false,
-			btnText: 'Pilih Enterprise',
+			btnText: 'Hubungi Tim KasKu',
 			disabled: false
 		}
 	]);
@@ -295,14 +295,23 @@
 				</div>
 
 				<div class="mb-8 sm:mb-10">
-					<div class="flex flex-wrap items-baseline gap-1">
-						<span class="text-2xl font-black text-[#0a2e31] sm:text-4xl">
-							{formatPrice(billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly)}
-						</span>
-						<span class="text-xs font-bold text-gray-400 sm:text-sm"
-							>/{billingCycle === 'monthly' ? 'bln' : 'thn'}</span
-						>
-					</div>
+					{#if plan.id === 'ULTIMATE'}
+						<div class="space-y-1">
+							<p class="text-2xl font-black text-[#0a2e31] sm:text-3xl">Harga Khusus</p>
+							<p class="text-[11px] font-medium text-gray-400 sm:text-xs">
+								Sesuai kebutuhan tim Anda
+							</p>
+						</div>
+					{:else}
+						<div class="flex flex-wrap items-baseline gap-1">
+							<span class="text-2xl font-black text-[#0a2e31] sm:text-4xl">
+								{formatPrice(billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly)}
+							</span>
+							<span class="text-xs font-bold text-gray-400 sm:text-sm"
+								>/{billingCycle === 'monthly' ? 'bln' : 'thn'}</span
+							>
+						</div>
+					{/if}
 				</div>
 
 				<div class="mb-8 flex-1 space-y-3 sm:mb-10 sm:space-y-4">
@@ -327,21 +336,33 @@
 					{/each}
 				</div>
 
-				<button
-					onclick={() => handleSubscribe(plan.id)}
-					disabled={loading || isCurrent || plan.id === 'FREE' || subscribing !== null}
-					class="w-full rounded-xl py-3.5 text-[11px] font-black tracking-widest uppercase transition-all active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm {plan.isPopular
-						? 'bg-[#217b84] text-white shadow-xl shadow-teal-900/20 hover:bg-[#1a5f66]'
-						: 'border border-gray-100 bg-gray-50 text-[#0a2e31] hover:bg-gray-100'} disabled:cursor-default disabled:opacity-50"
-				>
-					{#if subscribing === plan.id}
-						Menyiapkan…
-					{:else if isCurrent}
-						Paket Saat Ini
-					{:else}
-						{plan.btnText}
-					{/if}
-				</button>
+				{#if plan.id === 'ULTIMATE'}
+					<a
+						href="mailto:admin@tubsamy.tech?subject=Pertanyaan%20Paket%20Enterprise%20KasKu"
+						class="flex w-full items-center justify-center gap-2 rounded-xl border border-[#0a2e31] bg-[#0a2e31] py-3.5 text-[11px] font-black tracking-widest text-white uppercase transition-all hover:bg-[#0d3b3f] active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm"
+					>
+						<svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+						</svg>
+						Hubungi Tim KasKu
+					</a>
+				{:else}
+					<button
+						onclick={() => handleSubscribe(plan.id)}
+						disabled={loading || isCurrent || plan.id === 'FREE' || subscribing !== null}
+						class="w-full rounded-xl py-3.5 text-[11px] font-black tracking-widest uppercase transition-all active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm {plan.isPopular
+							? 'bg-[#217b84] text-white shadow-xl shadow-teal-900/20 hover:bg-[#1a5f66]'
+							: 'border border-gray-100 bg-gray-50 text-[#0a2e31] hover:bg-gray-100'} disabled:cursor-default disabled:opacity-50"
+					>
+						{#if subscribing === plan.id}
+							Menyiapkan…
+						{:else if isCurrent}
+							Paket Saat Ini
+						{:else}
+							{plan.btnText}
+						{/if}
+					</button>
+				{/if}
 			</div>
 		{/each}
 	</div>
