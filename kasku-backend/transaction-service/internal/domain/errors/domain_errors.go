@@ -25,6 +25,8 @@ var (
 	ErrInternal                       = &DomainError{Code: "INTERNAL_ERROR", Message: "Terjadi kesalahan internal."}
 	ErrInsufficientBalance            = &DomainError{Code: "INSUFFICIENT_BALANCE", Message: "Saldo rekening asal tidak mencukupi untuk melakukan transfer."}
 	ErrAccountNotFound                = &DomainError{Code: "ACCOUNT_NOT_FOUND", Message: "Rekening tidak ditemukan."}
+	ErrBudgetNotFound                 = &DomainError{Code: "BUDGET_NOT_FOUND", Message: "Anggaran tidak ditemukan."}
+	ErrBudgetLimitReached             = &DomainError{Code: "BUDGET_LIMIT_REACHED", Message: "Batas jumlah anggaran tercapai. Upgrade subscription untuk melanjutkan."}
 )
 
 func IsDomainError(err error) (*DomainError, bool) {

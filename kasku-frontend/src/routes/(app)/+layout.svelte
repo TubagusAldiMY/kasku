@@ -277,6 +277,20 @@
 					Transaksi
 				</a>
 				<a
+					href={resolve('/budgets')}
+					class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/10"
+				>
+					<svg class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+						><path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h6m-3-8a9 9 0 100 18 9 9 0 000-18z"
+						/></svg
+					>
+					Anggaran
+				</a>
+				<a
 					href={resolve('/categories')}
 					class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/10"
 				>
@@ -524,7 +538,7 @@
 
 					<a
 						href={resolve('/profile')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing')
+						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing') || isActive('/budgets')
 							? 'text-[#0a2e31]'
 							: 'text-gray-400'}"
 					>
@@ -532,7 +546,7 @@
 							<path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
 						</svg>
 						<span>Profil</span>
-						{#if isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing')}
+						{#if isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing') || isActive('/budgets')}
 							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
 						{:else}
 							<span class="h-1 w-4"></span>

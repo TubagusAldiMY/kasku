@@ -105,6 +105,7 @@ func buildLogger(cfg *configs.Config) zerolog.Logger {
 func buildHandler(pool *pgxpool.Pool, cfg *configs.Config, logger zerolog.Logger) *handler.TransactionHandler {
 	txRepo := persistence.NewPostgresTransactionRepository(pool)
 	catRepo := persistence.NewPostgresCategoryRepository(pool)
+	budgetRepo := persistence.NewPostgresBudgetRepository(pool)
 
 	return handler.NewTransactionHandler(
 		usecase.NewCreateTransactionUseCase(txRepo, catRepo),
@@ -116,6 +117,11 @@ func buildHandler(pool *pgxpool.Pool, cfg *configs.Config, logger zerolog.Logger
 		usecase.NewCreateCategoryUseCase(catRepo),
 		usecase.NewUpdateCategoryUseCase(catRepo),
 		usecase.NewDeleteCategoryUseCase(catRepo),
+		usecase.NewCreateBudgetUseCase(budgetRepo),
+		usecase.NewListBudgetsUseCase(budgetRepo),
+		usecase.NewGetBudgetUseCase(budgetRepo),
+		usecase.NewUpdateBudgetUseCase(budgetRepo),
+		usecase.NewDeleteBudgetUseCase(budgetRepo),
 		&appHealthChecker{pool: pool},
 		cfg.App.ServiceVersion,
 		logger,

@@ -10,6 +10,7 @@ export {
 	type TransactionRow,
 	type CategoryRow,
 	type InvestmentRow,
+	type BudgetRow,
 	type SyncQueueRow,
 	type SyncMetaRow,
 	type SyncOperationType,
@@ -19,5 +20,6 @@ export { accountsRepo } from './repositories/accounts';
 export { transactionsRepo } from './repositories/transactions';
 export { categoriesRepo } from './repositories/categories';
 export { investmentsRepo } from './repositories/investments';
+export { budgetsRepo } from './repositories/budgets';
 export { syncQueueRepo } from './repositories/sync_queue';
 export { syncMetaRepo } from './repositories/sync_meta';

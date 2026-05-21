@@ -38,6 +38,14 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Re
 			cats.PUT("/:id", h.UpdateCategory)
 			cats.DELETE("/:id", h.DeleteCategory)
 		}
+		budgets := v1.Group("/budgets")
+		{
+			budgets.GET("", h.ListBudgets)
+			budgets.POST("", h.CreateBudget)
+			budgets.GET("/:id", h.GetBudget)
+			budgets.PUT("/:id", h.UpdateBudget)
+			budgets.DELETE("/:id", h.DeleteBudget)
+		}
 	}
 	return r
 }

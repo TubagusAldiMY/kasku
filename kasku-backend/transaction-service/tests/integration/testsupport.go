@@ -89,6 +89,36 @@ func ProvisionTenant(t *testing.T, pool *pgxpool.Pool, userID string) string {
 				created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
 				updated_at     TIMESTAMPTZ  NOT NULL DEFAULT now()
 			)`, tenantSchema),
+		fmt.Sprintf(`
+			CREATE TABLE IF NOT EXISTS %s.financial_accounts (
+				id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+				user_id      UUID         NOT NULL,
+				name         VARCHAR(100) NOT NULL,
+				account_type VARCHAR(30)  NOT NULL DEFAULT 'CASH',
+				balance      BIGINT       NOT NULL DEFAULT 0,
+				currency     VARCHAR(10)  NOT NULL DEFAULT 'IDR',
+				is_deleted   BOOLEAN      NOT NULL DEFAULT false,
+				deleted_at   TIMESTAMPTZ  NULL,
+				created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+				updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
+			)`, tenantSchema),
+		fmt.Sprintf(`
+			CREATE TABLE IF NOT EXISTS %s.budgets (
+				id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+				user_id         UUID         NOT NULL,
+				sync_id         VARCHAR(100) UNIQUE,
+				name            VARCHAR(100) NOT NULL,
+				limit_idr       BIGINT       NOT NULL CHECK (limit_idr > 0),
+				category_id     UUID         NULL,
+				period_type     VARCHAR(20)  NOT NULL DEFAULT 'MONTHLY',
+				start_date      DATE         NOT NULL DEFAULT CURRENT_DATE,
+				end_date        DATE         NULL,
+				alert_threshold SMALLINT     NOT NULL DEFAULT 80 CHECK (alert_threshold BETWEEN 0 AND 100),
+				is_deleted      BOOLEAN      NOT NULL DEFAULT false,
+				deleted_at      TIMESTAMPTZ  NULL,
+				created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+				updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
+			)`, tenantSchema),
 	}
 
 	for _, sql := range sqls {

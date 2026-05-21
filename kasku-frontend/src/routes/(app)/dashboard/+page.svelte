@@ -8,9 +8,11 @@
 		accountsRepo,
 		transactionsRepo,
 		categoriesRepo,
+		budgetsRepo,
 		type AccountRow,
 		type TransactionRow,
-		type CategoryRow
+		type CategoryRow,
+		type BudgetRow
 	} from '$lib/db';
 	import { syncStatus, triggerManualSync } from '$lib/sync';
 
@@ -44,6 +46,7 @@
 
 	let recentTransactions = $state<RecentTransaction[]>([]);
 	let accounts = $state<AccountSummary[]>([]);
+	let budgets = $state<BudgetRow[]>([]);
 	let loading = $state(true);
 	let balanceHidden = $state(false);
 
@@ -63,6 +66,10 @@
 	]);
 
 	let maxAmount = $derived(Math.max(1, ...weeklyData.map((d) => d.amount)));
+
+	const topBudgets = $derived(
+		[...budgets].sort((a, b) => b.progress_percent - a.progress_percent).slice(0, 3)
+	);
 
 	function projectAccounts(rows: AccountRow[]): { summaries: AccountSummary[]; total: number } {
 		let total = 0;
@@ -157,6 +164,20 @@
 		}
 	}
 
+	async function hydrateBudgetsFromServer() {
+		try {
+			const res = await apiFetch('/budgets');
+			const result = await res.json();
+			if (result.success && Array.isArray(result.data)) {
+				await budgetsRepo.clear();
+				await budgetsRepo.putMany(result.data as BudgetRow[]);
+				budgets = result.data as BudgetRow[];
+			}
+		} catch {
+			// Offline — pakai cache IDB.
+		}
+	}
+
 	async function hydrateCategoriesFromServer() {
 		// Categories belum ikut sync engine — fetch on-demand & cache ke IDB.
 		// TODO(sync): integrasikan categories ke SyncableResource saat siap.
@@ -188,9 +209,11 @@
 
 	onMount(async () => {
 		balanceHidden = localStorage.getItem('kasku_balance_hidden') === 'true';
+		budgets = await budgetsRepo.getAll();
 		await reloadFromLocal();
 		loading = false;
 		void hydrateCategoriesFromServer();
+		void hydrateBudgetsFromServer();
 		void triggerManualSync();
 	});
 </script>
@@ -412,6 +435,60 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Budget Overview Widget (hanya tampil jika ada data) -->
+	{#if !loading && topBudgets.length > 0}
+		<div class="rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
+			<div class="mb-6 flex items-center justify-between">
+				<div class="space-y-1">
+					<h3 class="text-xl font-bold text-[#0a2e31]">Anggaran Bulan Ini</h3>
+					<p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Progress Pengeluaran</p>
+				</div>
+				<a href={resolve('/budgets')} class="text-xs font-bold text-[#217b84] hover:underline">
+					Kelola
+				</a>
+			</div>
+			<div class="space-y-5">
+				{#each topBudgets as b (b.id)}
+					<div class="space-y-2">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<span class="text-sm font-bold text-[#0a2e31]">{b.name}</span>
+								{#if b.category_name}
+									<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+										{b.category_name}
+									</span>
+								{/if}
+							</div>
+							<span
+								class="text-xs font-black {b.is_over_budget
+									? 'text-red-500'
+									: b.progress_percent > 75
+										? 'text-yellow-500'
+										: 'text-gray-400'}"
+							>
+								{Math.round(b.progress_percent)}%
+							</span>
+						</div>
+						<div class="h-2 overflow-hidden rounded-full bg-gray-100">
+							<div
+								class="h-full rounded-full transition-all duration-700 {b.is_over_budget
+									? 'bg-red-500'
+									: b.progress_percent > 75
+										? 'bg-yellow-400'
+										: 'bg-[#217b84]'}"
+								style="width: {Math.min(100, b.progress_percent)}%"
+							></div>
+						</div>
+						<div class="flex justify-between text-[11px] font-bold text-gray-400">
+							<span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(b.spent_idr)}</span>
+							<span>dari {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(b.limit_idr)}</span>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Bottom Grid: Recent Transactions & Accounts -->
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">

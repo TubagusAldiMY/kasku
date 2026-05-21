@@ -10,13 +10,14 @@
  */
 
 export const DB_NAME = 'kasku';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export type StoreName =
 	| 'accounts'
 	| 'transactions'
 	| 'categories'
 	| 'investments'
+	| 'budgets'
 	| 'sync_queue'
 	| 'sync_meta';
 
@@ -58,6 +59,23 @@ export type InvestmentRow = SyncableEntity & {
 	symbol?: string;
 	units: number;
 	avg_buy_price_idr: number;
+};
+
+export type BudgetRow = {
+	id: string;
+	name: string;
+	limit_idr: number;
+	category_id?: string;
+	category_name?: string;
+	period_type: 'MONTHLY' | 'WEEKLY' | 'CUSTOM';
+	start_date?: string;
+	end_date?: string | null;
+	alert_threshold: number;
+	spent_idr: number;
+	remaining_idr: number;
+	progress_percent: number;
+	is_over_budget: boolean;
+	updated_at: string;
 };
 
 export type SyncOperationType = 'CREATE' | 'UPDATE' | 'DELETE';
@@ -103,6 +121,10 @@ export const STORES: Record<StoreName, StoreSpec> = {
 		indexes: [{ name: 'by_updated_at', keyPath: 'updated_at' }]
 	},
 	investments: {
+		keyPath: 'id',
+		indexes: [{ name: 'by_updated_at', keyPath: 'updated_at' }]
+	},
+	budgets: {
 		keyPath: 'id',
 		indexes: [{ name: 'by_updated_at', keyPath: 'updated_at' }]
 	},
