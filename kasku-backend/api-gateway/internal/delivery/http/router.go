@@ -67,8 +67,9 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 		v1Auth.POST("/refresh", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/forgot-password", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/reset-password", cfg.ProxyHandler.ProxyTo("auth"))
-		// Logout butuh JWT untuk merevoke token yang benar
+		// Logout dan change-password butuh JWT
 		v1Auth.POST("/logout", cfg.AuthMiddleware, cfg.ProxyHandler.ProxyTo("auth"))
+		v1Auth.PUT("/change-password", cfg.AuthMiddleware, cfg.ProxyHandler.ProxyTo("auth"))
 	}
 
 	// ── /v1/users/** ──────────────────────────────────────────────────────────

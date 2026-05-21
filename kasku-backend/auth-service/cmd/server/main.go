@@ -161,6 +161,7 @@ func main() {
 	validateTokenUC := usecase.NewValidateAccessTokenUseCase(pubKey, blacklist)
 	forgotPasswordUC := usecase.NewForgotPasswordUseCase(userRepo, resetRepo, publisher, rateLimiter, forgotEmailLimit)
 	resetPasswordUC := usecase.NewResetPasswordUseCase(resetRepo, resetTxRepo, argon2Cfg)
+	changePasswordUC := usecase.NewChangePasswordUseCase(userRepo, argon2Cfg)
 
 	// ── Handler & Router ──────────────────────────────────────────────────────
 	healthChecker := newHealthChecker(pool, redisClient, publisher)
@@ -174,6 +175,7 @@ func main() {
 		logoutUC,
 		forgotPasswordUC,
 		resetPasswordUC,
+		changePasswordUC,
 		healthChecker,
 		cfg.App.ServiceVersion,
 		cfg.IsDevelopment(),

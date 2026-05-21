@@ -95,6 +95,13 @@
 
 	async function updateProfile(e: SubmitEvent) {
 		e.preventDefault();
+
+		const trimmedUsername = profile.username.trim();
+		if (trimmedUsername && !/^[a-zA-Z0-9_]{3,50}$/.test(trimmedUsername)) {
+			message = { type: 'error', text: 'Username hanya boleh huruf, angka, dan underscore (3–50 karakter).' };
+			return;
+		}
+
 		loading = true;
 		message = null;
 
@@ -102,8 +109,8 @@
 			const res = await apiFetch('/users/profile', {
 				method: 'PUT',
 				body: JSON.stringify({
-					username: profile.username,
-					display_name: profile.displayName
+					username: trimmedUsername,
+					display_name: profile.displayName.trim()
 				})
 			});
 			const result = await res.json();
@@ -131,22 +138,33 @@
 			message = { type: 'error', text: 'Konfirmasi katasandi tidak cocok.' };
 			return;
 		}
+		if (passwordData.new.length < 8) {
+			message = { type: 'error', text: 'Katasandi baru minimal 8 karakter.' };
+			return;
+		}
 
 		loading = true;
 		message = null;
 
 		try {
-			// Mock change password (endpoint change-password belum tersedia di backend)
-			setTimeout(() => {
-				message = {
-					type: 'success',
-					text: 'Fitur ganti kata sandi langsung dari profil akan segera hadir. Gunakan fitur "Lupa Kata Sandi" di layar login untuk mengatur ulang kata sandi Anda.'
-				};
+			const res = await apiFetch('/auth/change-password', {
+				method: 'PUT',
+				body: JSON.stringify({
+					current_password: passwordData.current,
+					new_password: passwordData.new
+				})
+			});
+			const result = await res.json();
+
+			if (result.success) {
+				message = { type: 'success', text: 'Katasandi berhasil diubah!' };
 				passwordData = { current: '', new: '', confirm: '' };
-				loading = false;
-			}, 1000);
+			} else {
+				message = { type: 'error', text: result.error?.message || 'Gagal mengubah katasandi.' };
+			}
 		} catch {
-			message = { type: 'error', text: 'Gagal mengubah katasandi.' };
+			message = { type: 'error', text: 'Gagal menghubungi server.' };
+		} finally {
 			loading = false;
 		}
 	}

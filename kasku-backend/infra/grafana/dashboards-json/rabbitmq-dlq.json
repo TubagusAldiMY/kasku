@@ -5,7 +5,7 @@
   "id": null,
   "panels": [
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "description": "Jumlah pesan yang tertahan di kasku.events.dlq. Merah = ada pesan (butuh investigasi).",
       "fieldConfig": {
         "defaults": {
@@ -33,7 +33,7 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "max(rabbitmq_queue_messages{queue=\"kasku.events.dlq\"}) or vector(0)",
           "refId": "A"
         }
@@ -42,7 +42,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -55,7 +55,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "rabbitmq_queue_messages{queue=\"kasku.events.dlq\"}",
           "legendFormat": "DLQ",
           "refId": "A"
@@ -65,7 +65,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -78,7 +78,7 @@
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "rabbitmq_queue_messages{queue!~\".*\\\\.dlq\"}",
           "legendFormat": "{{queue}}",
           "refId": "A"

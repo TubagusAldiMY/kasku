@@ -5,7 +5,7 @@
   "id": null,
   "panels": [
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -24,7 +24,7 @@
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "kasku_sync_push_total",
           "refId": "A"
         }
@@ -33,7 +33,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] } } },
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
       "id": 2,
@@ -45,13 +45,13 @@
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "kasku_sync_pull_total", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "kasku_sync_pull_total", "refId": "A" }
       ],
       "title": "Pull Total",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }, { "color": "orange", "value": 10 }] } } },
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
       "id": 3,
@@ -63,13 +63,13 @@
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "kasku_sync_push_conflicts_total", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "kasku_sync_push_conflicts_total", "refId": "A" }
       ],
       "title": "Conflicts (Server Wins)",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } } },
       "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
       "id": 4,
@@ -81,13 +81,13 @@
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "kasku_sync_errors_total", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "kasku_sync_errors_total", "refId": "A" }
       ],
       "title": "Errors",
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -99,14 +99,14 @@
       "id": 5,
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(kasku_sync_push_total[5m])", "legendFormat": "push rate", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(kasku_sync_pull_total[5m])", "legendFormat": "pull rate", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "rate(kasku_sync_push_total[5m])", "legendFormat": "push rate", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "rate(kasku_sync_pull_total[5m])", "legendFormat": "pull rate", "refId": "B" }
       ],
       "title": "Sync Operations Rate",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -118,9 +118,9 @@
       "id": 6,
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(kasku_sync_push_conflicts_total[5m])", "legendFormat": "conflicts", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(kasku_sync_push_skipped_total[5m])", "legendFormat": "skipped (idempotency)", "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(kasku_sync_errors_total[5m])", "legendFormat": "errors", "refId": "C" }
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "rate(kasku_sync_push_conflicts_total[5m])", "legendFormat": "conflicts", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "rate(kasku_sync_push_skipped_total[5m])", "legendFormat": "skipped (idempotency)", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "rate(kasku_sync_errors_total[5m])", "legendFormat": "errors", "refId": "C" }
       ],
       "title": "Conflict / Skipped / Errors Rate",
       "type": "timeseries"

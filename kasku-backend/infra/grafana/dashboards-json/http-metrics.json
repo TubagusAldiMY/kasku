@@ -7,7 +7,7 @@
   "links": [],
   "panels": [
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -20,19 +20,19 @@
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.50, sum by (le, route) (rate(kasku_http_request_duration_seconds_bucket{service=\"$service\"}[5m])))",
           "legendFormat": "p50 {{route}}",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.95, sum by (le, route) (rate(kasku_http_request_duration_seconds_bucket{service=\"$service\"}[5m])))",
           "legendFormat": "p95 {{route}}",
           "refId": "B"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "histogram_quantile(0.99, sum by (le, route) (rate(kasku_http_request_duration_seconds_bucket{service=\"$service\"}[5m])))",
           "legendFormat": "p99 {{route}}",
           "refId": "C"
@@ -42,7 +42,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -55,7 +55,7 @@
       "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum by (route) (rate(kasku_http_requests_total{service=\"$service\"}[5m]))",
           "legendFormat": "{{route}}",
           "refId": "A"
@@ -65,7 +65,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -78,7 +78,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "right" } },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "sum by (status) (rate(kasku_http_requests_total{service=\"$service\"}[5m]))",
           "legendFormat": "{{status}}",
           "refId": "A"
@@ -95,7 +95,7 @@
     "list": [
       {
         "current": { "selected": false, "text": "auth-service", "value": "auth-service" },
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
         "definition": "label_values(kasku_http_requests_total, service)",
         "hide": 0,
         "includeAll": false,

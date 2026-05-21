@@ -330,9 +330,9 @@
 			</div>
 		</div>
 
-		<div class="relative flex h-64 w-full items-end justify-between gap-4 px-2">
+		<div class="relative flex h-64 w-full items-stretch justify-between gap-4 px-2">
 			{#each weeklyData as data (data.day)}
-				<div class="group flex flex-1 flex-col items-center gap-4">
+				<div class="group relative flex flex-1 flex-col items-center gap-2">
 					<!-- Tooltip -->
 					<div
 						class="pointer-events-none absolute bottom-full mb-2 rounded-lg bg-[#0a2e31] px-3 py-1.5 text-[10px] font-bold whitespace-nowrap text-white opacity-0 shadow-xl transition-opacity group-hover:opacity-100"
@@ -340,19 +340,21 @@
 						{formatCurrency(data.amount)}
 					</div>
 
-					<!-- Bar -->
-					<div
-						class="relative w-full max-w-[40px] overflow-hidden rounded-2xl bg-gray-50 transition-all duration-500 group-hover:shadow-lg"
-						style="height: {(data.amount / maxAmount) * 100}%"
-					>
+					<!-- Bar area: fills remaining height, bar grows from bottom -->
+					<div class="flex w-full flex-1 items-end justify-center">
 						<div
-							class="absolute inset-0 bg-gradient-to-t from-[#217b84] to-[#4fd1c5] opacity-80 transition-opacity group-hover:opacity-100"
-						></div>
+							class="w-full max-w-[40px] overflow-hidden rounded-2xl bg-gray-50 transition-all duration-500 group-hover:shadow-lg"
+							style="height: {Math.max(data.amount > 0 ? 3 : 0, (data.amount / maxAmount) * 100)}%"
+						>
+							<div
+								class="h-full bg-gradient-to-t from-[#217b84] to-[#4fd1c5] opacity-80 transition-opacity group-hover:opacity-100"
+							></div>
+						</div>
 					</div>
 
 					<!-- Day Label -->
 					<span
-						class="text-[11px] font-black tracking-tighter text-gray-400 uppercase transition-colors group-hover:text-[#0a2e31]"
+						class="shrink-0 text-[11px] font-black tracking-tighter text-gray-400 uppercase transition-colors group-hover:text-[#0a2e31]"
 						>{data.day}</span
 					>
 				</div>

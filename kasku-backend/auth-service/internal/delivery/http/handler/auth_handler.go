@@ -8,8 +8,10 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/dto"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/middleware"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/response"
+	domainerrors "github.com/TubagusAldiMY/kasku/auth-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/usecase"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -39,6 +41,7 @@ type AuthHandler struct {
 	logoutUC             usecase.LogoutUseCase
 	forgotPasswordUC     usecase.ForgotPasswordUseCase
 	resetPasswordUC      usecase.ResetPasswordUseCase
+	changePasswordUC     usecase.ChangePasswordUseCase
 	healthChecker        HealthChecker
 	serviceVersion       string
 	isDev                bool
@@ -55,6 +58,7 @@ func NewAuthHandler(
 	logoutUC usecase.LogoutUseCase,
 	forgotPasswordUC usecase.ForgotPasswordUseCase,
 	resetPasswordUC usecase.ResetPasswordUseCase,
+	changePasswordUC usecase.ChangePasswordUseCase,
 	healthChecker HealthChecker,
 	serviceVersion string,
 	isDev bool,
@@ -69,6 +73,7 @@ func NewAuthHandler(
 		logoutUC:             logoutUC,
 		forgotPasswordUC:     forgotPasswordUC,
 		resetPasswordUC:      resetPasswordUC,
+		changePasswordUC:     changePasswordUC,
 		healthChecker:        healthChecker,
 		serviceVersion:       serviceVersion,
 		isDev:                isDev,
@@ -236,6 +241,46 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	}
 
 	response.OK(c, gin.H{"message": "Password berhasil direset. Silakan login dengan password baru."})
+}
+
+// ChangePassword menangani PUT /auth/change-password (butuh JWT — X-User-ID diinject api-gateway).
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userIDStr := c.GetHeader("X-User-ID")
+	if userIDStr == "" {
+		response.Fail(c, http.StatusUnauthorized, "UNAUTHORIZED", "Header autentikasi tidak ditemukan.", nil)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "INVALID_INPUT", "User ID tidak valid.", nil)
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.CurrentPassword == "" || req.NewPassword == "" {
+		response.Fail(c, http.StatusBadRequest, "INVALID_INPUT", "current_password dan new_password wajib diisi.", nil)
+		return
+	}
+
+	if err := h.changePasswordUC.Execute(c.Request.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
+		if de, ok := domainerrors.IsDomainError(err); ok {
+			status := http.StatusBadRequest
+			if de.Code == "USER_NOT_FOUND" {
+				status = http.StatusNotFound
+			}
+			response.Fail(c, status, de.Code, de.Message, nil)
+			return
+		}
+		h.logError(c, "change-password", err)
+		response.Fail(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Gagal mengubah password.", nil)
+		return
+	}
+
+	response.OK(c, gin.H{"message": "Password berhasil diubah."})
 }
 
 // Health menangani GET /health

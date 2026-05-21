@@ -91,6 +91,7 @@ func NewRouter(
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/forgot-password", forgotHandlers...)
 		auth.POST("/reset-password", authHandler.ResetPassword)
+		auth.PUT("/change-password", authHandler.ChangePassword)
 	}
 
 	return r

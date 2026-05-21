@@ -28,15 +28,16 @@ func init() {
 }
 
 type testDeps struct {
-	register *mocks.MockRegisterUseCase
-	verify   *mocks.MockVerifyEmailUseCase
-	resend   *mocks.MockResendVerificationUseCase
-	login    *mocks.MockLoginUseCase
-	refresh  *mocks.MockRefreshTokenUseCase
-	logout   *mocks.MockLogoutUseCase
-	forgot   *mocks.MockForgotPasswordUseCase
-	reset    *mocks.MockResetPasswordUseCase
-	health   *mockHealthChecker
+	register  *mocks.MockRegisterUseCase
+	verify    *mocks.MockVerifyEmailUseCase
+	resend    *mocks.MockResendVerificationUseCase
+	login     *mocks.MockLoginUseCase
+	refresh   *mocks.MockRefreshTokenUseCase
+	logout    *mocks.MockLogoutUseCase
+	forgot    *mocks.MockForgotPasswordUseCase
+	reset     *mocks.MockResetPasswordUseCase
+	changePwd *mocks.MockChangePasswordUseCase
+	health    *mockHealthChecker
 }
 
 // mockHealthChecker simple stub. HealthChecker interface dari handler package
@@ -55,19 +56,20 @@ func newDeps(t *testing.T) (*testDeps, *gin.Engine) {
 	t.Cleanup(ctrl.Finish)
 
 	d := &testDeps{
-		register: mocks.NewMockRegisterUseCase(ctrl),
-		verify:   mocks.NewMockVerifyEmailUseCase(ctrl),
-		resend:   mocks.NewMockResendVerificationUseCase(ctrl),
-		login:    mocks.NewMockLoginUseCase(ctrl),
-		refresh:  mocks.NewMockRefreshTokenUseCase(ctrl),
-		logout:   mocks.NewMockLogoutUseCase(ctrl),
-		forgot:   mocks.NewMockForgotPasswordUseCase(ctrl),
-		reset:    mocks.NewMockResetPasswordUseCase(ctrl),
-		health:   &mockHealthChecker{},
+		register:  mocks.NewMockRegisterUseCase(ctrl),
+		verify:    mocks.NewMockVerifyEmailUseCase(ctrl),
+		resend:    mocks.NewMockResendVerificationUseCase(ctrl),
+		login:     mocks.NewMockLoginUseCase(ctrl),
+		refresh:   mocks.NewMockRefreshTokenUseCase(ctrl),
+		logout:    mocks.NewMockLogoutUseCase(ctrl),
+		forgot:    mocks.NewMockForgotPasswordUseCase(ctrl),
+		reset:     mocks.NewMockResetPasswordUseCase(ctrl),
+		changePwd: mocks.NewMockChangePasswordUseCase(ctrl),
+		health:    &mockHealthChecker{},
 	}
 	h := handler.NewAuthHandler(
 		d.register, d.verify, d.resend, d.login, d.refresh, d.logout, d.forgot, d.reset,
-		d.health, "1.0.0", true, zerolog.Nop(),
+		d.changePwd, d.health, "1.0.0", true, zerolog.Nop(),
 	)
 	r := gin.New()
 	r.POST("/auth/register", h.Register)
@@ -78,6 +80,7 @@ func newDeps(t *testing.T) (*testDeps, *gin.Engine) {
 	r.POST("/auth/logout", h.Logout)
 	r.POST("/auth/forgot-password", h.ForgotPassword)
 	r.POST("/auth/reset-password", h.ResetPassword)
+	r.PUT("/auth/change-password", h.ChangePassword)
 	r.GET("/health", h.Health)
 	return d, r
 }
@@ -376,4 +379,82 @@ func TestAuthHandler_Health_AllUnhealthy(t *testing.T) {
 	d.health.mqErr = fmt.Errorf("mq")
 	w := doJSON(r, "GET", "/health", nil, nil)
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+}
+
+// ─── ChangePassword ───────────────────────────────────────────────────────────
+
+func TestAuthHandler_ChangePassword_Happy(t *testing.T) {
+	t.Parallel()
+	d, r := newDeps(t)
+
+	uid := uuid.New()
+	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "OldPass1", "NewPass1").Return(nil)
+
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
+		"current_password": "OldPass1",
+		"new_password":     "NewPass1",
+	}, map[string]string{"X-User-ID": uid.String()})
+
+	require.Equal(t, http.StatusOK, w.Code)
+	body, _ := io.ReadAll(w.Body)
+	assert.Contains(t, string(body), "berhasil diubah")
+}
+
+func TestAuthHandler_ChangePassword_WrongCurrentPassword(t *testing.T) {
+	t.Parallel()
+	d, r := newDeps(t)
+
+	uid := uuid.New()
+	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "WrongPass", "NewPass1").
+		Return(domainerrors.ErrInvalidCredentials)
+
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
+		"current_password": "WrongPass",
+		"new_password":     "NewPass1",
+	}, map[string]string{"X-User-ID": uid.String()})
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	body, _ := io.ReadAll(w.Body)
+	assert.Contains(t, string(body), "INVALID_CREDENTIALS")
+}
+
+func TestAuthHandler_ChangePassword_UserNotFound(t *testing.T) {
+	t.Parallel()
+	d, r := newDeps(t)
+
+	uid := uuid.New()
+	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "OldPass1", "NewPass1").
+		Return(domainerrors.ErrUserNotFound)
+
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
+		"current_password": "OldPass1",
+		"new_password":     "NewPass1",
+	}, map[string]string{"X-User-ID": uid.String()})
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	body, _ := io.ReadAll(w.Body)
+	assert.Contains(t, string(body), "USER_NOT_FOUND")
+}
+
+func TestAuthHandler_ChangePassword_MissingHeader(t *testing.T) {
+	t.Parallel()
+	_, r := newDeps(t)
+
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
+		"current_password": "OldPass1",
+		"new_password":     "NewPass1",
+	}, nil)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestAuthHandler_ChangePassword_MissingBody(t *testing.T) {
+	t.Parallel()
+	_, r := newDeps(t)
+
+	uid := uuid.New()
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{},
+		map[string]string{"X-User-ID": uid.String()})
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
