@@ -695,3 +695,25 @@ services:
       - prometheus
       - loki
     stop_grace_period: 35s
+
+  # ============================================================
+  # Backup — jalankan manual atau via cron dengan profile backup
+  # Cron production: 0 2 * * * docker compose --profile backup run --rm backup
+  # ============================================================
+  backup:
+    image: postgres:16-alpine
+    profiles: ["backup"]
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_SUPERUSER: kasku_superuser
+    volumes:
+      - ./infra/backup/backup.sh:/backup.sh:ro
+    entrypoint: ["sh", "/backup.sh"]
+    networks:
+      - kasku-data
+    depends_on:
+      postgres:
+        condition: service_healthy
