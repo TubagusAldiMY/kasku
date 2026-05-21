@@ -170,15 +170,17 @@ func (r *postgresAccountRepository) GetBalanceHistory(ctx context.Context, tenan
 		args  []interface{}
 	)
 
-	// limitMonths == 0 berarti ambil semua history (unlimited)
+	// limitMonths == 0 berarti ambil semua history (unlimited).
+	// limitMonths di-embed langsung ke SQL (bukan sebagai parameter) karena
+	// nilainya adalah int yang dikontrol server — bukan input pengguna.
 	if limitMonths > 0 {
 		query = fmt.Sprintf(`
 			SELECT id, account_id, amount, balance, note, created_at
 			FROM %s.balance_history
-			WHERE account_id = $1 AND created_at >= now() - ($2 || ' months')::interval
+			WHERE account_id = $1 AND created_at >= now() - '%d months'::interval
 			ORDER BY created_at DESC
-		`, tenantSchema)
-		args = []interface{}{accountID, limitMonths}
+		`, tenantSchema, limitMonths)
+		args = []interface{}{accountID}
 	} else {
 		query = fmt.Sprintf(`
 			SELECT id, account_id, amount, balance, note, created_at

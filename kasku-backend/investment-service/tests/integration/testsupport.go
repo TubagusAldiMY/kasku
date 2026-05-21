@@ -20,15 +20,20 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// migrationsDir mengembalikan path absolut ke direktori migrations/ finance-service.
-func migrationsDir() string {
+// financeServiceMigrationsDir mengembalikan path ke migrations/ finance-service.
+// investment-service tidak punya migrations sendiri — tabel investment_assets dan
+// unit_history dibuat oleh finance-service via provision_tenant().
+func financeServiceMigrationsDir() string {
 	_, thisFile, _, _ := runtime.Caller(0)
-	// thisFile = .../finance-service/tests/integration/testsupport.go
-	return filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
+	// thisFile = .../investment-service/tests/integration/testsupport.go
+	// finance-service ada di level yang sama: ../../finance-service/migrations
+	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "finance-service", "migrations")
+	return filepath.Clean(root)
 }
 
-// SetupPostgres spin up postgres:16-alpine container, run migrations, dan kembalikan pool.
-// Container dan pool di-cleanup otomatis via t.Cleanup.
+// SetupPostgres spin up postgres:16-alpine container, jalankan finance-service migrations
+// (yang mencakup provision_tenant + investment_assets + unit_history), dan kembalikan pool.
+// Container di-cleanup otomatis via t.Cleanup.
 func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
@@ -45,7 +50,7 @@ func SetupPostgres(t *testing.T) *pgxpool.Pool {
 				WithStartupTimeout(60*time.Second),
 		),
 	)
-	require.NoError(t, err, "failed to start postgres container")
+	require.NoError(t, err, "gagal start postgres container")
 	t.Cleanup(func() {
 		_ = pgC.Terminate(context.Background())
 	})
@@ -53,34 +58,31 @@ func SetupPostgres(t *testing.T) *pgxpool.Pool {
 	dsn, err := pgC.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
-	require.NoError(t, createServiceRoles(ctx, dsn), "failed to create service roles")
+	require.NoError(t, createServiceRoles(ctx, dsn), "gagal create service roles")
 
-	migrationURL := "file://" + migrationsDir()
-	require.NoError(t, runMigrations(dsn, migrationURL), "failed to run finance-service migrations")
+	migrationURL := "file://" + financeServiceMigrationsDir()
+	require.NoError(t, runMigrations(dsn, migrationURL), "gagal run finance-service migrations")
 
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 
-	require.NoError(t, pool.Ping(ctx), "pool ping failed")
+	require.NoError(t, pool.Ping(ctx), "pool ping gagal")
 	return pool
 }
 
-// ProvisionTenant memanggil stored function provision_tenant(user_id::uuid) untuk
-// membuat schema dan tabel tenant. Fungsi ini dibuat oleh migration finance-service.
+// ProvisionTenant memanggil provision_tenant(user_id::uuid) dari finance-service migration
+// untuk membuat tenant schema beserta tabel investment_assets dan unit_history.
 func ProvisionTenant(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	t.Helper()
-	ctx := context.Background()
-	_, err := pool.Exec(ctx, "SELECT public.provision_tenant($1::uuid)", userID)
-	require.NoError(t, err, "failed to provision tenant for userID=%s", userID)
-
-	// tenant schema name: tenant_<uuid-with-underscores>
+	_, err := pool.Exec(context.Background(), "SELECT public.provision_tenant($1::uuid)", userID)
+	require.NoError(t, err, "gagal provision tenant userID=%s", userID)
 	return "tenant_" + strings.ReplaceAll(userID, "-", "_")
 }
 
 // createServiceRoles membuat role PostgreSQL yang dibutuhkan oleh GRANT statements
-// di dalam migrations. Di production role ini dibuat oleh 00-init-databases.sh;
-// di test container kita buat secara minimal.
+// di dalam finance-service migrations. Di production role ini dibuat oleh
+// infra/postgres/00-init-databases.sh; di test container kita buat secara minimal.
 func createServiceRoles(ctx context.Context, dsn string) error {
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -97,6 +99,7 @@ func createServiceRoles(ctx context.Context, dsn string) error {
 	}
 	for _, role := range roles {
 		if _, err := pool.Exec(ctx, "CREATE ROLE "+role); err != nil {
+			// Abaikan error jika role sudah ada
 			if !strings.Contains(err.Error(), "already exists") {
 				return fmt.Errorf("create role %s: %w", role, err)
 			}
@@ -111,7 +114,6 @@ func runMigrations(dsn, sourceURL string) error {
 		return fmt.Errorf("init migrate: %w", err)
 	}
 	defer func() { _, _ = m.Close() }()
-
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
