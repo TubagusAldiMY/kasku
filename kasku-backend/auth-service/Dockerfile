@@ -11,7 +11,7 @@ COPY auth-service ./auth-service
 WORKDIR /app/auth-service
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /auth-service ./cmd/server
 
-FROM alpine:3.19
+FROM alpine:3.23
 RUN apk --no-cache add ca-certificates tzdata && \
     addgroup -S kasku && adduser -S -G kasku kasku
 
