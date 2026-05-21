@@ -8,7 +8,7 @@ require (
 	github.com/TubagusAldiMY/kasku/observability-go v0.0.0-00010101000000-000000000000
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/rs/zerolog v1.33.0
 )
 
