@@ -40,7 +40,7 @@ pub struct PriceMetrics {
 pub struct AppState {
     pub get_price_uc: Arc<GetPriceUseCase>,
     pub service_version: String,
-    pub db_pool: sqlx::PgPool,
+    pub db_pool: sqlx_postgres::PgPool,
     pub metrics: Arc<PriceMetrics>,
 }
 

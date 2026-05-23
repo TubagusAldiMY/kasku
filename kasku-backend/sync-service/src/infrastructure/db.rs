@@ -1,5 +1,6 @@
-use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+use std::path::Path;
+
+use sqlx_postgres::{PgPool, PgPoolOptions};
 use tracing::info;
 
 /// Create a new PostgreSQL connection pool.
@@ -19,14 +20,15 @@ pub async fn new_postgres_pool(database_url: &str) -> Result<PgPool, sqlx::Error
 /// Run embedded migrations (public schema metadata only).
 /// Per-tenant sync_log dikelola oleh finance-service provision_tenant().
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
-    sqlx::migrate!("./migrations").run(pool).await?;
+    let migrator = sqlx::migrate::Migrator::new(Path::new("./migrations")).await?;
+    migrator.run(pool).await?;
     info!("sync-service migrations applied");
     Ok(())
 }
 
 /// Ping the database to check connectivity.
 pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query("SELECT 1").execute(pool).await?;
+    sqlx::query::query("SELECT 1").execute(pool).await?;
     Ok(())
 }
 
@@ -34,7 +36,7 @@ pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
 /// yang membuat fungsi provision_tenant() dan struktur sync_log per tenant.
 /// Dipanggil saat startup — gagal jika finance-service belum migrate.
 pub async fn verify_finance_migrations_applied(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let exists: bool = sqlx::query_scalar(
+    let exists: bool = sqlx::query_scalar::query_scalar(
         "SELECT EXISTS(
             SELECT 1 FROM pg_proc p
             JOIN pg_namespace n ON n.oid = p.pronamespace

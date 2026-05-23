@@ -1,5 +1,4 @@
-use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+use sqlx_postgres::{PgPool, PgPoolOptions};
 use tracing::info;
 
 /// Create a new PostgreSQL connection pool.
@@ -20,13 +19,13 @@ pub async fn new_postgres_pool(database_url: &str) -> Result<PgPool, sqlx::Error
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Use raw SQL since we have a single migration file
     let migration_sql = include_str!("../../migrations/001_create_price_cache.sql");
-    sqlx::raw_sql(migration_sql).execute(pool).await?;
+    sqlx::raw_sql::raw_sql(migration_sql).execute(pool).await?;
     info!("Database migrations berhasil dijalankan");
     Ok(())
 }
 
 /// Ping the database to check connectivity.
 pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query("SELECT 1").execute(pool).await?;
+    sqlx::query::query("SELECT 1").execute(pool).await?;
     Ok(())
 }

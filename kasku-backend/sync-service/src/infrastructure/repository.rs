@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde_json::Value as JsonValue;
-use sqlx::PgPool;
+use sqlx_postgres::PgPool;
 use uuid::Uuid;
 
 use crate::domain::error::DomainError;
@@ -29,7 +29,7 @@ impl SyncRepository {
             "SELECT EXISTS(SELECT 1 FROM {}.sync_log WHERE id = $1)",
             tenant_schema
         );
-        let result = sqlx::query_scalar::<_, bool>(&query)
+        let result = sqlx::query_scalar::query_scalar::<_, bool>(&query)
             .bind(sync_id)
             .fetch_one(&self.pool)
             .await;
@@ -69,7 +69,7 @@ impl SyncRepository {
             tenant_schema, table
         );
 
-        let row: Option<(JsonValue, DateTime<Utc>)> = sqlx::query_as(&query)
+        let row: Option<(JsonValue, DateTime<Utc>)> = sqlx::query_as::query_as(&query)
             .bind(entity_id)
             .fetch_optional(&self.pool)
             .await?;
@@ -93,7 +93,7 @@ impl SyncRepository {
              VALUES ($1, $2, $3, $4, $5, now())",
             tenant_schema
         );
-        let result = sqlx::query(&query)
+        let result = sqlx::query::query(&query)
             .bind(sync_id)
             .bind(operation)
             .bind(entity_type)

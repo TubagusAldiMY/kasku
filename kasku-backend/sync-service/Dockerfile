@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 COPY --from=builder --chown=kasku:kasku /app/target/release/sync-service /app/sync-service
+COPY --chown=kasku:kasku migrations/ /app/migrations/
 
 USER kasku
 EXPOSE 8088

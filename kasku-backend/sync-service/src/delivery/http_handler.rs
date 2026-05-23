@@ -29,7 +29,7 @@ pub struct AppState {
     pub push_uc: PushSyncUseCase,
     pub pull_uc: PullSyncUseCase,
     pub service_version: String,
-    pub db_pool: sqlx::PgPool,
+    pub db_pool: sqlx_postgres::PgPool,
     pub metrics: SyncMetrics,
 }
 

@@ -1,7 +1,6 @@
-use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::PgPool;
-use uuid::Uuid;
+use sqlx::row::Row;
+use sqlx_postgres::{PgPool, PgRow};
 
 use crate::domain::entity::{PriceCache, PriceSource};
 use crate::domain::error::DomainError;
@@ -12,29 +11,17 @@ pub struct PriceCacheRepository {
     pool: PgPool,
 }
 
-/// Row type for SQLx deserialization from the database.
-#[derive(sqlx::FromRow)]
-struct PriceCacheRow {
-    id: Uuid,
-    symbol: String,
-    source: String,
-    price_idr: Decimal,
-    price_usd: Decimal,
-    fetched_at: DateTime<Utc>,
-    expires_at: DateTime<Utc>,
-}
+fn price_cache_from_row(row: PgRow) -> PriceCache {
+    let source: String = row.get("source");
 
-impl From<PriceCacheRow> for PriceCache {
-    fn from(row: PriceCacheRow) -> Self {
-        PriceCache {
-            id: row.id,
-            symbol: row.symbol,
-            source: PriceSource::from_str(&row.source).unwrap_or(PriceSource::Manual),
-            price_idr: row.price_idr,
-            price_usd: row.price_usd,
-            fetched_at: row.fetched_at,
-            expires_at: row.expires_at,
-        }
+    PriceCache {
+        id: row.get("id"),
+        symbol: row.get("symbol"),
+        source: PriceSource::from_str(&source).unwrap_or(PriceSource::Manual),
+        price_idr: row.get("price_idr"),
+        price_usd: row.get("price_usd"),
+        fetched_at: row.get("fetched_at"),
+        expires_at: row.get("expires_at"),
     }
 }
 
@@ -49,7 +36,7 @@ impl PriceCacheRepository {
         symbol: &str,
         source: &PriceSource,
     ) -> Result<Option<PriceCache>, DomainError> {
-        let row = sqlx::query_as::<_, PriceCacheRow>(
+        let row = sqlx::query::query(
             "SELECT id, symbol, source, price_idr, price_usd, fetched_at, expires_at
              FROM public.price_cache
              WHERE symbol = $1 AND source = $2",
@@ -60,12 +47,12 @@ impl PriceCacheRepository {
         .await
         .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
 
-        Ok(row.map(PriceCache::from))
+        Ok(row.map(price_cache_from_row))
     }
 
     /// Get cached price by symbol (any source). Returns the most recently fetched one.
     pub async fn get_by_symbol(&self, symbol: &str) -> Result<Option<PriceCache>, DomainError> {
-        let row = sqlx::query_as::<_, PriceCacheRow>(
+        let row = sqlx::query::query(
             "SELECT id, symbol, source, price_idr, price_usd, fetched_at, expires_at
              FROM public.price_cache
              WHERE symbol = $1
@@ -77,7 +64,7 @@ impl PriceCacheRepository {
         .await
         .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
 
-        Ok(row.map(PriceCache::from))
+        Ok(row.map(price_cache_from_row))
     }
 
     /// Upsert a price cache entry (INSERT ON CONFLICT UPDATE).
@@ -89,7 +76,7 @@ impl PriceCacheRepository {
         price_usd: Decimal,
         cache_ttl_seconds: i64,
     ) -> Result<PriceCache, DomainError> {
-        let row = sqlx::query_as::<_, PriceCacheRow>(
+        let row = sqlx::query::query(
             "INSERT INTO public.price_cache (symbol, source, price_idr, price_usd, fetched_at, expires_at)
              VALUES ($1, $2, $3, $4, now(), now() + make_interval(secs => $5))
              ON CONFLICT (symbol, source)
@@ -109,6 +96,6 @@ impl PriceCacheRepository {
         .await
         .map_err(|e| DomainError::DatabaseError(e.to_string()))?;
 
-        Ok(PriceCache::from(row))
+        Ok(price_cache_from_row(row))
     }
 }
