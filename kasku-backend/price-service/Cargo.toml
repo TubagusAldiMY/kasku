@@ -52,5 +52,5 @@ anyhow = "1"
 url = "2"
 
 [build-dependencies]
-tonic-build = "0.12"
+tonic-build = "0.14"
 protoc-bin-vendored = "3"
