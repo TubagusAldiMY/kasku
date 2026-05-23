@@ -61,7 +61,7 @@ func (r *postgresCategoryRepository) GetByID(ctx context.Context, tenantSchema, 
 		&c.CategoryType, &c.IsDefault, &c.IsDeleted, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domainerrors.ErrCategoryNotFound
+			return nil, nil
 		}
 		return nil, fmt.Errorf("gagal get kategori: %w", err)
 	}

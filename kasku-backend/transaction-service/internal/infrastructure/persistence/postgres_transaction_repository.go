@@ -276,7 +276,7 @@ func (r *postgresTransactionRepository) GetByID(ctx context.Context, tenantSchem
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domainerrors.ErrTransactionNotFound
+			return nil, nil
 		}
 		return nil, fmt.Errorf("gagal get transaksi: %w", err)
 	}

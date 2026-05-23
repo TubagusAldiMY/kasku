@@ -72,9 +72,20 @@ func TestAdminUserRepository_CRUD(t *testing.T) {
 func TestAuditLogRepository_CRUD(t *testing.T) {
 	pool := integration.SetupPostgres(t)
 	repo := persistence.NewPostgresAuditLogRepository(pool)
+	adminRepo := persistence.NewPostgresAdminUserRepository(pool)
 	ctx := context.Background()
 
 	adminID := uuid.New()
+	admin := &entity.AdminUser{
+		ID:           adminID,
+		Username:     "audit_admin_" + uuid.New().String()[:8],
+		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$dGVzdHNhbHQ$dGVzdGhhc2g",
+		Role:         entity.AdminRoleSuperAdmin,
+		IsActive:     true,
+		CreatedAt:    time.Now().UTC(),
+		UpdatedAt:    time.Now().UTC(),
+	}
+	require.NoError(t, adminRepo.CreateBootstrap(ctx, admin))
 
 	t.Run("Create dan List", func(t *testing.T) {
 		entry := &entity.AuditLogEntry{

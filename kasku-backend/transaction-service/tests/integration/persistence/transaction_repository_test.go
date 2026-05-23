@@ -2,6 +2,7 @@ package persistence_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -22,6 +23,11 @@ func TestTransactionRepository_CRUD(t *testing.T) {
 	ctx := context.Background()
 
 	accountID := uuid.New()
+	_, err := pool.Exec(ctx, fmt.Sprintf(`
+		INSERT INTO %s.financial_accounts (id, user_id, name, account_type, balance, initial_balance)
+		VALUES ($1, $2, 'Dompet Test', 'CASH', 0, 0)
+	`, tenantSchema), accountID, userID)
+	require.NoError(t, err)
 
 	newTx := func(amount int64, txType entity.TransactionType) *entity.Transaction {
 		now := time.Now().UTC()

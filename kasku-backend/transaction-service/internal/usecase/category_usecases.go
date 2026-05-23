@@ -102,6 +102,9 @@ func (uc *UpdateCategoryUseCase) Execute(ctx context.Context, tenantSchema, id, 
 	if err != nil {
 		return err
 	}
+	if existing == nil {
+		return domainerrors.ErrCategoryNotFound
+	}
 	existing.Name = name
 	existing.Icon = strings.TrimSpace(icon)
 	if existing.Icon == "" {
@@ -129,6 +132,9 @@ func (uc *DeleteCategoryUseCase) Execute(ctx context.Context, tenantSchema, id s
 	cat, err := uc.catRepo.GetByID(ctx, tenantSchema, id)
 	if err != nil {
 		return err
+	}
+	if cat == nil {
+		return domainerrors.ErrCategoryNotFound
 	}
 	if cat.IsDefault {
 		return domainerrors.ErrDefaultCategoryCannotBeDeleted
