@@ -12,17 +12,18 @@ import (
 )
 
 type CreateBudgetInput struct {
-	TenantSchema   string
-	UserID         uuid.UUID
-	SyncID         string
-	Name           string
-	LimitIDR       int64
-	CategoryID     *uuid.UUID
-	PeriodType     entity.BudgetPeriodType
-	StartDate      time.Time
-	EndDate        *time.Time
-	AlertThreshold int
-	MaxBudgets     int // -1 = unlimited
+	TenantSchema      string
+	UserID            uuid.UUID
+	SyncID            string
+	Name              string
+	LimitIDR          int64
+	CategoryID        *uuid.UUID
+	PeriodType        entity.BudgetPeriodType
+	StartDate         time.Time
+	EndDate           *time.Time
+	AlertThreshold    int
+	DailyLimitEnabled bool
+	MaxBudgets        int // -1 = unlimited
 }
 
 type CreateBudgetUseCase struct {
@@ -49,6 +50,10 @@ func (uc *CreateBudgetUseCase) Execute(ctx context.Context, input CreateBudgetIn
 		periodType = entity.PeriodMonthly
 	}
 
+	if input.DailyLimitEnabled && periodType == entity.PeriodCustom {
+		return nil, fmt.Errorf("%w: jatah harian hanya tersedia untuk periode MONTHLY atau WEEKLY", domainerrors.ErrInvalidInput)
+	}
+
 	if input.MaxBudgets != -1 {
 		count, err := uc.repo.Count(ctx, input.TenantSchema, input.UserID.String())
 		if err != nil {
@@ -69,20 +74,26 @@ func (uc *CreateBudgetUseCase) Execute(ctx context.Context, input CreateBudgetIn
 		startDate = time.Now().UTC()
 	}
 
+	syncID := input.SyncID
+	if syncID == "" {
+		syncID = uuid.New().String()
+	}
+
 	now := time.Now().UTC()
 	budget := &entity.Budget{
-		ID:             uuid.New(),
-		UserID:         input.UserID,
-		SyncID:         input.SyncID,
-		Name:           input.Name,
-		LimitIDR:       input.LimitIDR,
-		CategoryID:     input.CategoryID,
-		PeriodType:     periodType,
-		StartDate:      startDate,
-		EndDate:        input.EndDate,
-		AlertThreshold: alertThreshold,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		ID:                uuid.New(),
+		UserID:            input.UserID,
+		SyncID:            syncID,
+		Name:              input.Name,
+		LimitIDR:          input.LimitIDR,
+		CategoryID:        input.CategoryID,
+		PeriodType:        periodType,
+		StartDate:         startDate,
+		EndDate:           input.EndDate,
+		AlertThreshold:    alertThreshold,
+		DailyLimitEnabled: input.DailyLimitEnabled,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
 	if err := uc.repo.Create(ctx, input.TenantSchema, budget); err != nil {

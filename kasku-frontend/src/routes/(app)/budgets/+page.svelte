@@ -13,6 +13,7 @@
 		start_date: string;
 		end_date: string;
 		alert_threshold: number | string;
+		daily_limit_enabled: boolean;
 	};
 
 	let budgets = $state<BudgetRow[]>([]);
@@ -30,7 +31,8 @@
 		period_type: 'MONTHLY',
 		start_date: new Date().toISOString().substring(0, 10),
 		end_date: '',
-		alert_threshold: 80
+		alert_threshold: 80,
+		daily_limit_enabled: false
 	};
 
 	let form = $state<BudgetForm>({ ...defaultForm });
@@ -74,9 +76,13 @@
 			const res = await apiFetch('/budgets');
 			const result = await readApiResult(res);
 			if (res.ok && result.success && Array.isArray(result.data)) {
-				await budgetsRepo.clear();
-				await budgetsRepo.putMany(result.data as BudgetRow[]);
 				budgets = result.data as BudgetRow[];
+				try {
+					await budgetsRepo.clear();
+					await budgetsRepo.putMany(result.data as BudgetRow[]);
+				} catch {
+					// IDB gagal — UI sudah ter-update, biarkan.
+				}
 			} else if (!res.ok) {
 				errorMessage = result.error?.message || 'Gagal memuat anggaran.';
 			}
@@ -116,7 +122,8 @@
 				name: form.name.trim(),
 				limit_idr: Number(form.limit_idr),
 				period_type: form.period_type,
-				alert_threshold: Number(form.alert_threshold)
+				alert_threshold: Number(form.alert_threshold),
+				daily_limit_enabled: form.daily_limit_enabled
 			};
 			if (form.category_id) body.category_id = form.category_id;
 			if (form.start_date) body.start_date = form.start_date;
@@ -176,13 +183,30 @@
 			period_type: b.period_type,
 			start_date: b.start_date ?? new Date().toISOString().substring(0, 10),
 			end_date: b.end_date ?? '',
-			alert_threshold: b.alert_threshold
+			alert_threshold: b.alert_threshold,
+			daily_limit_enabled: b.daily_limit_enabled ?? false
 		};
 		showModal = true;
 	}
 
+	function spentTodayPercent(b: BudgetRow): number {
+		const allowance = b.daily_allowance_today_idr ?? 0;
+		if (allowance <= 0) return 100;
+		return Math.round(((b.spent_today_idr ?? 0) / allowance) * 100);
+	}
+
+	function dailyCarryoverLabel(carryover: number): string {
+		if (carryover > 0) return `+${formatCurrency(carryover)}`;
+		if (carryover < 0) return formatCurrency(carryover);
+		return formatCurrency(0);
+	}
+
 	onMount(async () => {
-		budgets = await budgetsRepo.getAll();
+		try {
+			budgets = await budgetsRepo.getAll();
+		} catch (err) {
+			console.warn('Cache anggaran lokal belum siap, memuat dari server:', err);
+		}
 		loading = false;
 		void fetchCategories();
 		await refreshFromServer();
@@ -354,6 +378,37 @@
 							Kelebihan: <span class="text-red-600">{formatCurrency(-b.remaining_idr)}</span>
 						</p>
 					{/if}
+
+					<!-- Daily allowance section -->
+					{#if b.daily_limit_enabled}
+						<div class="mt-2 space-y-2 border-t border-gray-100 pt-3">
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="font-bold text-gray-400">Jatah dasar</span>
+								<span class="font-black text-gray-500">{formatCurrency(b.daily_base_idr ?? 0)}/hari</span>
+							</div>
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="font-bold text-gray-400">Sisa kemarin</span>
+								<span class="font-black {(b.carryover_idr ?? 0) >= 0 ? 'text-[#217b84]' : 'text-red-500'}">
+									{dailyCarryoverLabel(b.carryover_idr ?? 0)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="font-black text-[#0a2e31]">Jatah hari ini</span>
+								<span class="font-black text-[#0a2e31]">{formatCurrency(b.daily_allowance_today_idr ?? 0)}</span>
+							</div>
+							<!-- Mini progress bar for today -->
+							<div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+								<div
+									class="h-full rounded-full transition-all duration-500 {spentTodayPercent(b) >= 100 ? 'bg-red-400' : spentTodayPercent(b) >= 75 ? 'bg-yellow-400' : 'bg-[#217b84]'}"
+									style="width: {Math.min(100, spentTodayPercent(b))}%"
+								></div>
+							</div>
+							<div class="flex items-center justify-between text-[11px]">
+								<span class="font-bold text-gray-400">Terpakai hari ini</span>
+								<span class="font-black {(b.daily_remaining_idr ?? 0) < 0 ? 'text-red-500' : 'text-gray-500'}">{formatCurrency(b.spent_today_idr ?? 0)}</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -451,6 +506,25 @@
 							<option value="CUSTOM">Kustom (Manual)</option>
 						</select>
 					</div>
+
+					<!-- Jatah Harian (hanya untuk MONTHLY dan WEEKLY) -->
+					{#if form.period_type === 'MONTHLY' || form.period_type === 'WEEKLY'}
+						<div class="space-y-1.5">
+							<label class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 transition-all hover:bg-teal-50/40">
+								<input
+									type="checkbox"
+									bind:checked={form.daily_limit_enabled}
+									class="h-4 w-4 rounded accent-[#217b84]"
+								/>
+								<div>
+									<p class="text-sm font-black text-[#0a2e31]">Aktifkan Jatah Harian</p>
+									<p class="text-[10px] font-bold text-gray-400">
+										Anggaran dibagi rata per hari. Sisa/kelebihan hari ini terbawa ke esok.
+									</p>
+								</div>
+							</label>
+						</div>
+					{/if}
 
 					<!-- Tanggal Mulai (hanya untuk CUSTOM) -->
 					{#if form.period_type === 'CUSTOM'}

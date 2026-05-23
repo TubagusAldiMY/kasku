@@ -30,7 +30,10 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, metricsReg *m
 			billing.GET("/plans", billingHandler.ListPlans)
 			billing.GET("/subscription", billingHandler.GetSubscription)
 			billing.POST("/subscribe", billingHandler.Subscribe)
-			billing.POST("/webhook/midtrans", billingHandler.MidtransWebhook)
+
+			// Endpoint webhook Payment Orchestrator — tidak memerlukan JWT.
+			// Keamanan dijamin via HMAC-SHA256 signature verification di handler.
+			billing.POST("/webhook/payment", billingHandler.PaymentWebhook)
 		}
 	}
 

@@ -71,13 +71,13 @@
 
 			const usersEnvelope = (await usersRes.json()) as {
 				success: boolean;
-				data?: { items: UserListItem[]; meta?: unknown };
+				data?: UserListItem[];
 				error?: { message?: string };
 			};
 			if (!usersRes.ok || !usersEnvelope.success) {
 				throw new Error(usersEnvelope.error?.message ?? `users HTTP ${usersRes.status}`);
 			}
-			recentUsers = usersEnvelope.data?.items ?? [];
+			recentUsers = usersEnvelope.data ?? [];
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Gagal memuat data dashboard';
 		} finally {

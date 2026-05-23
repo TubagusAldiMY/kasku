@@ -24,10 +24,12 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let actionBusy = $state(false);
-	let overrideTier = $state('PRO');
-	let overrideDays = $state(30);
+	let suspendReason = $state('');
+	let activateReason = $state('');
+	let overridePlanName = $state('PRO');
+	let overrideReason = $state('');
 
-	const tierOptions = ['FREE', 'PRO', 'PREMIUM'];
+	const tierOptions = ['FREE', 'BASIC', 'PRO'];
 
 	function formatDate(iso: string | null): string {
 		if (!iso) return '—';
@@ -90,27 +92,48 @@
 	}
 
 	async function suspend() {
+		if (suspendReason.trim().length < 3) {
+			error = 'Alasan suspend minimal 3 karakter.';
+			return;
+		}
 		if (!confirm('Suspend pengguna ini? Akun tidak bisa login sampai diaktifkan kembali.')) return;
-		if (await postAction('suspend')) await loadUser();
+		if (await postAction('suspend', { reason: suspendReason.trim() })) {
+			suspendReason = '';
+			await loadUser();
+		}
 	}
 
 	async function activate() {
-		if (await postAction('activate')) await loadUser();
+		if (activateReason.trim().length < 3) {
+			error = 'Alasan aktivasi minimal 3 karakter.';
+			return;
+		}
+		if (await postAction('activate', { reason: activateReason.trim() })) {
+			activateReason = '';
+			await loadUser();
+		}
 	}
 
 	async function override() {
+		if (overrideReason.trim().length < 3) {
+			error = 'Alasan override minimal 3 karakter.';
+			return;
+		}
 		if (
 			!confirm(
-				`Override subscription ke ${overrideTier} selama ${overrideDays} hari? Aksi ini tercatat di audit log.`
+				`Override subscription ke ${overridePlanName}? Aksi ini tercatat di audit log.`
 			)
 		) {
 			return;
 		}
 		const ok = await postAction('override-subscription', {
-			tier: overrideTier,
-			duration_days: overrideDays
+			plan_name: overridePlanName,
+			reason: overrideReason.trim()
 		});
-		if (ok) await loadUser();
+		if (ok) {
+			overrideReason = '';
+			await loadUser();
+		}
 	}
 
 	onMount(loadUser);
@@ -202,27 +225,43 @@
 				<p class="text-xs text-gray-500">
 					Suspend mencegah login dan akses API; aktivasi mengembalikan akses penuh.
 				</p>
-				<div class="flex items-center gap-2">
-					{#if user.is_active}
-						<button
-							type="button"
-							onclick={suspend}
-							disabled={actionBusy}
-							class="rounded-full bg-red-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-red-700 disabled:opacity-60"
-						>
-							Suspend
-						</button>
-					{:else}
-						<button
-							type="button"
-							onclick={activate}
-							disabled={actionBusy}
-							class="rounded-full bg-green-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-green-700 disabled:opacity-60"
-						>
-							Aktifkan
-						</button>
-					{/if}
-				</div>
+				{#if user.is_active}
+					<label class="block space-y-1 text-xs font-bold text-gray-600">
+						Alasan suspend
+						<input
+							type="text"
+							bind:value={suspendReason}
+							placeholder="Contoh: Pelanggaran ToS pasal 3"
+							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400/40"
+						/>
+					</label>
+					<button
+						type="button"
+						onclick={suspend}
+						disabled={actionBusy || suspendReason.trim().length < 3}
+						class="rounded-full bg-red-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-red-700 disabled:opacity-40"
+					>
+						Suspend
+					</button>
+				{:else}
+					<label class="block space-y-1 text-xs font-bold text-gray-600">
+						Alasan aktivasi
+						<input
+							type="text"
+							bind:value={activateReason}
+							placeholder="Contoh: Masalah sudah diselesaikan"
+							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400/40"
+						/>
+					</label>
+					<button
+						type="button"
+						onclick={activate}
+						disabled={actionBusy || activateReason.trim().length < 3}
+						class="rounded-full bg-green-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-green-700 disabled:opacity-40"
+					>
+						Aktifkan
+					</button>
+				{/if}
 			</div>
 
 			<div class="space-y-4 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
@@ -230,12 +269,12 @@
 				<p class="text-xs text-gray-500">
 					Ubah tier secara manual; berguna untuk kompensasi atau promo. Tercatat di audit log.
 				</p>
-				<div class="grid grid-cols-2 gap-3">
+				<div class="grid grid-cols-1 gap-3">
 					<label class="space-y-1 text-xs font-bold text-gray-600">
-						Tier
+						Tier baru
 						<select
-							bind:value={overrideTier}
-							class="w-full rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+							bind:value={overridePlanName}
+							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
 						>
 							{#each tierOptions as t (t)}
 								<option value={t}>{t}</option>
@@ -243,21 +282,20 @@
 						</select>
 					</label>
 					<label class="space-y-1 text-xs font-bold text-gray-600">
-						Durasi (hari)
+						Alasan override
 						<input
-							type="number"
-							bind:value={overrideDays}
-							min="1"
-							max="365"
-							class="w-full rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+							type="text"
+							bind:value={overrideReason}
+							placeholder="Contoh: Kompensasi gangguan layanan"
+							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
 						/>
 					</label>
 				</div>
 				<button
 					type="button"
 					onclick={override}
-					disabled={actionBusy}
-					class="rounded-full bg-[#0a2e31] px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-[#143f43] disabled:opacity-60"
+					disabled={actionBusy || overrideReason.trim().length < 3}
+					class="rounded-full bg-[#0a2e31] px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-[#143f43] disabled:opacity-40"
 				>
 					Override Sekarang
 				</button>

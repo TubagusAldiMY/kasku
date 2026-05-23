@@ -17,6 +17,7 @@ type CreateTransactionInput struct {
 	SyncID          string
 	AccountID       string
 	CategoryID      string
+	BudgetID        string
 	TransactionType entity.TransactionType
 	AmountIDR       int64
 	TransactionDate time.Time
@@ -81,6 +82,13 @@ func (uc *CreateTransactionUseCase) Execute(ctx context.Context, input CreateTra
 		if id, err := uuid.Parse(input.ToAccountID); err == nil {
 			tx.ToAccountID = &id
 		}
+	}
+	if input.TransactionType == entity.TransactionExpense && input.BudgetID != "" {
+		id, err := uuid.Parse(input.BudgetID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: ID anggaran tidak valid", domainerrors.ErrInvalidInput)
+		}
+		tx.BudgetID = &id
 	}
 
 	if err := uc.txRepo.Create(ctx, input.TenantSchema, tx); err != nil {

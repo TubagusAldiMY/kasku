@@ -12,8 +12,10 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	entity "github.com/TubagusAldiMY/kasku/billing-service/internal/domain/entity"
+	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -39,6 +41,35 @@ func NewMockSubscriptionRepository(ctrl *gomock.Controller) *MockSubscriptionRep
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSubscriptionRepository) EXPECT() *MockSubscriptionRepositoryMockRecorder {
 	return m.recorder
+}
+
+// ActivateSubscription mocks base method.
+func (m *MockSubscriptionRepository) ActivateSubscription(ctx context.Context, subscriptionID uuid.UUID, periodEnd time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ActivateSubscription", ctx, subscriptionID, periodEnd)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ActivateSubscription indicates an expected call of ActivateSubscription.
+func (mr *MockSubscriptionRepositoryMockRecorder) ActivateSubscription(ctx, subscriptionID, periodEnd any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateSubscription", reflect.TypeOf((*MockSubscriptionRepository)(nil).ActivateSubscription), ctx, subscriptionID, periodEnd)
+}
+
+// CreateSubscription mocks base method.
+func (m *MockSubscriptionRepository) CreateSubscription(ctx context.Context, userID, planID uuid.UUID) (*entity.Subscription, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSubscription", ctx, userID, planID)
+	ret0, _ := ret[0].(*entity.Subscription)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSubscription indicates an expected call of CreateSubscription.
+func (mr *MockSubscriptionRepositoryMockRecorder) CreateSubscription(ctx, userID, planID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSubscription", reflect.TypeOf((*MockSubscriptionRepository)(nil).CreateSubscription), ctx, userID, planID)
 }
 
 // ExpireSubscriptionAtomic mocks base method.
@@ -86,6 +117,20 @@ func (mr *MockSubscriptionRepositoryMockRecorder) GetPlanWithLimits(ctx, planID 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPlanWithLimits", reflect.TypeOf((*MockSubscriptionRepository)(nil).GetPlanWithLimits), ctx, planID)
 }
 
+// InsertOutboxEvent mocks base method.
+func (m *MockSubscriptionRepository) InsertOutboxEvent(ctx context.Context, eventType, routingKey string, payload []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertOutboxEvent", ctx, eventType, routingKey, payload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InsertOutboxEvent indicates an expected call of InsertOutboxEvent.
+func (mr *MockSubscriptionRepositoryMockRecorder) InsertOutboxEvent(ctx, eventType, routingKey, payload any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOutboxEvent", reflect.TypeOf((*MockSubscriptionRepository)(nil).InsertOutboxEvent), ctx, eventType, routingKey, payload)
+}
+
 // ListAllPlans mocks base method.
 func (m *MockSubscriptionRepository) ListAllPlans(ctx context.Context) ([]entity.SubscriptionPlan, error) {
 	m.ctrl.T.Helper()
@@ -114,6 +159,20 @@ func (m *MockSubscriptionRepository) ListExpiredSubscriptions(ctx context.Contex
 func (mr *MockSubscriptionRepositoryMockRecorder) ListExpiredSubscriptions(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListExpiredSubscriptions", reflect.TypeOf((*MockSubscriptionRepository)(nil).ListExpiredSubscriptions), ctx)
+}
+
+// UpgradeSubscription mocks base method.
+func (m *MockSubscriptionRepository) UpgradeSubscription(ctx context.Context, subscriptionID, newPlanID uuid.UUID, periodEnd time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpgradeSubscription", ctx, subscriptionID, newPlanID, periodEnd)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpgradeSubscription indicates an expected call of UpgradeSubscription.
+func (mr *MockSubscriptionRepositoryMockRecorder) UpgradeSubscription(ctx, subscriptionID, newPlanID, periodEnd any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpgradeSubscription", reflect.TypeOf((*MockSubscriptionRepository)(nil).UpgradeSubscription), ctx, subscriptionID, newPlanID, periodEnd)
 }
 
 // UpdateStatus mocks base method.

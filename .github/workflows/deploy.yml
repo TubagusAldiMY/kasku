@@ -10,7 +10,7 @@ jobs:
   deploy:
     name: Build, push, and deploy
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     permissions:
       contents: read
       packages: write
@@ -22,13 +22,18 @@ jobs:
         run: |
           MISSING=()
           for secret in \
-            DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PATH \
+            DEPLOY_PATH \
+            POSTGRES_SUPERUSER_PASS \
             KASKU_AUTH_DB_PASS KASKU_BILLING_DB_PASS KASKU_FINANCE_DB_PASS \
-            KASKU_PRICE_DB_PASS KASKU_ADMIN_DB_PASS KASKU_USER_DB_PASS \
-            KASKU_SYNC_DB_PASS KASKU_INVESTMENT_DB_PASS \
+            KASKU_TRANSACTION_DB_PASS KASKU_INVESTMENT_DB_PASS KASKU_SYNC_DB_PASS \
+            KASKU_USER_DB_PASS KASKU_PRICE_DB_PASS KASKU_NOTIFICATION_DB_PASS \
+            KASKU_ADMIN_DB_PASS \
             JWT_PRIVATE_KEY JWT_PUBLIC_KEY \
             RABBITMQ_PASS REDIS_PASSWORD \
-            MIDTRANS_SERVER_KEY; do
+            ADMIN_JWT_SECRET ADMIN_BOOTSTRAP_PASSWORD \
+            KASKU_PAYMENT_ORCHESTRATOR_API_KEY KASKU_PAYMENT_WEBHOOK_SECRET \
+            KASKU_PAYMENT_CALLBACK_BASE_URL \
+            APP_DOMAIN; do
             if [[ -z "${!secret:-}" ]]; then
               MISSING+=("$secret")
             fi
@@ -40,23 +45,169 @@ jobs:
           fi
           echo "Semua required secrets tersedia"
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          POSTGRES_SUPERUSER_PASS: ${{ secrets.POSTGRES_SUPERUSER_PASS }}
           KASKU_AUTH_DB_PASS: ${{ secrets.KASKU_AUTH_DB_PASS }}
           KASKU_BILLING_DB_PASS: ${{ secrets.KASKU_BILLING_DB_PASS }}
           KASKU_FINANCE_DB_PASS: ${{ secrets.KASKU_FINANCE_DB_PASS }}
-          KASKU_PRICE_DB_PASS: ${{ secrets.KASKU_PRICE_DB_PASS }}
-          KASKU_ADMIN_DB_PASS: ${{ secrets.KASKU_ADMIN_DB_PASS }}
-          KASKU_USER_DB_PASS: ${{ secrets.KASKU_USER_DB_PASS }}
-          KASKU_SYNC_DB_PASS: ${{ secrets.KASKU_SYNC_DB_PASS }}
+          KASKU_TRANSACTION_DB_PASS: ${{ secrets.KASKU_TRANSACTION_DB_PASS }}
           KASKU_INVESTMENT_DB_PASS: ${{ secrets.KASKU_INVESTMENT_DB_PASS }}
+          KASKU_SYNC_DB_PASS: ${{ secrets.KASKU_SYNC_DB_PASS }}
+          KASKU_USER_DB_PASS: ${{ secrets.KASKU_USER_DB_PASS }}
+          KASKU_PRICE_DB_PASS: ${{ secrets.KASKU_PRICE_DB_PASS }}
+          KASKU_NOTIFICATION_DB_PASS: ${{ secrets.KASKU_NOTIFICATION_DB_PASS }}
+          KASKU_ADMIN_DB_PASS: ${{ secrets.KASKU_ADMIN_DB_PASS }}
           JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
           JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
           RABBITMQ_PASS: ${{ secrets.RABBITMQ_PASS }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          ADMIN_BOOTSTRAP_PASSWORD: ${{ secrets.ADMIN_BOOTSTRAP_PASSWORD }}
+          KASKU_PAYMENT_ORCHESTRATOR_API_KEY: ${{ secrets.KASKU_PAYMENT_ORCHESTRATOR_API_KEY }}
+          KASKU_PAYMENT_WEBHOOK_SECRET: ${{ secrets.KASKU_PAYMENT_WEBHOOK_SECRET }}
+          KASKU_PAYMENT_CALLBACK_BASE_URL: ${{ secrets.KASKU_PAYMENT_CALLBACK_BASE_URL }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+
+      - name: Generate production .env
+        run: |
+          python3 - << 'PYEOF'
+          import os, sys
+
+          def get(name):
+              val = os.environ.get(name, '')
+              if '\n' in val:
+                  sys.exit(f'ERROR: {name} contains unescaped newline')
+              return val
+
+          sha = os.environ.get('GITHUB_SHA', 'latest')
+
+          lines = [
+              # Docker image tag (commit SHA for immutable deployments)
+              f'KASKU_IMAGE_TAG={sha}',
+              # PostgreSQL
+              f'POSTGRES_SUPERUSER_PASS={get("POSTGRES_SUPERUSER_PASS")}',
+              f'KASKU_AUTH_DB_PASS={get("KASKU_AUTH_DB_PASS")}',
+              f'KASKU_BILLING_DB_PASS={get("KASKU_BILLING_DB_PASS")}',
+              f'KASKU_FINANCE_DB_PASS={get("KASKU_FINANCE_DB_PASS")}',
+              f'KASKU_TRANSACTION_DB_PASS={get("KASKU_TRANSACTION_DB_PASS")}',
+              f'KASKU_INVESTMENT_DB_PASS={get("KASKU_INVESTMENT_DB_PASS")}',
+              f'KASKU_SYNC_DB_PASS={get("KASKU_SYNC_DB_PASS")}',
+              f'KASKU_USER_DB_PASS={get("KASKU_USER_DB_PASS")}',
+              f'KASKU_PRICE_DB_PASS={get("KASKU_PRICE_DB_PASS")}',
+              f'KASKU_NOTIFICATION_DB_PASS={get("KASKU_NOTIFICATION_DB_PASS")}',
+              f'KASKU_ADMIN_DB_PASS={get("KASKU_ADMIN_DB_PASS")}',
+              f'KASKU_ADMIN_READ_DB_PASS={get("KASKU_ADMIN_DB_PASS")}',
+              # Redis
+              f'REDIS_PASSWORD={get("REDIS_PASSWORD")}',
+              # RabbitMQ
+              f'RABBITMQ_USER=kasku_mq_user',
+              f'RABBITMQ_PASS={get("RABBITMQ_PASS")}',
+              # Cloudflare Tunnel handles TLS — no ACME needed
+              f'APP_DOMAIN={get("APP_DOMAIN")}',
+              # JWT (base64-encoded PEM — single line)
+              f'JWT_PRIVATE_KEY={get("JWT_PRIVATE_KEY")}',
+              f'JWT_PUBLIC_KEY={get("JWT_PUBLIC_KEY")}',
+              f'JWT_ACCESS_TOKEN_TTL=15m',
+              f'JWT_REFRESH_TOKEN_TTL=720h',
+              # Argon2id
+              f'ARGON2_TIME=3',
+              f'ARGON2_MEMORY_KB=65536',
+              f'ARGON2_THREADS=4',
+              f'ARGON2_KEY_LENGTH=32',
+              # Rate limiting
+              f'RATE_LIMIT_ENABLED=true',
+              f'RATE_LIMIT_REGISTER_PER_MIN=10',
+              f'RATE_LIMIT_LOGIN_PER_MIN=10',
+              f'RATE_LIMIT_FORGOT_IP_PER_MIN=5',
+              f'RATE_LIMIT_FORGOT_EMAIL_PER_HOUR=3',
+              f'RATE_LIMIT_RESEND_EMAIL_PER_HOUR=3',
+              f'RATE_LIMIT_IP_WINDOW=1m',
+              f'RATE_LIMIT_EMAIL_WINDOW=1h',
+              f'RATE_LIMIT_SYNC_PER_MIN=60',
+              # Token cleanup
+              f'CLEANUP_ENABLED=true',
+              f'CLEANUP_INTERVAL=1h',
+              f'CLEANUP_DRY_RUN=false',
+              # Internal gRPC
+              f'INTERNAL_GRPC_SECRET={get("INTERNAL_GRPC_SECRET")}',
+              # api-gateway
+              f'KASKU_API_DOMAIN={get("KASKU_API_DOMAIN") or ("api." + get("APP_DOMAIN"))}',
+              f'CORS_ALLOWED_ORIGINS=https://{get("APP_DOMAIN")}',
+              f'RATE_LIMIT_REDIS_KEY_PREFIX=kasku:rl:',
+              # billing-service — Payment Orchestrator
+              f'KASKU_PAYMENT_ORCHESTRATOR_API_KEY={get("KASKU_PAYMENT_ORCHESTRATOR_API_KEY")}',
+              f'KASKU_PAYMENT_WEBHOOK_SECRET={get("KASKU_PAYMENT_WEBHOOK_SECRET")}',
+              f'KASKU_PAYMENT_CALLBACK_BASE_URL={get("KASKU_PAYMENT_CALLBACK_BASE_URL")}',
+              # admin-service
+              f'ADMIN_JWT_SECRET={get("ADMIN_JWT_SECRET")}',
+              f'ADMIN_JWT_TTL=8h',
+              f'ADMIN_BOOTSTRAP_USERNAME=superadmin',
+              f'ADMIN_BOOTSTRAP_PASSWORD={get("ADMIN_BOOTSTRAP_PASSWORD")}',
+              # notification-service
+              f'SMTP_HOST={get("SMTP_HOST") or "smtp.gmail.com"}',
+              f'SMTP_PORT={get("SMTP_PORT") or "587"}',
+              f'SMTP_USER={get("SMTP_USER") or ""}',
+              f'SMTP_PASS={get("SMTP_PASS") or ""}',
+              f'SMTP_FROM=noreply@{get("APP_DOMAIN") or "kasku.id"}',
+              f'SMTP_FROM_NAME=KasKu',
+              f'APP_BASE_URL=https://{get("APP_DOMAIN") or "kasku.id"}',
+              # price-service
+              f'COINGECKO_API_KEY={get("COINGECKO_API_KEY") or ""}',
+              f'PRICE_CACHE_TTL_SECONDS=900',
+              f'EXTERNAL_REQUEST_TIMEOUT_SECONDS=10',
+              f'GOLD_USD_IDR_RATE=16000',
+              f'METALS_LIVE_URL=https://api.metals.live/v1/spot/gold',
+              f'PRICE_SCHEDULER_SYMBOLS=bitcoin,ethereum,XAU',
+              f'PRICE_SCHEDULER_INTERVAL_SECONDS=900',
+              # Global
+              f'APP_ENV=production',
+              f'LOG_LEVEL=warn',
+              f'SUBSCRIPTION_EXPIRY_WARNING_DAYS=3',
+              # Grafana (internal only)
+              f'GRAFANA_ADMIN_USER=admin',
+              f'GRAFANA_ADMIN_PASSWORD={get("GRAFANA_ADMIN_PASSWORD") or get("ADMIN_BOOTSTRAP_PASSWORD")}',
+              # Brute force protection
+              f'BRUTE_FORCE_MAX_ATTEMPTS=5',
+              f'BRUTE_FORCE_LOCKOUT_DURATION=15m',
+          ]
+
+          with open('kasku-backend/.env', 'w') as f:
+              f.write('\n'.join(lines) + '\n')
+
+          print(f'Generated .env with {len(lines)} variables')
+          PYEOF
+          chmod 600 kasku-backend/.env
+        env:
+          POSTGRES_SUPERUSER_PASS: ${{ secrets.POSTGRES_SUPERUSER_PASS }}
+          KASKU_AUTH_DB_PASS: ${{ secrets.KASKU_AUTH_DB_PASS }}
+          KASKU_BILLING_DB_PASS: ${{ secrets.KASKU_BILLING_DB_PASS }}
+          KASKU_FINANCE_DB_PASS: ${{ secrets.KASKU_FINANCE_DB_PASS }}
+          KASKU_TRANSACTION_DB_PASS: ${{ secrets.KASKU_TRANSACTION_DB_PASS }}
+          KASKU_INVESTMENT_DB_PASS: ${{ secrets.KASKU_INVESTMENT_DB_PASS }}
+          KASKU_SYNC_DB_PASS: ${{ secrets.KASKU_SYNC_DB_PASS }}
+          KASKU_USER_DB_PASS: ${{ secrets.KASKU_USER_DB_PASS }}
+          KASKU_PRICE_DB_PASS: ${{ secrets.KASKU_PRICE_DB_PASS }}
+          KASKU_NOTIFICATION_DB_PASS: ${{ secrets.KASKU_NOTIFICATION_DB_PASS }}
+          KASKU_ADMIN_DB_PASS: ${{ secrets.KASKU_ADMIN_DB_PASS }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          RABBITMQ_PASS: ${{ secrets.RABBITMQ_PASS }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          KASKU_API_DOMAIN: ${{ secrets.KASKU_API_DOMAIN }}
+          JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
+          JWT_PUBLIC_KEY: ${{ secrets.JWT_PUBLIC_KEY }}
+          INTERNAL_GRPC_SECRET: ${{ secrets.INTERNAL_GRPC_SECRET }}
+          KASKU_PAYMENT_ORCHESTRATOR_API_KEY: ${{ secrets.KASKU_PAYMENT_ORCHESTRATOR_API_KEY }}
+          KASKU_PAYMENT_WEBHOOK_SECRET: ${{ secrets.KASKU_PAYMENT_WEBHOOK_SECRET }}
+          KASKU_PAYMENT_CALLBACK_BASE_URL: ${{ secrets.KASKU_PAYMENT_CALLBACK_BASE_URL }}
+          ADMIN_JWT_SECRET: ${{ secrets.ADMIN_JWT_SECRET }}
+          ADMIN_BOOTSTRAP_PASSWORD: ${{ secrets.ADMIN_BOOTSTRAP_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          GITHUB_SHA: ${{ github.sha }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -103,33 +254,85 @@ jobs:
             docker push "${IMAGE}" --all-tags
           done
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+      - name: Build & push Frontend
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA="${{ github.sha }}"
+          IMAGE="ghcr.io/${OWNER}/kasku-frontend"
+          # PUBLIC_API_BASE_URL: arahkan ke api-gateway production URL + /v1
+          API_BASE_URL="${KASKU_PAYMENT_CALLBACK_BASE_URL}/v1"
+          docker build \
+            --build-arg "PUBLIC_API_BASE_URL=${API_BASE_URL}" \
+            -t "${IMAGE}:latest" \
+            -t "${IMAGE}:${SHA}" \
+            kasku-frontend/
+          docker push "${IMAGE}" --all-tags
+        env:
+          KASKU_PAYMENT_CALLBACK_BASE_URL: ${{ secrets.KASKU_PAYMENT_CALLBACK_BASE_URL }}
 
-            # Tarik semua image terbaru
-            docker compose -f docker-compose.yml pull
+      - name: Deploy (self-hosted runner on VPS)
+        run: |
+          set -e
+          DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+          mkdir -p "${DEPLOY_PATH}"
 
-            # Rolling restart — --remove-orphans membersihkan container lama
-            docker compose -f docker-compose.yml up -d --remove-orphans
+          # Salin .env dan docker-compose.yml ke deploy dir
+          cp kasku-backend/.env "${DEPLOY_PATH}/.env"
+          chmod 600 "${DEPLOY_PATH}/.env"
+          cp kasku-backend/docker-compose.yml "${DEPLOY_PATH}/docker-compose.yml"
 
-            # Tunggu semua service healthy (max 120s) via smoke test
-            echo "Menunggu semua service healthy..."
-            if ! timeout 120 bash -c \
-              'until bash tests/integration/smoke.sh > /dev/null 2>&1; do
-                echo "  ... belum healthy, tunggu 5s"
-                sleep 5
-              done'; then
-              echo "ERROR: Service tidak healthy setelah 120s"
-              docker compose -f docker-compose.yml ps
-              docker compose -f docker-compose.yml logs --tail=50
-              exit 1
-            fi
+          # Pastikan infra init script tersedia untuk provisioning postgres pertama kali
+          mkdir -p "${DEPLOY_PATH}/infra/postgres"
+          cp -r kasku-backend/infra/postgres/. "${DEPLOY_PATH}/infra/postgres/"
 
-            echo "Semua service healthy"
+          # Rabbitmq definitions
+          mkdir -p "${DEPLOY_PATH}/infra/rabbitmq"
+          cp -r kasku-backend/infra/rabbitmq/. "${DEPLOY_PATH}/infra/rabbitmq/"
+
+          cd "${DEPLOY_PATH}"
+
+          # Login ke GHCR untuk pull private images
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+          # Tarik semua image terbaru dari GHCR
+          docker compose -f docker-compose.yml pull
+
+          # Rolling restart — --remove-orphans membersihkan container lama
+          docker compose -f docker-compose.yml up -d --remove-orphans
+
+          # Tunggu semua service healthy (max 180s)
+          echo "Menunggu semua service healthy..."
+          SERVICES="
+            kasku-frontend:3000
+            kasku-api-gateway:8080
+            kasku-auth-service:8081
+            kasku-user-service:8082
+            kasku-billing-service:8083
+            kasku-finance-service:8084
+            kasku-transaction-service:8085
+            kasku-investment-service:8086
+            kasku-price-service:8087
+            kasku-sync-service:8088
+            kasku-notification-service:8089
+            kasku-admin-service:8090
+          "
+          TIMEOUT=180
+          START=$(date +%s)
+
+          for svc_port in $SERVICES; do
+            CONTAINER="${svc_port%%:*}"
+            PORT="${svc_port##*:}"
+            echo -n "  Checking $CONTAINER..."
+            until docker exec "$CONTAINER" wget -qO- "http://localhost:${PORT}/health" > /dev/null 2>&1; do
+              if [ $(( $(date +%s) - START )) -gt $TIMEOUT ]; then
+                echo " TIMEOUT"
+                docker compose -f docker-compose.yml ps
+                docker compose -f docker-compose.yml logs --tail=50
+                exit 1
+              fi
+              sleep 3
+            done
+            echo " OK"
+          done
+
+          echo "Deploy selesai. Semua service healthy."

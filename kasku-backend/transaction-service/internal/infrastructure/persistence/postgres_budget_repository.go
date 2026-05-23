@@ -44,12 +44,12 @@ func (r *postgresBudgetRepository) Create(ctx context.Context, tenantSchema stri
 	query := fmt.Sprintf(`
 		INSERT INTO %s.budgets
 			(id, user_id, sync_id, name, limit_idr, category_id, period_type,
-			 start_date, end_date, alert_threshold, is_deleted, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, $12)
+			 start_date, end_date, alert_threshold, daily_limit_enabled, is_deleted, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12, $13)
 	`, tenantSchema)
 	_, err := r.pool.Exec(ctx, query,
 		b.ID, b.UserID, b.SyncID, b.Name, b.LimitIDR, b.CategoryID, string(b.PeriodType),
-		b.StartDate, b.EndDate, b.AlertThreshold, b.CreatedAt, b.UpdatedAt,
+		b.StartDate, b.EndDate, b.AlertThreshold, b.DailyLimitEnabled, b.CreatedAt, b.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("gagal insert anggaran: %w", err)
@@ -60,6 +60,7 @@ func (r *postgresBudgetRepository) Create(ctx context.Context, tenantSchema stri
 const budgetSelectCols = `
 	b.id, b.user_id, b.sync_id, b.name, b.limit_idr, b.category_id,
 	b.period_type, b.start_date, b.end_date, b.alert_threshold,
+	b.daily_limit_enabled,
 	b.is_deleted, b.deleted_at, b.created_at, b.updated_at,
 	COALESCE(c.name, '') AS category_name,
 	COALESCE((
@@ -67,7 +68,7 @@ const budgetSelectCols = `
 		FROM %[1]s.transactions t
 		WHERE t.is_deleted = false
 		  AND t.transaction_type = 'EXPENSE'
-		  AND (b.category_id IS NULL OR t.category_id = b.category_id)
+		  AND t.budget_id = b.id
 		  AND t.account_id IN (
 		      SELECT id FROM %[1]s.financial_accounts
 		      WHERE user_id = $1 AND is_deleted = false
@@ -82,7 +83,21 @@ const budgetSelectCols = `
 		        WHEN 'WEEKLY'  THEN (date_trunc('week', CURRENT_DATE) + interval '1 week')::date
 		        ELSE COALESCE(b.end_date + 1, CURRENT_DATE + 1)
 		      END
-	), 0) AS spent_idr
+	), 0) AS spent_idr,
+	CASE WHEN b.daily_limit_enabled THEN
+		COALESCE((
+			SELECT SUM(t.amount_idr)
+			FROM %[1]s.transactions t
+			WHERE t.is_deleted = false
+			  AND t.transaction_type = 'EXPENSE'
+			  AND t.budget_id = b.id
+			  AND t.account_id IN (
+			      SELECT id FROM %[1]s.financial_accounts
+			      WHERE user_id = $1 AND is_deleted = false
+			  )
+			  AND t.transaction_date = CURRENT_DATE
+		), 0)
+	ELSE 0 END AS spent_today_idr
 `
 
 func (r *postgresBudgetRepository) List(ctx context.Context, tenantSchema, userID string) ([]entity.BudgetWithProgress, error) {
@@ -147,11 +162,13 @@ func (r *postgresBudgetRepository) Update(ctx context.Context, tenantSchema stri
 	}
 	query := fmt.Sprintf(`
 		UPDATE %s.budgets
-		SET name = $3, limit_idr = $4, category_id = $5, alert_threshold = $6, updated_at = $7
+		SET name = $3, limit_idr = $4, category_id = $5, alert_threshold = $6,
+		    daily_limit_enabled = $7, updated_at = $8
 		WHERE id = $1 AND user_id = $2 AND is_deleted = false
 	`, tenantSchema)
 	result, err := r.pool.Exec(ctx, query,
-		b.ID, b.UserID, b.Name, b.LimitIDR, b.CategoryID, b.AlertThreshold, time.Now().UTC(),
+		b.ID, b.UserID, b.Name, b.LimitIDR, b.CategoryID, b.AlertThreshold,
+		b.DailyLimitEnabled, time.Now().UTC(),
 	)
 	if err != nil {
 		return fmt.Errorf("gagal update anggaran: %w", err)
@@ -192,8 +209,9 @@ func scanBudgetRow(s scanner) (entity.BudgetWithProgress, error) {
 	err := s.Scan(
 		&b.ID, &b.UserID, &b.SyncID, &b.Name, &b.LimitIDR, &categoryID,
 		&periodType, &b.StartDate, &b.EndDate, &b.AlertThreshold,
+		&b.DailyLimitEnabled,
 		&b.IsDeleted, &b.DeletedAt, &b.CreatedAt, &b.UpdatedAt,
-		&b.CategoryName, &b.SpentIDR,
+		&b.CategoryName, &b.SpentIDR, &b.SpentTodayIDR,
 	)
 	if err != nil {
 		return b, err

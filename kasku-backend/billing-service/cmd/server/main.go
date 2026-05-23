@@ -15,6 +15,7 @@ import (
 	billinggrpc "github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/messaging"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/outbox"
+	paymentinfra "github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/payment"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/usecase"
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
@@ -75,13 +76,25 @@ func main() {
 	cleanupJob := cleanup.NewCleanupJob(pool, logger, cfg.Cleanup.Interval, cfg.Cleanup.DryRun)
 	go cleanupJob.Run(cleanupCtx)
 
-	// Wiring dependency injection: repository → use case → handler/server.
-	subRepo := persistence.NewPostgresSubscriptionRepository(pool)
+	// Wiring dependency injection: repository → infrastructure → use case → handler.
 
+	// Repositories
+	subRepo := persistence.NewPostgresSubscriptionRepository(pool)
+	paymentRepo := persistence.NewPostgresPaymentRepository(pool)
+
+	// Payment Orchestrator HTTP client — menggunakan API key dari config (tidak pernah hardcoded)
+	orchestratorClient := paymentinfra.NewHTTPOrchestratorClient(
+		cfg.Payment.OrchestratorBaseURL,
+		cfg.Payment.OrchestratorAPIKey,
+	)
+
+	// Use cases
 	getTierLimitsUC := usecase.NewGetTierLimitsUseCase(subRepo)
 	listPlansUC := usecase.NewListPlansUseCase(subRepo)
 	getSubscriptionUC := usecase.NewGetSubscriptionUseCase(subRepo)
 	expireSubscriptionsUC := usecase.NewExpireSubscriptionsUseCase(subRepo, logger)
+	createPaymentUC := usecase.NewCreateSubscriptionPaymentUseCase(subRepo, paymentRepo, orchestratorClient, logger)
+	handleWebhookUC := usecase.NewHandlePaymentWebhookUseCase(paymentRepo, subRepo, logger)
 
 	// Mulai gRPC server pada port 9083
 	grpcServer := billinggrpc.NewBillingGRPCServer(getTierLimitsUC, logger, cfg.IsDevelopment())
@@ -97,6 +110,9 @@ func main() {
 		healthChecker,
 		listPlansUC,
 		getSubscriptionUC,
+		createPaymentUC,
+		handleWebhookUC,
+		cfg.Payment.WebhookSecret,
 		cfg.App.ServiceVersion,
 		logger,
 	)

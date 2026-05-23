@@ -8,13 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/TubagusAldiMY/kasku/transaction-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/handler"
 	grpcserver "github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/usecase"
-	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -111,6 +111,7 @@ func buildHandler(pool *pgxpool.Pool, cfg *configs.Config, logger zerolog.Logger
 		usecase.NewCreateTransactionUseCase(txRepo, catRepo),
 		usecase.NewListTransactionsUseCase(txRepo),
 		usecase.NewGetTransactionUseCase(txRepo),
+		usecase.NewUpdateTransactionUseCase(txRepo),
 		usecase.NewDeleteTransactionUseCase(txRepo),
 		usecase.NewExportCSVUseCase(txRepo),
 		usecase.NewListCategoriesUseCase(catRepo),

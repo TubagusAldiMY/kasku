@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/entity"
 	domainerrors "github.com/TubagusAldiMY/kasku/billing-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/repository"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -193,4 +195,124 @@ func (r *postgresSubscriptionRepository) ExpireSubscriptionAtomic(
 		return false, fmt.Errorf("gagal commit transaksi expire subscription %s: %w", subscriptionID, err)
 	}
 	return true, nil
+}
+
+// CreateSubscription membuat subscription record baru untuk user dengan status ACTIVE.
+// Mengembalikan ErrActiveSubscriptionExists jika user sudah memiliki subscription ACTIVE.
+// Jika user sudah punya subscription non-ACTIVE (EXPIRED/CANCELLED), buat record baru.
+func (r *postgresSubscriptionRepository) CreateSubscription(
+	ctx context.Context,
+	userID, planID uuid.UUID,
+) (*entity.Subscription, error) {
+	// Check apakah ada subscription ACTIVE
+	const checkQuery = `
+		SELECT id FROM public.subscriptions
+		WHERE user_id = $1 AND status = 'ACTIVE'
+		LIMIT 1
+	`
+	var existingID uuid.UUID
+	err := r.pool.QueryRow(ctx, checkQuery, userID).Scan(&existingID)
+	if err == nil {
+		// Baris ditemukan — user sudah punya active subscription
+		return nil, domainerrors.ErrActiveSubscriptionExists
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("gagal cek existing subscription untuk user %s: %w", userID, err)
+	}
+
+	// Upsert: jika tidak ada ACTIVE, buat baru. UNIQUE constraint di user_id
+	// berarti kita perlu handle kasus sudah ada record (expired/cancelled) dengan UPDATE,
+	// atau INSERT jika belum ada sama sekali.
+	const upsertQuery = `
+		INSERT INTO public.subscriptions (user_id, plan_id, status, current_period_start)
+		VALUES ($1, $2, 'ACTIVE', now())
+		ON CONFLICT (user_id) DO UPDATE
+		    SET plan_id = EXCLUDED.plan_id,
+		        status = 'ACTIVE',
+		        current_period_start = now(),
+		        current_period_end = NULL,
+		        updated_at = now()
+		RETURNING id, user_id, plan_id, status, current_period_start, current_period_end, created_at, updated_at
+	`
+	sub := &entity.Subscription{}
+	err = r.pool.QueryRow(ctx, upsertQuery, userID, planID).Scan(
+		&sub.ID,
+		&sub.UserID,
+		&sub.PlanID,
+		&sub.Status,
+		&sub.CurrentPeriodStart,
+		&sub.CurrentPeriodEnd,
+		&sub.CreatedAt,
+		&sub.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("gagal create subscription untuk user %s: %w", userID, err)
+	}
+	return sub, nil
+}
+
+// ActivateSubscription mengaktifkan subscription dengan menetapkan period end.
+// Set status = ACTIVE dan current_period_end = periodEnd.
+// Dipanggil setelah payment berhasil dikonfirmasi via webhook.
+func (r *postgresSubscriptionRepository) ActivateSubscription(
+	ctx context.Context,
+	subscriptionID uuid.UUID,
+	periodEnd time.Time,
+) error {
+	const query = `
+		UPDATE public.subscriptions
+		SET status = 'ACTIVE',
+		    current_period_end = $2,
+		    updated_at = now()
+		WHERE id = $1
+	`
+	tag, err := r.pool.Exec(ctx, query, subscriptionID, periodEnd)
+	if err != nil {
+		return fmt.Errorf("gagal activate subscription %s: %w", subscriptionID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domainerrors.ErrSubscriptionNotFound
+	}
+	return nil
+}
+
+// UpgradeSubscription mengupdate plan_id dan memperpanjang period subscription ACTIVE.
+// Dipanggil saat user upgrade dari FREE ke plan berbayar setelah webhook payment.success.
+func (r *postgresSubscriptionRepository) UpgradeSubscription(
+	ctx context.Context,
+	subscriptionID, newPlanID uuid.UUID,
+	periodEnd time.Time,
+) error {
+	const query = `
+		UPDATE public.subscriptions
+		SET plan_id = $2,
+		    current_period_end = $3,
+		    updated_at = now()
+		WHERE id = $1 AND status = 'ACTIVE'
+	`
+	tag, err := r.pool.Exec(ctx, query, subscriptionID, newPlanID, periodEnd)
+	if err != nil {
+		return fmt.Errorf("gagal upgrade subscription %s: %w", subscriptionID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domainerrors.ErrSubscriptionNotFound
+	}
+	return nil
+}
+
+// InsertOutboxEvent menyimpan satu event ke tabel outbox_events untuk reliable delivery.
+// Outbox dispatcher akan membaca dan mempublish event ini ke RabbitMQ secara async.
+func (r *postgresSubscriptionRepository) InsertOutboxEvent(
+	ctx context.Context,
+	eventType, routingKey string,
+	payload []byte,
+) error {
+	const query = `
+		INSERT INTO public.outbox_events (event_type, routing_key, payload)
+		VALUES ($1, $2, $3::jsonb)
+	`
+	if _, err := r.pool.Exec(ctx, query, eventType, routingKey, string(payload)); err != nil {
+		return fmt.Errorf("gagal insert outbox event (type=%s, key=%s): %w", eventType, routingKey, err)
+	}
+	return nil
 }

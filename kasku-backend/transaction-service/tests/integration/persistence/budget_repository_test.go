@@ -73,15 +73,15 @@ func TestBudgetRepository_SpendingCalculation(t *testing.T) {
 	`, tenantSchema), accountID, userID)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, fmt.Sprintf(`
-		INSERT INTO %s.transactions
-			(id, account_id, transaction_type, amount_idr, transaction_date)
-		VALUES ($1, $2, 'EXPENSE', 150000, CURRENT_DATE)
-	`, tenantSchema), uuid.New(), accountID)
-	require.NoError(t, err)
-
 	b := newTestBudget(userID, "Total Pengeluaran", 500_000, nil)
 	require.NoError(t, repo.Create(ctx, tenantSchema, b))
+
+	_, err = pool.Exec(ctx, fmt.Sprintf(`
+		INSERT INTO %s.transactions
+			(id, account_id, budget_id, transaction_type, amount_idr, transaction_date)
+		VALUES ($1, $2, $3, 'EXPENSE', 150000, CURRENT_DATE)
+	`, tenantSchema), uuid.New(), accountID, b.ID)
+	require.NoError(t, err)
 
 	list, err := repo.List(ctx, tenantSchema, userID.String())
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestBudgetRepository_SpendingCalculation(t *testing.T) {
 	assert.Equal(t, int64(150_000), list[0].SpentIDR)
 }
 
-func TestBudgetRepository_CategoryNull_TracksAllExpense(t *testing.T) {
+func TestBudgetRepository_ExplicitBudgetOnly(t *testing.T) {
 	pool := integration.SetupPostgres(t)
 	userID := uuid.New()
 	tenantSchema := integration.ProvisionTenant(t, pool, userID.String())
@@ -106,11 +106,14 @@ func TestBudgetRepository_CategoryNull_TracksAllExpense(t *testing.T) {
 	`, tenantSchema), accountID, userID)
 	require.NoError(t, err)
 
+	b := newTestBudget(userID, "Semua Pengeluaran", 500_000, nil)
+	require.NoError(t, repo.Create(ctx, tenantSchema, b))
+
 	_, err = pool.Exec(ctx, fmt.Sprintf(`
 		INSERT INTO %s.transactions
-			(id, account_id, category_id, transaction_type, amount_idr, transaction_date)
-		VALUES ($1, $2, $3, 'EXPENSE', 100000, CURRENT_DATE)
-	`, tenantSchema), uuid.New(), accountID, catA)
+			(id, account_id, category_id, budget_id, transaction_type, amount_idr, transaction_date)
+		VALUES ($1, $2, $3, $4, 'EXPENSE', 100000, CURRENT_DATE)
+	`, tenantSchema), uuid.New(), accountID, catA, b.ID)
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, fmt.Sprintf(`
@@ -120,13 +123,10 @@ func TestBudgetRepository_CategoryNull_TracksAllExpense(t *testing.T) {
 	`, tenantSchema), uuid.New(), accountID, catB)
 	require.NoError(t, err)
 
-	b := newTestBudget(userID, "Semua Pengeluaran", 500_000, nil)
-	require.NoError(t, repo.Create(ctx, tenantSchema, b))
-
 	list, err := repo.List(ctx, tenantSchema, userID.String())
 	require.NoError(t, err)
 	require.Len(t, list, 1)
-	assert.Equal(t, int64(175_000), list[0].SpentIDR)
+	assert.Equal(t, int64(100_000), list[0].SpentIDR)
 }
 
 func TestBudgetRepository_TenantIsolation(t *testing.T) {

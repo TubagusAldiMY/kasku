@@ -79,14 +79,15 @@
 			const res = await adminApiFetch(`/admin/payments?${params.toString()}`);
 			const envelope = (await res.json()) as {
 				success: boolean;
-				data?: { items: PaymentItem[]; meta: ListMeta };
+				data?: PaymentItem[];
+				meta?: ListMeta;
 				error?: { message?: string };
 			};
 			if (!res.ok || !envelope.success || !envelope.data) {
 				throw new Error(envelope.error?.message ?? `HTTP ${res.status}`);
 			}
-			payments = envelope.data.items;
-			meta = envelope.data.meta;
+			payments = envelope.data;
+			meta = envelope.meta ?? null;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Gagal memuat pembayaran';
 		} finally {

@@ -146,17 +146,17 @@ func (mr *MockTransactionRepositoryMockRecorder) SoftDelete(ctx, tenantSchema, i
 }
 
 // Update mocks base method.
-func (m *MockTransactionRepository) Update(ctx context.Context, tenantSchema string, tx *entity.Transaction) error {
+func (m *MockTransactionRepository) Update(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, tenantSchema, tx)
+	ret := m.ctrl.Call(m, "Update", ctx, tenantSchema, userID, tx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockTransactionRepositoryMockRecorder) Update(ctx, tenantSchema, tx any) *gomock.Call {
+func (mr *MockTransactionRepositoryMockRecorder) Update(ctx, tenantSchema, userID, tx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockTransactionRepository)(nil).Update), ctx, tenantSchema, tx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockTransactionRepository)(nil).Update), ctx, tenantSchema, userID, tx)
 }
 
 // MockCategoryRepository is a mock of CategoryRepository interface.

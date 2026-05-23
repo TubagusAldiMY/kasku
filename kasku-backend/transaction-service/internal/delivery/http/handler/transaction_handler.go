@@ -32,6 +32,7 @@ type TransactionHandler struct {
 	createTxUC     *usecase.CreateTransactionUseCase
 	listTxUC       *usecase.ListTransactionsUseCase
 	getTxUC        *usecase.GetTransactionUseCase
+	updateTxUC     *usecase.UpdateTransactionUseCase
 	deleteTxUC     *usecase.DeleteTransactionUseCase
 	exportCSVUC    *usecase.ExportCSVUseCase
 	listCatUC      *usecase.ListCategoriesUseCase
@@ -52,6 +53,7 @@ func NewTransactionHandler(
 	createTxUC *usecase.CreateTransactionUseCase,
 	listTxUC *usecase.ListTransactionsUseCase,
 	getTxUC *usecase.GetTransactionUseCase,
+	updateTxUC *usecase.UpdateTransactionUseCase,
 	deleteTxUC *usecase.DeleteTransactionUseCase,
 	exportCSVUC *usecase.ExportCSVUseCase,
 	listCatUC *usecase.ListCategoriesUseCase,
@@ -71,6 +73,7 @@ func NewTransactionHandler(
 		createTxUC:     createTxUC,
 		listTxUC:       listTxUC,
 		getTxUC:        getTxUC,
+		updateTxUC:     updateTxUC,
 		deleteTxUC:     deleteTxUC,
 		exportCSVUC:    exportCSVUC,
 		listCatUC:      listCatUC,
@@ -127,7 +130,7 @@ func (h *TransactionHandler) handleDomainError(c *gin.Context, err error) {
 	correlationID, _ := c.Get("correlation_id")
 	if de, ok := domainerrors.IsDomainError(err); ok {
 		switch de.Code {
-		case "TRANSACTION_NOT_FOUND", "CATEGORY_NOT_FOUND", "BUDGET_NOT_FOUND":
+		case "TRANSACTION_NOT_FOUND", "CATEGORY_NOT_FOUND", "BUDGET_NOT_FOUND", "ACCOUNT_NOT_FOUND":
 			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
 		case "TRANSACTION_LIMIT_REACHED", "EXPORT_NOT_ALLOWED", "BUDGET_LIMIT_REACHED":
 			c.JSON(http.StatusPaymentRequired, gin.H{"success": false, "error": gin.H{"code": de.Code, "message": de.Message}})
@@ -201,6 +204,7 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		SyncID          string                 `json:"sync_id"`
 		AccountID       string                 `json:"account_id" binding:"required"`
 		CategoryID      string                 `json:"category_id"`
+		BudgetID        string                 `json:"budget_id"`
 		TransactionType entity.TransactionType `json:"transaction_type" binding:"required"`
 		AmountIDR       int64                  `json:"amount_idr" binding:"required"`
 		TransactionDate string                 `json:"transaction_date"`
@@ -225,6 +229,7 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		SyncID:          req.SyncID,
 		AccountID:       req.AccountID,
 		CategoryID:      req.CategoryID,
+		BudgetID:        req.BudgetID,
 		TransactionType: req.TransactionType,
 		AmountIDR:       req.AmountIDR,
 		TransactionDate: txDate,
@@ -237,6 +242,55 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"success": true, "data": tx})
+}
+
+func (h *TransactionHandler) UpdateTransaction(c *gin.Context) {
+	userID, tenantSchema, ok := h.extractRequestContext(c)
+	if !ok {
+		return
+	}
+	id := c.Param("id")
+
+	var req struct {
+		AccountID       string                 `json:"account_id" binding:"required"`
+		CategoryID      string                 `json:"category_id"`
+		BudgetID        string                 `json:"budget_id"`
+		TransactionType entity.TransactionType `json:"transaction_type" binding:"required"`
+		AmountIDR       int64                  `json:"amount_idr" binding:"required"`
+		TransactionDate string                 `json:"transaction_date"`
+		Notes           string                 `json:"notes"`
+		ToAccountID     string                 `json:"to_account_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_INPUT", "message": err.Error()}})
+		return
+	}
+
+	txDate := time.Now().UTC()
+	if req.TransactionDate != "" {
+		if t, err := time.Parse("2006-01-02", req.TransactionDate); err == nil {
+			txDate = t
+		}
+	}
+
+	tx, err := h.updateTxUC.Execute(c.Request.Context(), usecase.UpdateTransactionInput{
+		TenantSchema:    tenantSchema,
+		UserID:          userID,
+		ID:              id,
+		AccountID:       req.AccountID,
+		CategoryID:      req.CategoryID,
+		BudgetID:        req.BudgetID,
+		TransactionType: req.TransactionType,
+		AmountIDR:       req.AmountIDR,
+		TransactionDate: txDate,
+		Notes:           req.Notes,
+		ToAccountID:     req.ToAccountID,
+	})
+	if err != nil {
+		h.handleDomainError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": tx})
 }
 
 func (h *TransactionHandler) GetTransaction(c *gin.Context) {
@@ -368,18 +422,25 @@ func (h *TransactionHandler) DeleteCategory(c *gin.Context) {
 // ─── Budgets ──────────────────────────────────────────────────────────────────
 
 type budgetResponse struct {
-	ID              string   `json:"id"`
-	Name            string   `json:"name"`
-	LimitIDR        int64    `json:"limit_idr"`
-	CategoryID      *string  `json:"category_id"`
-	CategoryName    string   `json:"category_name"`
-	PeriodType      string   `json:"period_type"`
-	AlertThreshold  int      `json:"alert_threshold"`
-	SpentIDR        int64    `json:"spent_idr"`
-	RemainingIDR    int64    `json:"remaining_idr"`
-	ProgressPercent float64  `json:"progress_percent"`
-	IsOverBudget    bool     `json:"is_over_budget"`
-	UpdatedAt       string   `json:"updated_at"`
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	LimitIDR        int64   `json:"limit_idr"`
+	CategoryID      *string `json:"category_id"`
+	CategoryName    string  `json:"category_name"`
+	PeriodType      string  `json:"period_type"`
+	AlertThreshold  int     `json:"alert_threshold"`
+	SpentIDR        int64   `json:"spent_idr"`
+	RemainingIDR    int64   `json:"remaining_idr"`
+	ProgressPercent float64 `json:"progress_percent"`
+	IsOverBudget    bool    `json:"is_over_budget"`
+	UpdatedAt       string  `json:"updated_at"`
+	// Daily allowance fields — present only when daily_limit_enabled = true.
+	DailyLimitEnabled      bool   `json:"daily_limit_enabled"`
+	DailyBaseIDR           *int64 `json:"daily_base_idr,omitempty"`
+	CarryoverIDR           *int64 `json:"carryover_idr,omitempty"`
+	DailyAllowanceTodayIDR *int64 `json:"daily_allowance_today_idr,omitempty"`
+	SpentTodayIDR          *int64 `json:"spent_today_idr,omitempty"`
+	DailyRemainingIDR      *int64 `json:"daily_remaining_idr,omitempty"`
 }
 
 func mapBudgetResponse(b *entity.BudgetWithProgress) budgetResponse {
@@ -393,20 +454,29 @@ func mapBudgetResponse(b *entity.BudgetWithProgress) budgetResponse {
 	if b.LimitIDR > 0 {
 		progress = float64(b.SpentIDR) / float64(b.LimitIDR) * 100
 	}
-	return budgetResponse{
-		ID:              b.ID.String(),
-		Name:            b.Name,
-		LimitIDR:        b.LimitIDR,
-		CategoryID:      catID,
-		CategoryName:    b.CategoryName,
-		PeriodType:      string(b.PeriodType),
-		AlertThreshold:  b.AlertThreshold,
-		SpentIDR:        b.SpentIDR,
-		RemainingIDR:    remaining,
-		ProgressPercent: progress,
-		IsOverBudget:    b.SpentIDR > b.LimitIDR,
-		UpdatedAt:       b.UpdatedAt.Format(time.RFC3339),
+	resp := budgetResponse{
+		ID:                b.ID.String(),
+		Name:              b.Name,
+		LimitIDR:          b.LimitIDR,
+		CategoryID:        catID,
+		CategoryName:      b.CategoryName,
+		PeriodType:        string(b.PeriodType),
+		AlertThreshold:    b.AlertThreshold,
+		SpentIDR:          b.SpentIDR,
+		RemainingIDR:      remaining,
+		ProgressPercent:   progress,
+		IsOverBudget:      b.SpentIDR > b.LimitIDR,
+		UpdatedAt:         b.UpdatedAt.Format(time.RFC3339),
+		DailyLimitEnabled: b.DailyLimitEnabled,
 	}
+	if b.DailyLimitEnabled {
+		resp.DailyBaseIDR = &b.DailyBaseIDR
+		resp.CarryoverIDR = &b.CarryoverIDR
+		resp.DailyAllowanceTodayIDR = &b.DailyAllowanceTodayIDR
+		resp.SpentTodayIDR = &b.SpentTodayIDR
+		resp.DailyRemainingIDR = &b.DailyRemainingIDR
+	}
+	return resp
 }
 
 func (h *TransactionHandler) ListBudgets(c *gin.Context) {
@@ -432,14 +502,15 @@ func (h *TransactionHandler) CreateBudget(c *gin.Context) {
 		return
 	}
 	var req struct {
-		SyncID         string `json:"sync_id"`
-		Name           string `json:"name"           binding:"required,max=100"`
-		LimitIDR       int64  `json:"limit_idr"      binding:"required,min=1"`
-		CategoryID     string `json:"category_id"`
-		PeriodType     string `json:"period_type"`
-		StartDate      string `json:"start_date"`
-		EndDate        string `json:"end_date"`
-		AlertThreshold int    `json:"alert_threshold"`
+		SyncID            string `json:"sync_id"`
+		Name              string `json:"name"           binding:"required,max=100"`
+		LimitIDR          int64  `json:"limit_idr"      binding:"required,min=1"`
+		CategoryID        string `json:"category_id"`
+		PeriodType        string `json:"period_type"`
+		StartDate         string `json:"start_date"`
+		EndDate           string `json:"end_date"`
+		AlertThreshold    int    `json:"alert_threshold"`
+		DailyLimitEnabled bool   `json:"daily_limit_enabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_INPUT", "message": err.Error()}})
@@ -474,17 +545,18 @@ func (h *TransactionHandler) CreateBudget(c *gin.Context) {
 	}
 
 	budget, err := h.createBudgetUC.Execute(c.Request.Context(), usecase.CreateBudgetInput{
-		TenantSchema:   tenantSchema,
-		UserID:         userUUID,
-		SyncID:         req.SyncID,
-		Name:           req.Name,
-		LimitIDR:       req.LimitIDR,
-		CategoryID:     catID,
-		PeriodType:     entity.BudgetPeriodType(req.PeriodType),
-		StartDate:      startDate,
-		EndDate:        endDate,
-		AlertThreshold: req.AlertThreshold,
-		MaxBudgets:     parseIntHeader(c, headerTierMaxBudgets, -1),
+		TenantSchema:      tenantSchema,
+		UserID:            userUUID,
+		SyncID:            req.SyncID,
+		Name:              req.Name,
+		LimitIDR:          req.LimitIDR,
+		CategoryID:        catID,
+		PeriodType:        entity.BudgetPeriodType(req.PeriodType),
+		StartDate:         startDate,
+		EndDate:           endDate,
+		AlertThreshold:    req.AlertThreshold,
+		DailyLimitEnabled: req.DailyLimitEnabled,
+		MaxBudgets:        parseIntHeader(c, headerTierMaxBudgets, -1),
 	})
 	if err != nil {
 		h.handleDomainError(c, err)
@@ -514,10 +586,11 @@ func (h *TransactionHandler) UpdateBudget(c *gin.Context) {
 	}
 	id := c.Param("id")
 	var req struct {
-		Name           string `json:"name"      binding:"required,max=100"`
-		LimitIDR       int64  `json:"limit_idr" binding:"required,min=1"`
-		CategoryID     string `json:"category_id"`
-		AlertThreshold int    `json:"alert_threshold"`
+		Name              string `json:"name"      binding:"required,max=100"`
+		LimitIDR          int64  `json:"limit_idr" binding:"required,min=1"`
+		CategoryID        string `json:"category_id"`
+		AlertThreshold    int    `json:"alert_threshold"`
+		DailyLimitEnabled bool   `json:"daily_limit_enabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": "INVALID_INPUT", "message": err.Error()}})
@@ -544,13 +617,14 @@ func (h *TransactionHandler) UpdateBudget(c *gin.Context) {
 	}
 
 	if err := h.updateBudgetUC.Execute(c.Request.Context(), usecase.UpdateBudgetInput{
-		TenantSchema:   tenantSchema,
-		UserID:         userUUID,
-		ID:             budgetUUID,
-		Name:           req.Name,
-		LimitIDR:       req.LimitIDR,
-		CategoryID:     catID,
-		AlertThreshold: req.AlertThreshold,
+		TenantSchema:      tenantSchema,
+		UserID:            userUUID,
+		ID:                budgetUUID,
+		Name:              req.Name,
+		LimitIDR:          req.LimitIDR,
+		CategoryID:        catID,
+		AlertThreshold:    req.AlertThreshold,
+		DailyLimitEnabled: req.DailyLimitEnabled,
 	}); err != nil {
 		h.handleDomainError(c, err)
 		return
@@ -568,7 +642,7 @@ func (h *TransactionHandler) DeleteBudget(c *gin.Context) {
 		h.handleDomainError(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Anggaran berhasil dihapus."})
 }
 
 func parseUUID(s string) (uuid.UUID, error) {

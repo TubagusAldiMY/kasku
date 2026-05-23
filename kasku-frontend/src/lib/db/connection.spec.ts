@@ -48,4 +48,22 @@ describe('IndexedDB connection', () => {
 		const db2 = await openDB();
 		expect(db1).toBe(db2);
 	});
+
+	it('repairs a current-version database that is missing object stores', async () => {
+		const malformed = await new Promise<IDBDatabase>((resolve, reject) => {
+			const req = indexedDB.open(DB_NAME, DB_VERSION);
+			req.onupgradeneeded = () => {
+				req.result.createObjectStore('accounts', { keyPath: 'id' });
+			};
+			req.onsuccess = () => resolve(req.result);
+			req.onerror = () => reject(req.error);
+		});
+		malformed.close();
+
+		const db = await openDB();
+		expect(db.version).toBeGreaterThan(DB_VERSION);
+		for (const name of STORE_NAMES) {
+			expect(db.objectStoreNames.contains(name)).toBe(true);
+		}
+	});
 });

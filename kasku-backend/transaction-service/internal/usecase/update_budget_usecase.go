@@ -4,19 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/entity"
 	domainerrors "github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/domain/repository"
 	"github.com/google/uuid"
 )
 
 type UpdateBudgetInput struct {
-	TenantSchema   string
-	UserID         uuid.UUID
-	ID             uuid.UUID
-	Name           string
-	LimitIDR       int64
-	CategoryID     *uuid.UUID
-	AlertThreshold int
+	TenantSchema      string
+	UserID            uuid.UUID
+	ID                uuid.UUID
+	Name              string
+	LimitIDR          int64
+	CategoryID        *uuid.UUID
+	AlertThreshold    int
+	DailyLimitEnabled bool
 }
 
 type UpdateBudgetUseCase struct {
@@ -43,10 +45,15 @@ func (uc *UpdateBudgetUseCase) Execute(ctx context.Context, input UpdateBudgetIn
 		return err
 	}
 
+	if input.DailyLimitEnabled && existing.PeriodType == entity.PeriodCustom {
+		return fmt.Errorf("%w: jatah harian hanya tersedia untuk periode MONTHLY atau WEEKLY", domainerrors.ErrInvalidInput)
+	}
+
 	existing.Name = input.Name
 	existing.LimitIDR = input.LimitIDR
 	existing.CategoryID = input.CategoryID
 	existing.AlertThreshold = input.AlertThreshold
+	existing.DailyLimitEnabled = input.DailyLimitEnabled
 
 	if err := uc.repo.Update(ctx, input.TenantSchema, &existing.Budget); err != nil {
 		return fmt.Errorf("gagal update anggaran: %w", err)

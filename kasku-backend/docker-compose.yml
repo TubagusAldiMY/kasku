@@ -53,19 +53,11 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=kasku-public"
       - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
       - "--log.level=INFO"
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:80:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik-certs:/certs
     networks:
       - kasku-public
     stop_grace_period: 35s
@@ -184,6 +176,7 @@ services:
   # auth-service
   # ============================================================
   auth-service:
+    image: ghcr.io/tubagusaldimy/kasku-auth-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./auth-service/Dockerfile
@@ -225,6 +218,7 @@ services:
   # api-gateway
   # ============================================================
   api-gateway:
+    image: ghcr.io/tubagusaldimy/kasku-api-gateway:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./api-gateway/Dockerfile
@@ -260,9 +254,8 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.kasku.app`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api.rule=Host(`${KASKU_API_DOMAIN:-api.kasku.app}`)"
+      - "traefik.http.routers.api.entrypoints=web"
       - "traefik.http.services.api.loadbalancer.server.port=8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
@@ -276,6 +269,7 @@ services:
   # user-service
   # ============================================================
   user-service:
+    image: ghcr.io/tubagusaldimy/kasku-user-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./user-service/Dockerfile
@@ -314,6 +308,7 @@ services:
   # billing-service
   # ============================================================
   billing-service:
+    image: ghcr.io/tubagusaldimy/kasku-billing-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./billing-service/Dockerfile
@@ -328,6 +323,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       POSTGRES_DSN: postgres://kasku_billing_svc:${KASKU_BILLING_DB_PASS}@postgres:5432/kasku_billing?sslmode=disable
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
+      PAYMENT_ORCHESTRATOR_BASE_URL: https://api-payment.roemahprogram.com
+      PAYMENT_ORCHESTRATOR_API_KEY: ${KASKU_PAYMENT_ORCHESTRATOR_API_KEY}
+      PAYMENT_WEBHOOK_SECRET: ${KASKU_PAYMENT_WEBHOOK_SECRET}
+      PAYMENT_CALLBACK_BASE_URL: ${KASKU_PAYMENT_CALLBACK_BASE_URL}
     networks:
       - kasku-internal
       - kasku-data
@@ -348,6 +347,7 @@ services:
   # finance-service
   # ============================================================
   finance-service:
+    image: ghcr.io/tubagusaldimy/kasku-finance-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./finance-service/Dockerfile
@@ -381,6 +381,7 @@ services:
   # transaction-service
   # ============================================================
   transaction-service:
+    image: ghcr.io/tubagusaldimy/kasku-transaction-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./transaction-service/Dockerfile
@@ -402,6 +403,8 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
+      finance-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
       interval: 15s
@@ -414,6 +417,7 @@ services:
   # notification-service
   # ============================================================
   notification-service:
+    image: ghcr.io/tubagusaldimy/kasku-notification-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./notification-service/Dockerfile
@@ -453,6 +457,7 @@ services:
   # Phase 2 — investment-service
   # ============================================================
   investment-service:
+    image: ghcr.io/tubagusaldimy/kasku-investment-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./investment-service/Dockerfile
@@ -490,6 +495,7 @@ services:
   # Phase 2 — price-service (Rust)
   # ============================================================
   price-service:
+    image: ghcr.io/tubagusaldimy/kasku-price-service:${KASKU_IMAGE_TAG:-latest}
     build: ./price-service
     container_name: kasku-price-service
     restart: unless-stopped
@@ -526,6 +532,7 @@ services:
   # Phase 2 — sync-service (Rust)
   # ============================================================
   sync-service:
+    image: ghcr.io/tubagusaldimy/kasku-sync-service:${KASKU_IMAGE_TAG:-latest}
     build: ./sync-service
     container_name: kasku-sync-service
     restart: unless-stopped
@@ -563,6 +570,7 @@ services:
   # Admin service — internal admin network only
   # ============================================================
   admin-service:
+    image: ghcr.io/tubagusaldimy/kasku-admin-service:${KASKU_IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./admin-service/Dockerfile
@@ -603,6 +611,37 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    stop_grace_period: 35s
+
+  # ============================================================
+  # Frontend (SvelteKit / Node.js)
+  # ============================================================
+  frontend:
+    image: ghcr.io/tubagusaldimy/kasku-frontend:${KASKU_IMAGE_TAG:-latest}
+    build:
+      context: ../kasku-frontend
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_API_BASE_URL: https://${KASKU_API_DOMAIN:-api.kasku.id}/v1
+    container_name: kasku-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: "0.0.0.0"
+    networks:
+      - kasku-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN:-app.kasku.id}`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     stop_grace_period: 35s
 
   # ============================================================

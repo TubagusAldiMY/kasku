@@ -56,14 +56,15 @@
 			const res = await adminApiFetch(`/admin/users?${params.toString()}`);
 			const envelope = (await res.json()) as {
 				success: boolean;
-				data?: { items: UserListItem[]; meta: ListMeta };
+				data?: UserListItem[];
+				meta?: ListMeta;
 				error?: { message?: string };
 			};
 			if (!res.ok || !envelope.success || !envelope.data) {
 				throw new Error(envelope.error?.message ?? `HTTP ${res.status}`);
 			}
-			users = envelope.data.items;
-			meta = envelope.data.meta;
+			users = envelope.data;
+			meta = envelope.meta ?? null;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Gagal memuat pengguna';
 		} finally {

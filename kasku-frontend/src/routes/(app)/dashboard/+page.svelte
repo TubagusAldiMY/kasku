@@ -209,7 +209,11 @@
 
 	onMount(async () => {
 		balanceHidden = localStorage.getItem('kasku_balance_hidden') === 'true';
-		budgets = await budgetsRepo.getAll();
+		try {
+			budgets = await budgetsRepo.getAll();
+		} catch (err) {
+			console.warn('Cache anggaran lokal belum siap, memuat dari server:', err);
+		}
 		await reloadFromLocal();
 		loading = false;
 		void hydrateCategoriesFromServer();

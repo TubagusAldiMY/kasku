@@ -376,6 +376,7 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 	case "create":
 		var p struct {
 			AccountID       string `json:"account_id"`
+			BudgetID        string `json:"budget_id"`
 			ToAccountID     string `json:"to_account_id"`
 			TransactionType string `json:"transaction_type"`
 			AmountIDR       int64  `json:"amount_idr"`
@@ -393,12 +394,34 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 				toAccountID = &parsed
 			}
 		}
+		var budgetID *uuid.UUID
+		if p.TransactionType == "EXPENSE" && p.BudgetID != "" {
+			parsed, parseErr := uuid.Parse(p.BudgetID)
+			if parseErr != nil {
+				return fmt.Errorf("budget_id tidak valid: %w", parseErr)
+			}
+			budgetID = &parsed
+		}
 
 		dbTx, err := s.pool.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("gagal mulai DB transaction: %w", err)
 		}
 		defer dbTx.Rollback(ctx) //nolint:errcheck
+
+		if err := persistence.ValidateAccountForUser(ctx, dbTx, schema, userID, accountID); err != nil {
+			return err
+		}
+		if p.TransactionType == "TRANSFER" {
+			if toAccountID == nil || *toAccountID == accountID {
+				return fmt.Errorf("rekening tujuan transfer tidak valid")
+			}
+			if err := persistence.ValidateAccountForUser(ctx, dbTx, schema, userID, *toAccountID); err != nil {
+				return err
+			}
+		} else {
+			toAccountID = nil
+		}
 
 		// Validasi saldo cukup untuk TRANSFER sebelum insert
 		if p.TransactionType == "TRANSFER" && p.AmountIDR > 0 {
@@ -414,19 +437,27 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 				return fmt.Errorf("saldo rekening tidak mencukupi: tersedia %d, dibutuhkan %d", currentBalance, p.AmountIDR)
 			}
 		}
+		if err := persistence.ValidateBudgetForUser(ctx, dbTx, schema, userID, budgetID); err != nil {
+			return err
+		}
 
 		q := fmt.Sprintf(`
 			INSERT INTO %s.transactions
-				(id, sync_id, account_id, category_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)
+				(id, sync_id, account_id, category_id, budget_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)
 			SELECT
 				$1::uuid, $2::text,
 				NULLIF($4::jsonb->>'account_id','')::uuid,
 				NULLIF($4::jsonb->>'category_id','')::uuid,
+				$5::uuid,
 				COALESCE(NULLIF($4::jsonb->>'transaction_type',''),'EXPENSE'),
 				COALESCE(NULLIF($4::jsonb->>'amount_idr','')::bigint,0),
 				COALESCE(NULLIF($4::jsonb->>'transaction_date','')::date,CURRENT_DATE),
 				NULLIF($4::jsonb->>'notes',''),
-				NULLIF($4::jsonb->>'to_account_id','')::uuid,
+				CASE
+					WHEN COALESCE(NULLIF($4::jsonb->>'transaction_type',''),'EXPENSE') = 'TRANSFER'
+					THEN NULLIF($4::jsonb->>'to_account_id','')::uuid
+					ELSE NULL
+				END,
 				false, now(), now()
 			WHERE EXISTS (
 				SELECT 1 FROM %s.financial_accounts
@@ -435,7 +466,7 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 			)
 			ON CONFLICT (id) DO NOTHING`, schema, schema)
 
-		tag, err := dbTx.Exec(ctx, q, item.EntityID, item.SyncID, userID, payload)
+		tag, err := dbTx.Exec(ctx, q, item.EntityID, item.SyncID, userID, payload, budgetID)
 		if err != nil {
 			return fmt.Errorf("gagal insert transaction via sync: %w", err)
 		}
@@ -455,21 +486,126 @@ func (s *TransactionGRPCServer) applyOp(ctx context.Context, schema, userID stri
 		return dbTx.Commit(ctx)
 
 	case "update":
+		var p struct {
+			AccountID       string `json:"account_id"`
+			BudgetID        string `json:"budget_id"`
+			ToAccountID     string `json:"to_account_id"`
+			TransactionType string `json:"transaction_type"`
+		}
+		if err := json.Unmarshal(item.Payload, &p); err != nil {
+			return fmt.Errorf("gagal parse payload: %w", err)
+		}
+		var budgetID *uuid.UUID
+		if p.TransactionType == "EXPENSE" && p.BudgetID != "" {
+			parsed, parseErr := uuid.Parse(p.BudgetID)
+			if parseErr != nil {
+				return fmt.Errorf("budget_id tidak valid: %w", parseErr)
+			}
+			budgetID = &parsed
+		}
+		newAccountID, err := uuid.Parse(p.AccountID)
+		if err != nil {
+			return fmt.Errorf("account_id tidak valid: %w", err)
+		}
+		var newToAccountID *uuid.UUID
+		if p.TransactionType == "TRANSFER" {
+			if p.ToAccountID == "" {
+				return fmt.Errorf("rekening tujuan transfer tidak valid")
+			}
+			parsed, parseErr := uuid.Parse(p.ToAccountID)
+			if parseErr != nil {
+				return fmt.Errorf("to_account_id tidak valid: %w", parseErr)
+			}
+			newToAccountID = &parsed
+		}
+
+		dbTx, err := s.pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("gagal mulai DB transaction: %w", err)
+		}
+		defer dbTx.Rollback(ctx) //nolint:errcheck
+
+		selectQ := fmt.Sprintf(`
+			SELECT account_id, to_account_id
+			FROM %s.transactions
+			WHERE id=$1::uuid AND is_deleted=false
+			  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id=$2::uuid)`,
+			schema, schema)
+		var oldAccountID uuid.UUID
+		var oldToAccountID *uuid.UUID
+		if err := dbTx.QueryRow(ctx, selectQ, item.EntityID, userID).Scan(&oldAccountID, &oldToAccountID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return fmt.Errorf("gagal ambil detail transaksi untuk update: %w", err)
+		}
+		if err := persistence.ValidateAccountForUser(ctx, dbTx, schema, userID, newAccountID); err != nil {
+			return err
+		}
+		if newToAccountID != nil {
+			if *newToAccountID == newAccountID {
+				return fmt.Errorf("rekening tujuan transfer tidak valid")
+			}
+			if err := persistence.ValidateAccountForUser(ctx, dbTx, schema, userID, *newToAccountID); err != nil {
+				return err
+			}
+		}
+		if err := persistence.ValidateBudgetForUser(ctx, dbTx, schema, userID, budgetID); err != nil {
+			return err
+		}
+
 		q := fmt.Sprintf(`
 			UPDATE %s.transactions SET
-				category_id=COALESCE(NULLIF($3::jsonb->>'category_id','')::uuid,category_id),
+				account_id=COALESCE(NULLIF($3::jsonb->>'account_id','')::uuid,account_id),
+				category_id=CASE
+					WHEN COALESCE(NULLIF($3::jsonb->>'transaction_type',''),transaction_type) = 'TRANSFER'
+					THEN NULL
+					ELSE NULLIF($3::jsonb->>'category_id','')::uuid
+				END,
+				budget_id=CASE
+					WHEN COALESCE(NULLIF($3::jsonb->>'transaction_type',''),transaction_type) = 'EXPENSE'
+					THEN NULLIF($3::jsonb->>'budget_id','')::uuid
+					ELSE NULL
+				END,
 				transaction_type=COALESCE(NULLIF($3::jsonb->>'transaction_type',''),transaction_type),
 				amount_idr=COALESCE(NULLIF($3::jsonb->>'amount_idr','')::bigint,amount_idr),
 				transaction_date=COALESCE(NULLIF($3::jsonb->>'transaction_date','')::date,transaction_date),
 				notes=COALESCE(NULLIF($3::jsonb->>'notes',''),notes),
-				to_account_id=COALESCE(NULLIF($3::jsonb->>'to_account_id','')::uuid,to_account_id),
+				to_account_id=CASE
+					WHEN COALESCE(NULLIF($3::jsonb->>'transaction_type',''),transaction_type) = 'TRANSFER'
+					THEN NULLIF($3::jsonb->>'to_account_id','')::uuid
+					ELSE NULL
+				END,
 				updated_at=now()
 			WHERE id=$1::uuid AND is_deleted=false
 			  AND account_id IN (
 			    SELECT id FROM %s.financial_accounts WHERE user_id=$2::uuid
 			  )`, schema, schema)
-		_, err := s.pool.Exec(ctx, q, item.EntityID, userID, payload)
-		return err
+		if _, err := dbTx.Exec(ctx, q, item.EntityID, userID, payload); err != nil {
+			return err
+		}
+
+		affected := []uuid.UUID{oldAccountID, newAccountID}
+		if oldToAccountID != nil {
+			affected = append(affected, *oldToAccountID)
+		}
+		if newToAccountID != nil {
+			affected = append(affected, *newToAccountID)
+		}
+		seen := map[uuid.UUID]struct{}{}
+		for _, accountID := range affected {
+			if accountID == uuid.Nil {
+				continue
+			}
+			if _, ok := seen[accountID]; ok {
+				continue
+			}
+			seen[accountID] = struct{}{}
+			if err := persistence.RecalculateAccountBalance(ctx, dbTx, schema, accountID); err != nil {
+				return err
+			}
+		}
+		return dbTx.Commit(ctx)
 
 	case "delete":
 		dbTx, err := s.pool.Begin(ctx)

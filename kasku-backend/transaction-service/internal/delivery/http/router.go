@@ -29,6 +29,7 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Re
 			txs.POST("", h.CreateTransaction)
 			txs.GET("/export", h.ExportCSV)
 			txs.GET("/:id", h.GetTransaction)
+			txs.PUT("/:id", h.UpdateTransaction)
 			txs.DELETE("/:id", h.DeleteTransaction)
 		}
 		cats := v1.Group("/categories")

@@ -1,5 +1,5 @@
-import { DB_NAME, DB_VERSION } from './schema';
-import { runMigrations } from './migrations';
+import { DB_NAME, DB_VERSION, STORE_NAMES } from './schema';
+import { createMissingStores, runMigrations } from './migrations';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -16,8 +16,40 @@ export function openDB(): Promise<IDBDatabase> {
 
 	if (dbPromise) return dbPromise;
 
-	dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-		const request = indexedDB.open(DB_NAME, DB_VERSION);
+	dbPromise = openAndRepairDB().catch((err) => {
+		dbPromise = null;
+		throw err;
+	});
+
+	return dbPromise;
+}
+
+async function openAndRepairDB(): Promise<IDBDatabase> {
+	let db: IDBDatabase;
+	try {
+		db = await openIndexedDB(DB_VERSION);
+	} catch (err) {
+		if (!isVersionError(err)) throw err;
+		db = await openIndexedDB();
+	}
+
+	if (hasAllStores(db)) return db;
+
+	const nextVersion = db.version + 1;
+	db.close();
+
+	const repaired = await openIndexedDB(nextVersion);
+	if (!hasAllStores(repaired)) {
+		repaired.close();
+		throw new Error('IndexedDB schema tidak lengkap setelah recovery');
+	}
+	return repaired;
+}
+
+function openIndexedDB(version?: number): Promise<IDBDatabase> {
+	return new Promise<IDBDatabase>((resolve, reject) => {
+		const request =
+			version === undefined ? indexedDB.open(DB_NAME) : indexedDB.open(DB_NAME, version);
 
 		request.onupgradeneeded = (event) => {
 			const db = request.result;
@@ -27,6 +59,7 @@ export function openDB(): Promise<IDBDatabase> {
 				return;
 			}
 			runMigrations(db, tx, event.oldVersion);
+			createMissingStores(db);
 		};
 
 		request.onsuccess = () => {
@@ -40,7 +73,6 @@ export function openDB(): Promise<IDBDatabase> {
 		};
 
 		request.onerror = () => {
-			dbPromise = null;
 			reject(request.error ?? new Error('IndexedDB open gagal'));
 		};
 
@@ -48,8 +80,14 @@ export function openDB(): Promise<IDBDatabase> {
 			reject(new Error('IndexedDB open ter-block (tab lain belum tutup koneksi versi lama)'));
 		};
 	});
+}
 
-	return dbPromise;
+function hasAllStores(db: IDBDatabase): boolean {
+	return STORE_NAMES.every((name) => db.objectStoreNames.contains(name));
+}
+
+function isVersionError(err: unknown): boolean {
+	return err instanceof DOMException && err.name === 'VersionError';
 }
 
 /**

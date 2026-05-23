@@ -21,5 +21,8 @@ func (uc *ListBudgetsUseCase) Execute(ctx context.Context, tenantSchema, userID 
 	if err != nil {
 		return nil, fmt.Errorf("gagal list anggaran: %w", err)
 	}
+	for i := range budgets {
+		computeDailyFields(&budgets[i])
+	}
 	return budgets, nil
 }

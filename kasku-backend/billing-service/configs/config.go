@@ -9,12 +9,13 @@ import (
 
 // Config menyimpan seluruh konfigurasi billing-service yang di-load dari environment variables.
 type Config struct {
-	Server   ServerConfig
+	Server  ServerConfig
 	Postgres PostgresConfig
 	RabbitMQ RabbitMQConfig
 	App      AppConfig
 	Cleanup  CleanupConfig
 	Outbox   OutboxConfig
+	Payment  PaymentConfig
 }
 
 // ServerConfig menyimpan konfigurasi port HTTP dan gRPC.
@@ -52,6 +53,24 @@ type CleanupConfig struct {
 type OutboxConfig struct {
 	PollInterval time.Duration
 	BatchSize    int
+}
+
+// PaymentConfig menyimpan konfigurasi integrasi Payment Orchestrator.
+// Semua nilai WAJIB diisi dari environment variables — tidak ada nilai default untuk security reason.
+type PaymentConfig struct {
+	// OrchestratorBaseURL adalah base URL Payment Orchestrator (contoh: https://api-payment.roemahprogram.com)
+	OrchestratorBaseURL string
+
+	// OrchestratorAPIKey adalah Bearer token untuk autentikasi ke Payment Orchestrator.
+	// Gunakan sk_live_... untuk production, sk_test_... untuk staging/dev.
+	OrchestratorAPIKey string
+
+	// WebhookSecret adalah secret untuk verifikasi HMAC-SHA256 signature webhook.
+	WebhookSecret string
+
+	// CallbackBaseURL adalah base URL service KasKu yang dapat diakses oleh orchestrator
+	// untuk mengirimkan webhook callback. Contoh: https://api.kasku.app
+	CallbackBaseURL string
 }
 
 // Load membaca semua konfigurasi dari environment variables.
@@ -112,6 +131,12 @@ func Load() (*Config, error) {
 		Outbox: OutboxConfig{
 			PollInterval: time.Duration(outboxPollMs) * time.Millisecond,
 			BatchSize:    int(outboxBatchSize),
+		},
+		Payment: PaymentConfig{
+			OrchestratorBaseURL: requireEnv("PAYMENT_ORCHESTRATOR_BASE_URL"),
+			OrchestratorAPIKey:  requireEnv("PAYMENT_ORCHESTRATOR_API_KEY"),
+			WebhookSecret:       requireEnv("PAYMENT_WEBHOOK_SECRET"),
+			CallbackBaseURL:     requireEnv("PAYMENT_CALLBACK_BASE_URL"),
 		},
 	}, nil
 }

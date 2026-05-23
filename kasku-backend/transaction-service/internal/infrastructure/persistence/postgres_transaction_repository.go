@@ -45,6 +45,9 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
+	if tx.TransactionType != entity.TransactionExpense {
+		tx.BudgetID = nil
+	}
 
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -71,15 +74,18 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 			return domainerrors.ErrInsufficientBalance
 		}
 	}
+	if err := validateBudgetForAccount(ctx, dbTx, tenantSchema, tx.AccountID, tx.BudgetID); err != nil {
+		return err
+	}
 
 	insertQuery := fmt.Sprintf(`
 		INSERT INTO %s.transactions
-			(id, sync_id, account_id, category_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false, $10, $11)
+			(id, sync_id, account_id, category_id, budget_id, transaction_type, amount_idr, transaction_date, notes, to_account_id, is_deleted, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, $12)
 		ON CONFLICT (sync_id) DO NOTHING
 	`, tenantSchema)
 	tag, err := dbTx.Exec(ctx, insertQuery,
-		tx.ID, tx.SyncID, tx.AccountID, tx.CategoryID,
+		tx.ID, tx.SyncID, tx.AccountID, tx.CategoryID, tx.BudgetID,
 		string(tx.TransactionType), tx.AmountIDR, tx.TransactionDate,
 		tx.Notes, tx.ToAccountID, tx.CreatedAt, tx.UpdatedAt,
 	)
@@ -134,12 +140,93 @@ func RecalculateAccountBalance(ctx context.Context, dbTx pgx.Tx, tenantSchema st
 	return nil
 }
 
+func recalculateAccounts(ctx context.Context, dbTx pgx.Tx, tenantSchema string, accountIDs []uuid.UUID) error {
+	seen := make(map[uuid.UUID]struct{}, len(accountIDs))
+	for _, id := range accountIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		if err := RecalculateAccountBalance(ctx, dbTx, tenantSchema, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type QueryRower interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+func ValidateAccountForUser(ctx context.Context, q QueryRower, tenantSchema, userID string, accountID uuid.UUID) error {
+	query := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1 FROM %s.financial_accounts
+			WHERE id = $1 AND user_id = $2::uuid AND is_deleted = false
+		)
+	`, tenantSchema)
+	var exists bool
+	if err := q.QueryRow(ctx, query, accountID, userID).Scan(&exists); err != nil {
+		return fmt.Errorf("gagal validasi rekening: %w", err)
+	}
+	if !exists {
+		return domainerrors.ErrAccountNotFound
+	}
+	return nil
+}
+
+func validateBudgetForAccount(ctx context.Context, q QueryRower, tenantSchema string, accountID uuid.UUID, budgetID *uuid.UUID) error {
+	if budgetID == nil {
+		return nil
+	}
+	query := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM %s.budgets b
+			JOIN %s.financial_accounts a ON a.user_id = b.user_id
+			WHERE b.id = $1 AND a.id = $2
+			  AND b.is_deleted = false AND a.is_deleted = false
+		)
+	`, tenantSchema, tenantSchema)
+	var exists bool
+	if err := q.QueryRow(ctx, query, *budgetID, accountID).Scan(&exists); err != nil {
+		return fmt.Errorf("gagal validasi anggaran: %w", err)
+	}
+	if !exists {
+		return domainerrors.ErrBudgetNotFound
+	}
+	return nil
+}
+
+func ValidateBudgetForUser(ctx context.Context, q QueryRower, tenantSchema, userID string, budgetID *uuid.UUID) error {
+	if budgetID == nil {
+		return nil
+	}
+	query := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1 FROM %s.budgets
+			WHERE id = $1 AND user_id = $2::uuid AND is_deleted = false
+		)
+	`, tenantSchema)
+	var exists bool
+	if err := q.QueryRow(ctx, query, *budgetID, userID).Scan(&exists); err != nil {
+		return fmt.Errorf("gagal validasi anggaran: %w", err)
+	}
+	if !exists {
+		return domainerrors.ErrBudgetNotFound
+	}
+	return nil
+}
+
 func (r *postgresTransactionRepository) List(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.Transaction, error) {
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return nil, err
 	}
 	query := fmt.Sprintf(`
-		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.transaction_type,
+		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.budget_id, t.transaction_type,
 		       t.amount_idr, t.transaction_date, t.notes, t.to_account_id,
 		       t.is_deleted, t.deleted_at, t.created_at, t.updated_at
 		FROM %s.transactions t
@@ -158,7 +245,7 @@ func (r *postgresTransactionRepository) List(ctx context.Context, tenantSchema, 
 	for rows.Next() {
 		var t entity.Transaction
 		if err := rows.Scan(
-			&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.TransactionType,
+			&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.BudgetID, &t.TransactionType,
 			&t.AmountIDR, &t.TransactionDate, &t.Notes, &t.ToAccountID,
 			&t.IsDeleted, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
@@ -174,7 +261,7 @@ func (r *postgresTransactionRepository) GetByID(ctx context.Context, tenantSchem
 		return nil, err
 	}
 	query := fmt.Sprintf(`
-		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.transaction_type,
+		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.budget_id, t.transaction_type,
 		       t.amount_idr, t.transaction_date, t.notes, t.to_account_id,
 		       t.is_deleted, t.deleted_at, t.created_at, t.updated_at
 		FROM %s.transactions t
@@ -183,7 +270,7 @@ func (r *postgresTransactionRepository) GetByID(ctx context.Context, tenantSchem
 	`, tenantSchema, tenantSchema)
 	t := &entity.Transaction{}
 	err := r.pool.QueryRow(ctx, query, id, userID).Scan(
-		&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.TransactionType,
+		&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.BudgetID, &t.TransactionType,
 		&t.AmountIDR, &t.TransactionDate, &t.Notes, &t.ToAccountID,
 		&t.IsDeleted, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt,
 	)
@@ -196,19 +283,89 @@ func (r *postgresTransactionRepository) GetByID(ctx context.Context, tenantSchem
 	return t, nil
 }
 
-func (r *postgresTransactionRepository) Update(ctx context.Context, tenantSchema string, tx *entity.Transaction) error {
+func (r *postgresTransactionRepository) Update(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error {
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
-	query := fmt.Sprintf(`
-		UPDATE %s.transactions
-		SET category_id = $3, transaction_type = $4, amount_idr = $5,
-		    transaction_date = $6, notes = $7, to_account_id = $8, updated_at = now()
+	if tx.TransactionType != entity.TransactionExpense {
+		tx.BudgetID = nil
+	}
+
+	dbTx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("gagal mulai transaksi DB: %w", err)
+	}
+	defer dbTx.Rollback(ctx) //nolint:errcheck
+
+	selectQuery := fmt.Sprintf(`
+		SELECT account_id, to_account_id, transaction_type, amount_idr
+		FROM %s.transactions
 		WHERE id = $1 AND is_deleted = false
 		  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id = $2)
 	`, tenantSchema, tenantSchema)
-	result, err := r.pool.Exec(ctx, query,
-		tx.ID, tx.AccountID, tx.CategoryID, string(tx.TransactionType),
+	var oldAccountID uuid.UUID
+	var oldToAccountID *uuid.UUID
+	var oldType entity.TransactionType
+	var oldAmount int64
+	err = dbTx.QueryRow(ctx, selectQuery, tx.ID, userID).Scan(&oldAccountID, &oldToAccountID, &oldType, &oldAmount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domainerrors.ErrTransactionNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("gagal ambil transaksi lama: %w", err)
+	}
+
+	if err := ValidateAccountForUser(ctx, dbTx, tenantSchema, userID, tx.AccountID); err != nil {
+		return err
+	}
+	if tx.TransactionType == entity.TransactionTransfer {
+		if tx.ToAccountID == nil || *tx.ToAccountID == tx.AccountID {
+			return fmt.Errorf("%w: rekening tujuan transfer tidak valid", domainerrors.ErrInvalidInput)
+		}
+		if err := ValidateAccountForUser(ctx, dbTx, tenantSchema, userID, *tx.ToAccountID); err != nil {
+			return err
+		}
+	}
+
+	if tx.TransactionType == entity.TransactionTransfer {
+		var currentBalance int64
+		balanceQ := fmt.Sprintf(
+			"SELECT balance FROM %s.financial_accounts WHERE id = $1 AND user_id = $2::uuid AND is_deleted = false FOR UPDATE",
+			tenantSchema,
+		)
+		err := dbTx.QueryRow(ctx, balanceQ, tx.AccountID, userID).Scan(&currentBalance)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domainerrors.ErrAccountNotFound
+		}
+		if err != nil {
+			return fmt.Errorf("gagal membaca saldo rekening asal: %w", err)
+		}
+		available := currentBalance
+		if oldAccountID == tx.AccountID && (oldType == entity.TransactionExpense || oldType == entity.TransactionTransfer) {
+			available += oldAmount
+		}
+		if oldToAccountID != nil && *oldToAccountID == tx.AccountID && oldType == entity.TransactionTransfer {
+			available -= oldAmount
+		}
+		if tx.AmountIDR > available {
+			return domainerrors.ErrInsufficientBalance
+		}
+	}
+
+	if err := validateBudgetForAccount(ctx, dbTx, tenantSchema, tx.AccountID, tx.BudgetID); err != nil {
+		return err
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE %s.transactions
+		SET account_id = $3, category_id = $4, budget_id = $5, transaction_type = $6,
+		    amount_idr = $7, transaction_date = $8, notes = $9, to_account_id = $10,
+		    updated_at = now()
+		WHERE id = $1 AND is_deleted = false
+		  AND account_id IN (SELECT id FROM %s.financial_accounts WHERE user_id = $2)
+	`, tenantSchema, tenantSchema)
+	result, err := dbTx.Exec(ctx, query,
+		tx.ID, userID, tx.AccountID, tx.CategoryID, tx.BudgetID, string(tx.TransactionType),
 		tx.AmountIDR, tx.TransactionDate, tx.Notes, tx.ToAccountID,
 	)
 	if err != nil {
@@ -217,7 +374,18 @@ func (r *postgresTransactionRepository) Update(ctx context.Context, tenantSchema
 	if result.RowsAffected() == 0 {
 		return domainerrors.ErrTransactionNotFound
 	}
-	return nil
+
+	affected := []uuid.UUID{oldAccountID, tx.AccountID}
+	if oldToAccountID != nil {
+		affected = append(affected, *oldToAccountID)
+	}
+	if tx.ToAccountID != nil {
+		affected = append(affected, *tx.ToAccountID)
+	}
+	if err := recalculateAccounts(ctx, dbTx, tenantSchema, affected); err != nil {
+		return err
+	}
+	return dbTx.Commit(ctx)
 }
 
 func (r *postgresTransactionRepository) SoftDelete(ctx context.Context, tenantSchema, id, userID string) error {
@@ -295,7 +463,7 @@ func (r *postgresTransactionRepository) ListForExport(ctx context.Context, tenan
 		return nil, err
 	}
 	query := fmt.Sprintf(`
-		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.transaction_type,
+		SELECT t.id, t.sync_id, t.account_id, t.category_id, t.budget_id, t.transaction_type,
 		       t.amount_idr, t.transaction_date, t.notes, t.to_account_id,
 		       t.is_deleted, t.deleted_at, t.created_at, t.updated_at
 		FROM %s.transactions t
@@ -312,7 +480,7 @@ func (r *postgresTransactionRepository) ListForExport(ctx context.Context, tenan
 	for rows.Next() {
 		var t entity.Transaction
 		if err := rows.Scan(
-			&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.TransactionType,
+			&t.ID, &t.SyncID, &t.AccountID, &t.CategoryID, &t.BudgetID, &t.TransactionType,
 			&t.AmountIDR, &t.TransactionDate, &t.Notes, &t.ToAccountID,
 			&t.IsDeleted, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {

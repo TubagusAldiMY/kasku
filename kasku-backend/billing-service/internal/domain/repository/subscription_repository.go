@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/TubagusAldiMY/kasku/billing-service/internal/domain/entity"
+	"github.com/google/uuid"
 )
 
 // SubscriptionRepository mendefinisikan kontrak akses data untuk subscription dan plan.
@@ -40,4 +42,26 @@ type SubscriptionRepository interface {
 		routingKey string,
 		payload []byte,
 	) (bool, error)
+
+	// CreateSubscription membuat subscription record baru untuk user.
+	// Jika user sudah memiliki subscription (aktif maupun tidak), implementasi menangani upsert
+	// sesuai kebutuhan bisnis: user hanya boleh punya satu subscription per waktu.
+	// Status awal selalu ACTIVE dengan current_period_start = now().
+	// Mengembalikan ErrActiveSubscriptionExists jika user sudah punya subscription ACTIVE.
+	CreateSubscription(ctx context.Context, userID, planID uuid.UUID) (*entity.Subscription, error)
+
+	// ActivateSubscription mengaktifkan subscription setelah pembayaran berhasil dikonfirmasi.
+	// Set status=ACTIVE, current_period_end = periodEnd.
+	// Dipanggil oleh HandlePaymentWebhookUseCase setelah event payment.success diterima.
+	ActivateSubscription(ctx context.Context, subscriptionID uuid.UUID, periodEnd time.Time) error
+
+	// UpgradeSubscription mengupdate plan_id dan memperpanjang period subscription yang sudah ACTIVE.
+	// Digunakan saat user upgrade dari FREE ke plan berbayar setelah pembayaran sukses.
+	// Set plan_id = newPlanID, current_period_end = periodEnd, updated_at = now().
+	// Mengembalikan ErrSubscriptionNotFound jika tidak ada subscription ACTIVE dengan id tersebut.
+	UpgradeSubscription(ctx context.Context, subscriptionID, newPlanID uuid.UUID, periodEnd time.Time) error
+
+	// InsertOutboxEvent menyimpan satu event ke tabel outbox_events untuk reliable delivery.
+	// Outbox dispatcher akan membaca dan mempublish event ini ke RabbitMQ secara async.
+	InsertOutboxEvent(ctx context.Context, eventType, routingKey string, payload []byte) error
 }

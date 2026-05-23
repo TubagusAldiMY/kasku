@@ -19,6 +19,7 @@ type Transaction struct {
 	SyncID          string
 	AccountID       uuid.UUID
 	CategoryID      *uuid.UUID
+	BudgetID        *uuid.UUID
 	TransactionType TransactionType
 	AmountIDR       int64
 	TransactionDate time.Time

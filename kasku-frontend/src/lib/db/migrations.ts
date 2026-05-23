@@ -14,16 +14,28 @@ import { STORES, STORE_NAMES } from './schema';
  */
 export type MigrationFn = (db: IDBDatabase, tx: IDBTransaction) => void;
 
+export function createMissingStores(db: IDBDatabase): void {
+	for (const name of STORE_NAMES) {
+		if (db.objectStoreNames.contains(name)) continue;
+		const spec = STORES[name];
+		const store = db.createObjectStore(name, { keyPath: spec.keyPath });
+		for (const idx of spec.indexes) {
+			store.createIndex(idx.name, idx.keyPath, idx.options);
+		}
+	}
+}
+
 export const MIGRATIONS: Record<number, MigrationFn> = {
 	1: (db) => {
-		for (const name of STORE_NAMES) {
-			if (db.objectStoreNames.contains(name)) continue;
-			const spec = STORES[name];
-			const store = db.createObjectStore(name, { keyPath: spec.keyPath });
-			for (const idx of spec.indexes) {
-				store.createIndex(idx.name, idx.keyPath, idx.options);
-			}
-		}
+		createMissingStores(db);
+	},
+	// v3: buat store yang belum ada (menangkap user di v1/v2 yang belum punya 'budgets').
+	3: (db) => {
+		createMissingStores(db);
+	},
+	// v4: recovery untuk browser yang sudah terlanjur punya DB v3 tanpa store baru.
+	4: (db) => {
+		createMissingStores(db);
 	}
 };
 

@@ -6,11 +6,13 @@
 		transactionsRepo,
 		accountsRepo,
 		categoriesRepo,
+		budgetsRepo,
 		type TransactionRow,
 		type AccountRow,
-		type CategoryRow
+		type CategoryRow,
+		type BudgetRow
 	} from '$lib/db';
-	import { enqueueCreate, enqueueDelete, syncStatus, triggerManualSync } from '$lib/sync';
+	import { enqueueCreate, enqueueDelete, enqueueUpdate, syncStatus, triggerManualSync } from '$lib/sync';
 
 	type Transaction = {
 		id: string;
@@ -19,24 +21,29 @@
 		category: string;
 		account: string;
 		toAccount: string;
+		budget: string;
 		amount: number;
 		type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
 	};
 	type AccountRef = { id: string; name: string };
 	type CategoryRef = { id: string; name: string; category_type: 'INCOME' | 'EXPENSE' | 'BOTH' };
+	type BudgetRef = { id: string; name: string };
 
 	let transactions = $state<Transaction[]>([]);
 	let loading = $state(true);
 	let showAddModal = $state(false);
+	let editingId = $state('');
 
 	let myAccounts = $state<AccountRef[]>([]);
 	let allCategories = $state<CategoryRef[]>([]);
+	let budgets = $state<BudgetRef[]>([]);
 
 	let newTx = $state({
 		title: '',
 		amount: 0,
 		type: 'EXPENSE' as 'INCOME' | 'EXPENSE' | 'TRANSFER',
 		category_id: '',
+		budget_id: '',
 		account_id: '',
 		to_account_id: '',
 		date: new Date().toISOString().split('T')[0]
@@ -46,21 +53,37 @@
 		allCategories.filter((c) => c.category_type === newTx.type || c.category_type === 'BOTH')
 	);
 
+	function firstCategoryId(type: 'INCOME' | 'EXPENSE' | 'TRANSFER') {
+		if (type === 'TRANSFER') return '';
+		return (
+			allCategories.find((c) => c.category_type === type || c.category_type === 'BOTH')?.id ?? ''
+		);
+	}
+
 	$effect(() => {
 		if (newTx.type === 'TRANSFER' && newTx.to_account_id === newTx.account_id) {
 			const other = myAccounts.find((a) => a.id !== newTx.account_id);
 			newTx.to_account_id = other ? other.id : '';
+		}
+		if (newTx.type !== 'TRANSFER' && filteredCategories.length > 0) {
+			const stillValid = filteredCategories.some((c) => c.id === newTx.category_id);
+			if (!stillValid) newTx.category_id = filteredCategories[0].id;
+		}
+		if (newTx.type !== 'EXPENSE') {
+			newTx.budget_id = '';
 		}
 	});
 
 	function projectTransaction(
 		row: TransactionRow,
 		accounts: AccountRow[],
-		categories: CategoryRow[]
+		categories: CategoryRow[],
+		budgetRows: BudgetRow[]
 	): Transaction {
 		const acc = accounts.find((a) => a.id === row.account_id);
 		const toAcc = row.to_account_id ? accounts.find((a) => a.id === row.to_account_id) : undefined;
 		const cat = categories.find((c) => c.id === row.category_id);
+		const budget = row.budget_id ? budgetRows.find((b) => b.id === row.budget_id) : undefined;
 		const signed =
 			row.transaction_type === 'EXPENSE' || row.transaction_type === 'TRANSFER'
 				? -row.amount_idr
@@ -72,6 +95,7 @@
 			category: cat?.name ?? (row.transaction_type === 'TRANSFER' ? 'Transfer' : 'Umum'),
 			account: acc?.name ?? '—',
 			toAccount: toAcc?.name ?? '',
+			budget: budget?.name ?? '',
 			amount: signed,
 			type: row.transaction_type
 		};
@@ -79,10 +103,11 @@
 
 	async function reloadFromLocal() {
 		try {
-			const [txRows, accRows, catRows] = await Promise.all([
+			const [txRows, accRows, catRows, budgetRows] = await Promise.all([
 				transactionsRepo.getAll(),
 				accountsRepo.getAll(),
-				categoriesRepo.getAll()
+				categoriesRepo.getAll(),
+				budgetsRepo.getAll().catch(() => [] as BudgetRow[])
 			]);
 			myAccounts = accRows.map((a) => ({ id: a.id, name: a.name }));
 			allCategories = catRows.map((c) => ({
@@ -90,8 +115,9 @@
 				name: c.name,
 				category_type: c.category_type
 			}));
+			budgets = budgetRows.map((b) => ({ id: b.id, name: b.name }));
 			transactions = txRows
-				.map((t) => projectTransaction(t, accRows, catRows))
+				.map((t) => projectTransaction(t, accRows, catRows, budgetRows))
 				.sort((a, b) => (a.date < b.date ? 1 : -1));
 			if (!newTx.account_id && myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
 			if (!newTx.category_id && filteredCategories.length > 0)
@@ -116,6 +142,21 @@
 		}
 	}
 
+	async function hydrateBudgetsFromServer() {
+		try {
+			const res = await apiFetch('/budgets');
+			const result = await res.json();
+			if (result.success && Array.isArray(result.data)) {
+				const rows = result.data as BudgetRow[];
+				await budgetsRepo.clear();
+				await budgetsRepo.putMany(rows);
+				await reloadFromLocal();
+			}
+		} catch {
+			// Offline → tetap pakai cache IDB.
+		}
+	}
+
 	$effect(() => {
 		void syncStatus.dataVersion;
 		void reloadFromLocal();
@@ -123,7 +164,40 @@
 
 	let transferError = $state('');
 
-	async function handleAddTransaction(e: SubmitEvent) {
+	function resetForm() {
+		newTx = {
+			title: '',
+			amount: 0,
+			type: 'EXPENSE',
+			category_id: firstCategoryId('EXPENSE'),
+			budget_id: '',
+			account_id: myAccounts[0]?.id ?? '',
+			to_account_id: '',
+			date: new Date().toISOString().split('T')[0]
+		};
+		editingId = '';
+		transferError = '';
+	}
+
+	async function openEditTransaction(id: string) {
+		const row = await transactionsRepo.getById(id);
+		if (!row) return;
+		newTx = {
+			title: row.notes ?? '',
+			amount: row.amount_idr,
+			type: row.transaction_type,
+			category_id: row.category_id ?? '',
+			budget_id: row.transaction_type === 'EXPENSE' ? (row.budget_id ?? '') : '',
+			account_id: row.account_id,
+			to_account_id: row.to_account_id ?? '',
+			date: row.transaction_date
+		};
+		editingId = id;
+		transferError = '';
+		showAddModal = true;
+	}
+
+	async function handleSaveTransaction(e: SubmitEvent) {
 		e.preventDefault();
 		transferError = '';
 
@@ -149,19 +223,23 @@
 			const payload: Partial<TransactionRow> = {
 				account_id: newTx.account_id,
 				category_id: newTx.category_id,
+				budget_id: newTx.type === 'EXPENSE' ? newTx.budget_id : '',
 				transaction_type: newTx.type,
 				amount_idr: Math.abs(newTx.amount),
 				transaction_date: newTx.date,
-				notes: newTx.title
+				notes: newTx.title,
+				to_account_id: newTx.type === 'TRANSFER' ? newTx.to_account_id : ''
 			};
-			if (newTx.type === 'TRANSFER' && newTx.to_account_id) {
-				payload.to_account_id = newTx.to_account_id;
+			if (editingId) {
+				await enqueueUpdate<TransactionRow>('transactions', editingId, payload as Partial<TransactionRow>);
+			} else {
+				await enqueueCreate<TransactionRow>('transactions', payload as TransactionRow);
 			}
-			await enqueueCreate<TransactionRow>('transactions', payload as TransactionRow);
 			transferError = '';
 			showAddModal = false;
+			editingId = '';
 		} catch (err) {
-			console.error('Gagal menambah transaksi:', err);
+			console.error('Gagal menyimpan transaksi:', err);
 		}
 	}
 
@@ -178,6 +256,7 @@
 		await reloadFromLocal();
 		loading = false;
 		void hydrateCategoriesFromServer();
+		void hydrateBudgetsFromServer();
 		void triggerManualSync();
 	});
 
@@ -205,7 +284,10 @@
 			<p class="text-sm text-gray-500">Pantau arus kas masuk dan keluar Anda.</p>
 		</div>
 		<button
-			onclick={() => (showAddModal = true)}
+			onclick={() => {
+				resetForm();
+				showAddModal = true;
+			}}
 			class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#217b84] px-5 py-3 font-bold text-white shadow-lg transition-all hover:bg-[#1a5f66] active:scale-95"
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -275,11 +357,16 @@
 							<span class="text-[11px] text-gray-400">
 								{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'} → {tx.toAccount}{/if}
 							</span>
+							{#if tx.budget}
+								<span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold tracking-tight text-amber-700 uppercase">
+									{tx.budget}
+								</span>
+							{/if}
 						</div>
 						<p class="mt-0.5 text-[11px] text-gray-400">{formatDateShort(tx.date)}</p>
 					</div>
 
-					<!-- Nominal + hapus -->
+					<!-- Nominal + aksi -->
 					<div class="flex shrink-0 flex-col items-end gap-2">
 						<span
 							class="text-sm font-black {tx.type === 'INCOME'
@@ -288,15 +375,26 @@
 									? 'text-blue-500'
 									: 'text-red-500'}"
 						>{formatCurrency(tx.amount)}</span>
-						<button
-							onclick={() => handleDeleteTransaction(tx.id)}
-							class="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 active:bg-red-100"
-							aria-label="Hapus transaksi"
-						>
-							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-							</svg>
-						</button>
+						<div class="flex items-center gap-1">
+							<button
+								onclick={() => openEditTransaction(tx.id)}
+								class="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-teal-50 hover:text-[#217b84] active:bg-teal-100"
+								aria-label="Edit transaksi"
+							>
+								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+								</svg>
+							</button>
+							<button
+								onclick={() => handleDeleteTransaction(tx.id)}
+								class="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 active:bg-red-100"
+								aria-label="Hapus transaksi"
+							>
+								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								</svg>
+							</button>
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -311,6 +409,7 @@
 							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Tanggal</th>
 							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Keterangan</th>
 							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Kategori</th>
+							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Anggaran</th>
 							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Akun</th>
 							<th class="px-8 py-5 text-right text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase">Nominal</th>
 							<th class="px-8 py-5"></th>
@@ -326,6 +425,15 @@
 										{tx.category}
 									</span>
 								</td>
+								<td class="px-8 py-5">
+									{#if tx.budget}
+										<span class="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold tracking-tight text-amber-700 uppercase">
+											{tx.budget}
+										</span>
+									{:else}
+										<span class="text-xs font-medium text-gray-300">Tanpa anggaran</span>
+									{/if}
+								</td>
 								<td class="px-8 py-5 font-medium text-gray-500">
 									{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'}<span class="text-blue-500"> → {tx.toAccount}</span>{/if}
 								</td>
@@ -333,15 +441,26 @@
 									{formatCurrency(tx.amount)}
 								</td>
 								<td class="px-8 py-5 text-right">
-									<button
-										onclick={() => handleDeleteTransaction(tx.id)}
-										class="p-2 text-gray-300 opacity-0 transition-colors group-hover:opacity-100 hover:text-red-500"
-										aria-label="Hapus transaksi"
-									>
-										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-										</svg>
-									</button>
+									<div class="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+										<button
+											onclick={() => openEditTransaction(tx.id)}
+											class="p-2 text-gray-300 transition-colors hover:text-[#217b84]"
+											aria-label="Edit transaksi"
+										>
+											<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+											</svg>
+										</button>
+										<button
+											onclick={() => handleDeleteTransaction(tx.id)}
+											class="p-2 text-gray-300 transition-colors hover:text-red-500"
+											aria-label="Hapus transaksi"
+										>
+											<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+											</svg>
+										</button>
+									</div>
 								</td>
 							</tr>
 						{/each}
@@ -369,9 +488,12 @@
 
 			<div class="space-y-5 p-5 sm:p-8">
 				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-bold text-[#0a2e31] sm:text-2xl">Catat Transaksi</h2>
+					<h2 class="text-xl font-bold text-[#0a2e31] sm:text-2xl">{editingId ? 'Edit Transaksi' : 'Catat Transaksi'}</h2>
 					<button
-						onclick={() => { showAddModal = false; transferError = ''; }}
+						onclick={() => {
+							showAddModal = false;
+							resetForm();
+						}}
 						class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
 						aria-label="Tutup modal"
 					>
@@ -381,15 +503,14 @@
 					</button>
 				</div>
 
-				<form onsubmit={handleAddTransaction} class="space-y-4">
+				<form onsubmit={handleSaveTransaction} class="space-y-4">
 					<!-- Toggle Tipe -->
 					<div class="flex rounded-2xl border border-gray-100 bg-gray-50 p-1.5">
 						<button
 							type="button"
 							onclick={() => {
 								newTx.type = 'EXPENSE';
-								const first = allCategories.find((c) => c.category_type === 'EXPENSE');
-								newTx.category_id = first ? first.id : '';
+								newTx.category_id = firstCategoryId('EXPENSE');
 							}}
 							class="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all {newTx.type === 'EXPENSE' ? 'bg-white text-red-500 shadow-sm' : 'text-gray-400'}"
 						>Pengeluaran</button>
@@ -397,8 +518,7 @@
 							type="button"
 							onclick={() => {
 								newTx.type = 'INCOME';
-								const first = allCategories.find((c) => c.category_type === 'INCOME');
-								newTx.category_id = first ? first.id : '';
+								newTx.category_id = firstCategoryId('INCOME');
 							}}
 							class="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all {newTx.type === 'INCOME' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-400'}"
 						>Pemasukan</button>
@@ -435,6 +555,7 @@
 							<input
 								id="amount"
 								type="number"
+								min="1"
 								required
 								bind:value={newTx.amount}
 								class="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pr-4 pl-11 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
@@ -489,6 +610,22 @@
 						{/if}
 					</div>
 
+					{#if newTx.type === 'EXPENSE'}
+						<div>
+							<label for="budget" class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase">Anggaran</label>
+							<select
+								id="budget"
+								bind:value={newTx.budget_id}
+								class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+							>
+								<option value="">Tanpa anggaran</option>
+								{#each budgets as budget (budget.id)}
+									<option value={budget.id}>{budget.name}</option>
+								{/each}
+							</select>
+						</div>
+					{/if}
+
 					<!-- Tanggal -->
 					<div>
 						<label for="date" class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase">Tanggal</label>
@@ -509,7 +646,7 @@
 						type="submit"
 						class="w-full rounded-2xl bg-[#0a2e31] py-4 font-bold text-white shadow-xl transition-all hover:bg-black active:scale-[0.98]"
 					>
-						Simpan Transaksi
+						{editingId ? 'Update Transaksi' : 'Simpan Transaksi'}
 					</button>
 				</form>
 			</div>

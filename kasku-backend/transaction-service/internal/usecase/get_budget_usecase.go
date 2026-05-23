@@ -21,5 +21,6 @@ func (uc *GetBudgetUseCase) Execute(ctx context.Context, tenantSchema, id, userI
 	if err != nil {
 		return nil, fmt.Errorf("gagal get anggaran: %w", err)
 	}
+	computeDailyFields(b)
 	return b, nil
 }

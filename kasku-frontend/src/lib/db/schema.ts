@@ -10,7 +10,7 @@
  */
 
 export const DB_NAME = 'kasku';
-export const DB_VERSION = 2;
+export const DB_VERSION = 4;
 
 export type StoreName =
 	| 'accounts'
@@ -40,6 +40,7 @@ export type AccountRow = SyncableEntity & {
 export type TransactionRow = SyncableEntity & {
 	account_id: string;
 	category_id: string;
+	budget_id?: string;
 	transaction_type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
 	amount_idr: number;
 	transaction_date: string;
@@ -76,6 +77,13 @@ export type BudgetRow = {
 	progress_percent: number;
 	is_over_budget: boolean;
 	updated_at: string;
+	daily_limit_enabled: boolean;
+	// Present only when daily_limit_enabled = true.
+	daily_base_idr?: number;
+	carryover_idr?: number;
+	daily_allowance_today_idr?: number;
+	spent_today_idr?: number;
+	daily_remaining_idr?: number;
 };
 
 export type SyncOperationType = 'CREATE' | 'UPDATE' | 'DELETE';

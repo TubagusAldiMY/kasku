@@ -85,8 +85,8 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	// di httprouter (Gin's router). Billing endpoint terbatas dan sudah diketahui,
 	// jadi didaftarkan secara eksplisit untuk Phase 1.
 
-	// Midtrans webhook: skip JWT auth, verifikasi signature dilakukan di billing-service.
-	r.POST("/v1/billing/webhook/midtrans", cfg.ProxyHandler.ProxyTo("billing"))
+	// Payment webhook: skip JWT auth, verifikasi HMAC-SHA256 dilakukan di billing-service.
+	r.POST("/v1/billing/webhook/payment", cfg.ProxyHandler.ProxyTo("billing"))
 
 	// Billing endpoints yang butuh JWT
 	v1Billing := r.Group("/v1/billing")

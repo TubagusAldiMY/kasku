@@ -68,14 +68,15 @@
 			const res = await adminApiFetch(`/admin/audit-log?${params.toString()}`);
 			const envelope = (await res.json()) as {
 				success: boolean;
-				data?: { items: AuditEntry[]; meta: ListMeta };
+				data?: AuditEntry[];
+				meta?: ListMeta;
 				error?: { message?: string };
 			};
 			if (!res.ok || !envelope.success || !envelope.data) {
 				throw new Error(envelope.error?.message ?? `HTTP ${res.status}`);
 			}
-			entries = envelope.data.items;
-			meta = envelope.data.meta;
+			entries = envelope.data;
+			meta = envelope.meta ?? null;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Gagal memuat audit log';
 		} finally {
