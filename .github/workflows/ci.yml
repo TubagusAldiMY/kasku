@@ -23,7 +23,7 @@ jobs:
           - notification-service
           - admin-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
@@ -49,7 +49,7 @@ jobs:
           - price-service
           - sync-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -72,7 +72,7 @@ jobs:
     env:
       PUBLIC_API_BASE_URL: http://localhost:8080/v1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -91,7 +91,7 @@ jobs:
     name: Docker Compose config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: cp .env.example .env
         working-directory: kasku-backend
       - run: docker compose config --quiet
@@ -101,7 +101,7 @@ jobs:
     name: Security scan (CVE)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
