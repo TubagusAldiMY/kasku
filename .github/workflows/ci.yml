@@ -34,7 +34,10 @@ jobs:
         with:
           version: v1.64.8
           working-directory: kasku-backend/${{ matrix.service }}
-          args: --timeout=5m
+          # --go=1.24: binary v1.64.8 dikompilasi dengan go1.24, go.mod kita
+          # menarget go1.25.0 — flag ini override versi target ke 1.24 agar
+          # linter tidak reject. Tidak ada Go 1.25-specific syntax di codebase.
+          args: --timeout=5m --go=1.24
       - name: Test
         run: go test ./... -race -count=1
         working-directory: kasku-backend/${{ matrix.service }}
