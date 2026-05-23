@@ -84,6 +84,8 @@ jobs:
         working-directory: kasku-frontend
       - run: npm run lint
         working-directory: kasku-frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: kasku-frontend
       - run: npm run test:unit -- --run
         working-directory: kasku-frontend
 
