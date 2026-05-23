@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import { adminApiFetch } from '$lib/api/admin_client';
@@ -47,7 +48,7 @@
 		loading = true;
 		error = null;
 		try {
-			const params = new URLSearchParams({
+			const params = new SvelteURLSearchParams({
 				page: String(page),
 				page_size: String(pageSize)
 			});
@@ -99,7 +100,7 @@
 				type="search"
 				bind:value={search}
 				placeholder="Cari email / username…"
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
 			/>
 			<button
 				type="submit"
@@ -143,7 +144,10 @@
 					</tr>
 				{:else}
 					{#each users as u, i (u.id)}
-						<tr in:fly={{ y: 8, delay: i * 20, duration: 200 }} class="transition-colors hover:bg-gray-50/60">
+						<tr
+							in:fly={{ y: 8, delay: i * 20, duration: 200 }}
+							class="transition-colors hover:bg-gray-50/60"
+						>
 							<td class="px-6 py-4 text-sm font-bold text-[#0a2e31]">{u.email}</td>
 							<td class="px-6 py-4 text-xs font-medium text-gray-600">{u.username}</td>
 							<td class="px-6 py-4">
@@ -159,7 +163,8 @@
 									{u.subscription_tier}
 								</span>
 							</td>
-							<td class="px-6 py-4 text-xs font-medium text-gray-500">{formatDate(u.created_at)}</td>
+							<td class="px-6 py-4 text-xs font-medium text-gray-500">{formatDate(u.created_at)}</td
+							>
 							<td class="px-6 py-4 text-right">
 								<a
 									href={resolve(`/admin/users/${u.id}`)}
@@ -178,7 +183,10 @@
 	{#if meta && meta.total > 0}
 		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
 			<span>
-				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(meta.page * meta.page_size, meta.total)} dari {meta.total}
+				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
+					meta.page * meta.page_size,
+					meta.total
+				)} dari {meta.total}
 			</span>
 			<div class="flex items-center gap-2">
 				<button

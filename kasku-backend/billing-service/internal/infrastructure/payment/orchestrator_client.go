@@ -122,7 +122,7 @@ func (c *httpOrchestratorClient) InitiateDeposit(
 	if err != nil {
 		return nil, fmt.Errorf("gagal menghubungi payment orchestrator: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	rawBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -164,7 +164,7 @@ func (c *httpOrchestratorClient) CheckStatus(ctx context.Context, refID string) 
 	if err != nil {
 		return nil, fmt.Errorf("gagal cek status ke payment orchestrator: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	rawBody, err := io.ReadAll(resp.Body)
 	if err != nil {

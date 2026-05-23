@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	migrationSourceURL    = "file://migrations"
-	maxPoolConnections    = 20
+	migrationSourceURL = "file://migrations"
+	maxPoolConnections = 20
 	// migrationsTable uses a service-specific name to avoid conflicts with
 	// finance-service which shares the same kasku_finance database.
 	migrationsTable = "transaction_schema_migrations"
@@ -50,7 +51,7 @@ func NewPostgresPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func RunMigrations(dsn string) error {
+func RunMigrations(dsn string) (err error) {
 	// Append x-migrations-table so transaction-service tracks its versions
 	// independently from finance-service (both share kasku_finance database).
 	sep := "&"
@@ -63,11 +64,25 @@ func RunMigrations(dsn string) error {
 	if err != nil {
 		return fmt.Errorf("gagal inisialisasi migrate: %w", err)
 	}
-	defer m.Close()
+	defer func() {
+		sourceErr, databaseErr := m.Close()
+		err = errors.Join(
+			err,
+			wrapMigrationCloseError("gagal tutup migration source", sourceErr),
+			wrapMigrationCloseError("gagal tutup migration database", databaseErr),
+		)
+	}()
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("gagal menjalankan migration: %w", err)
 	}
 	return nil
+}
+
+func wrapMigrationCloseError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", message, err)
 }
 
 func PingPostgres(ctx context.Context, pool *pgxpool.Pool) error {

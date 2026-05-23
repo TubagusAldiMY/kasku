@@ -186,7 +186,7 @@ fn validate_url_domain(url_str: &str) -> Result<(), DomainError> {
         .host_str()
         .ok_or_else(|| DomainError::SsrfBlocked("URL tidak memiliki host".to_string()))?;
 
-    if !ALLOWED_DOMAINS.iter().any(|d| host == *d) {
+    if !ALLOWED_DOMAINS.contains(&host) {
         return Err(DomainError::SsrfBlocked(format!(
             "domain '{}' tidak diizinkan (whitelist: {:?})",
             host, ALLOWED_DOMAINS

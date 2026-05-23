@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,15 +49,19 @@ func NewRabbitMQConsumer(amqpURL string, log zerolog.Logger) (*RabbitMQConsumer,
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("gagal buat channel RabbitMQ: %w", err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal buat channel RabbitMQ: %w", err),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	// Declare exchange (idempotent)
 	if err := ch.ExchangeDeclare(exchangeName, exchangeType, true, false, false, false, nil); err != nil {
-		ch.Close()
-		conn.Close()
-		return nil, fmt.Errorf("gagal declare exchange: %w", err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal declare exchange: %w", err),
+			wrapCloseError("gagal tutup channel RabbitMQ", ch.Close()),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	// Declare queue dengan DLX
@@ -72,16 +77,20 @@ func NewRabbitMQConsumer(amqpURL string, log zerolog.Logger) (*RabbitMQConsumer,
 		},
 	)
 	if err != nil {
-		ch.Close()
-		conn.Close()
-		return nil, fmt.Errorf("gagal declare queue %s: %w", queueName, err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal declare queue %s: %w", queueName, err),
+			wrapCloseError("gagal tutup channel RabbitMQ", ch.Close()),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	// Bind queue ke exchange
 	if err := ch.QueueBind(queueName, routingKeyRegistered, exchangeName, false, nil); err != nil {
-		ch.Close()
-		conn.Close()
-		return nil, fmt.Errorf("gagal bind queue %s: %w", queueName, err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal bind queue %s: %w", queueName, err),
+			wrapCloseError("gagal tutup channel RabbitMQ", ch.Close()),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	return &RabbitMQConsumer{conn: conn, channel: ch, log: log}, nil
@@ -185,11 +194,15 @@ func (c *RabbitMQConsumer) Ping() error {
 
 // Close menutup channel dan koneksi RabbitMQ.
 func (c *RabbitMQConsumer) Close() error {
-	if err := c.channel.Close(); err != nil {
-		return fmt.Errorf("gagal tutup channel: %w", err)
+	return errors.Join(
+		wrapCloseError("gagal tutup channel", c.channel.Close()),
+		wrapCloseError("gagal tutup koneksi", c.conn.Close()),
+	)
+}
+
+func wrapCloseError(message string, err error) error {
+	if err == nil {
+		return nil
 	}
-	if err := c.conn.Close(); err != nil {
-		return fmt.Errorf("gagal tutup koneksi: %w", err)
-	}
-	return nil
+	return fmt.Errorf("%s: %w", message, err)
 }

@@ -316,9 +316,9 @@
 						</div>
 						<div>
 							<p class="text-[10px] font-bold tracking-wider text-white/40 uppercase">Income</p>
-							<p class="text-sm font-bold text-white"
-								>{balanceHidden ? '••••••' : formatCurrency(stats.monthlyIncome)}</p
-							>
+							<p class="text-sm font-bold text-white">
+								{balanceHidden ? '••••••' : formatCurrency(stats.monthlyIncome)}
+							</p>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
@@ -336,9 +336,9 @@
 						</div>
 						<div>
 							<p class="text-[10px] font-bold tracking-wider text-white/40 uppercase">Expense</p>
-							<p class="text-sm font-bold text-white"
-								>{balanceHidden ? '••••••' : formatCurrency(stats.monthlyExpense)}</p
-							>
+							<p class="text-sm font-bold text-white">
+								{balanceHidden ? '••••••' : formatCurrency(stats.monthlyExpense)}
+							</p>
 						</div>
 					</div>
 				</div>
@@ -446,7 +446,9 @@
 			<div class="mb-6 flex items-center justify-between">
 				<div class="space-y-1">
 					<h3 class="text-xl font-bold text-[#0a2e31]">Anggaran Bulan Ini</h3>
-					<p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Progress Pengeluaran</p>
+					<p class="text-xs font-bold tracking-wider text-gray-400 uppercase">
+						Progress Pengeluaran
+					</p>
 				</div>
 				<a href={resolve('/budgets')} class="text-xs font-bold text-[#217b84] hover:underline">
 					Kelola
@@ -459,7 +461,9 @@
 							<div class="flex items-center gap-2">
 								<span class="text-sm font-bold text-[#0a2e31]">{b.name}</span>
 								{#if b.category_name}
-									<span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+									<span
+										class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500"
+									>
 										{b.category_name}
 									</span>
 								{/if}
@@ -485,8 +489,20 @@
 							></div>
 						</div>
 						<div class="flex justify-between text-[11px] font-bold text-gray-400">
-							<span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(b.spent_idr)}</span>
-							<span>dari {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(b.limit_idr)}</span>
+							<span
+								>{new Intl.NumberFormat('id-ID', {
+									style: 'currency',
+									currency: 'IDR',
+									minimumFractionDigits: 0
+								}).format(b.spent_idr)}</span
+							>
+							<span
+								>dari {new Intl.NumberFormat('id-ID', {
+									style: 'currency',
+									currency: 'IDR',
+									minimumFractionDigits: 0
+								}).format(b.limit_idr)}</span
+							>
 						</div>
 					</div>
 				{/each}

@@ -98,7 +98,10 @@
 
 		const trimmedUsername = profile.username.trim();
 		if (trimmedUsername && !/^[a-zA-Z0-9_]{3,50}$/.test(trimmedUsername)) {
-			message = { type: 'error', text: 'Username hanya boleh huruf, angka, dan underscore (3–50 karakter).' };
+			message = {
+				type: 'error',
+				text: 'Username hanya boleh huruf, angka, dan underscore (3–50 karakter).'
+			};
 			return;
 		}
 

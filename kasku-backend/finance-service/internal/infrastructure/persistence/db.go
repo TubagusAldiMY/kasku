@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -49,17 +50,31 @@ func NewPostgresPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func RunMigrations(dsn string) error {
+func RunMigrations(dsn string) (err error) {
 	m, err := migrate.New(migrationSourceURL, dsn)
 	if err != nil {
 		return fmt.Errorf("gagal inisialisasi migrate: %w", err)
 	}
-	defer m.Close()
+	defer func() {
+		sourceErr, databaseErr := m.Close()
+		err = errors.Join(
+			err,
+			wrapMigrationCloseError("gagal tutup migration source", sourceErr),
+			wrapMigrationCloseError("gagal tutup migration database", databaseErr),
+		)
+	}()
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("gagal menjalankan migration: %w", err)
 	}
 	return nil
+}
+
+func wrapMigrationCloseError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", message, err)
 }
 
 func PingPostgres(ctx context.Context, pool *pgxpool.Pool) error {

@@ -109,7 +109,7 @@ func GetParsedToken(c *gin.Context) (*usecase.ParsedToken, bool) {
 func extractBearerToken(c *gin.Context) (string, error) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		return "", fmt.Errorf("Authorization header tidak ditemukan")
+		return "", fmt.Errorf("authorization header tidak ditemukan")
 	}
 
 	parts := strings.SplitN(authHeader, " ", 2)

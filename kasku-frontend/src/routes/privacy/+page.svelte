@@ -32,7 +32,10 @@
 	<section class="space-y-3">
 		<h2 class="text-xl font-black">1. Data yang Kami Kumpulkan</h2>
 		<ul class="list-disc space-y-2 pl-6 text-sm text-gray-700">
-			<li><strong>Data akun</strong>: nama pengguna, alamat email, kata sandi (di-hash dengan Argon2id).</li>
+			<li>
+				<strong>Data akun</strong>: nama pengguna, alamat email, kata sandi (di-hash dengan
+				Argon2id).
+			</li>
 			<li>
 				<strong>Data finansial</strong>: akun keuangan, transaksi, kategori, instrumen investasi —
 				disimpan terisolasi per pengguna dalam schema multi-tenant.
@@ -41,7 +44,10 @@
 				<strong>Data teknis</strong>: alamat IP, user agent, log aktivitas (untuk keamanan dan
 				audit, tanpa konten transaksi mendetail).
 			</li>
-			<li><strong>Data pembayaran</strong>: kami tidak menyimpan nomor kartu — diproses oleh Midtrans (PCI-DSS compliant).</li>
+			<li>
+				<strong>Data pembayaran</strong>: kami tidak menyimpan nomor kartu — diproses oleh Midtrans
+				(PCI-DSS compliant).
+			</li>
 		</ul>
 	</section>
 
@@ -90,8 +96,12 @@
 		<h2 class="text-xl font-black">6. Pihak Ketiga</h2>
 		<ul class="list-disc space-y-2 pl-6 text-sm text-gray-700">
 			<li><strong>Midtrans</strong> — pemroses pembayaran.</li>
-			<li><strong>CoinGecko, metals.live</strong> — sumber harga pasar (tidak menerima data Anda).</li>
-			<li><strong>Penyedia infrastruktur cloud</strong> — hosting (terikat kontrak pemrosesan data).</li>
+			<li>
+				<strong>CoinGecko, metals.live</strong> — sumber harga pasar (tidak menerima data Anda).
+			</li>
+			<li>
+				<strong>Penyedia infrastruktur cloud</strong> — hosting (terikat kontrak pemrosesan data).
+			</li>
 		</ul>
 	</section>
 

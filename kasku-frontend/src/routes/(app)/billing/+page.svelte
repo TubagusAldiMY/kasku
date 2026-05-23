@@ -78,7 +78,10 @@
 				if (data.success && data.data?.status === 'ACTIVE') {
 					currentSub = data.data;
 					qrModal = null;
-					message = { tone: 'success', text: 'Pembayaran berhasil! Langganan Anda telah diaktifkan.' };
+					message = {
+						tone: 'success',
+						text: 'Pembayaran berhasil! Langganan Anda telah diaktifkan.'
+					};
 				}
 			} catch {
 				// polling — abaikan error sementara
@@ -140,7 +143,13 @@
 			priceMonthly: 0,
 			priceYearly: 0,
 			desc: 'Solusi lengkap untuk tim, keluarga & bisnis skala besar.',
-			features: ['Semua Fitur Pro', 'Multi-User (5 User)', 'Analisis Prediktif AI', 'API Access', 'Dukungan Prioritas'],
+			features: [
+				'Semua Fitur Pro',
+				'Multi-User (5 User)',
+				'Analisis Prediktif AI',
+				'API Access',
+				'Dukungan Prioritas'
+			],
 			isPopular: false,
 			btnText: 'Hubungi Tim KasKu',
 			disabled: false
@@ -248,7 +257,9 @@
 
 	function formatCountdown(seconds: number): string {
 		if (seconds <= 0) return 'Kedaluwarsa';
-		const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+		const m = Math.floor(seconds / 60)
+			.toString()
+			.padStart(2, '0');
 		const s = (seconds % 60).toString().padStart(2, '0');
 		return `${m}:${s}`;
 	}
@@ -279,7 +290,9 @@
 			<!-- Header -->
 			<div class="mb-5 flex items-start justify-between">
 				<div>
-					<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">Bayar dengan QRIS</p>
+					<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+						Bayar dengan QRIS
+					</p>
 					<p class="mt-0.5 text-xl font-black text-[#0a2e31]">{formatPrice(qrModal.amount_idr)}</p>
 				</div>
 				<button
@@ -288,7 +301,13 @@
 					class="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
 					aria-label="Tutup"
 				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2.5"
+					>
 						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 					</svg>
 				</button>
@@ -301,8 +320,12 @@
 						<img src={qrDataURL} alt="QR Code QRIS" class="h-52 w-52 rounded-xl" />
 					</div>
 				{:else}
-					<div class="flex h-52 w-52 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50">
-						<div class="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"></div>
+					<div
+						class="flex h-52 w-52 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50"
+					>
+						<div
+							class="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"
+						></div>
 					</div>
 				{/if}
 			</div>
@@ -311,7 +334,11 @@
 			<div class="mb-5 text-center">
 				{#if qrSecondsLeft > 0}
 					<p class="text-xs font-medium text-gray-500">Bayar sebelum</p>
-					<p class="text-2xl font-black tabular-nums {qrSecondsLeft < 60 ? 'text-red-600' : 'text-[#0a2e31]'}">
+					<p
+						class="text-2xl font-black tabular-nums {qrSecondsLeft < 60
+							? 'text-red-600'
+							: 'text-[#0a2e31]'}"
+					>
 						{formatCountdown(qrSecondsLeft)}
 					</p>
 				{:else if qrModal.expires_at}
@@ -321,9 +348,12 @@
 
 			<!-- Instruksi -->
 			<ol class="mb-5 space-y-1.5 text-left">
-				{#each ['Buka aplikasi mobile banking / e-wallet Anda', 'Pilih menu Scan QR / QRIS', 'Arahkan kamera ke QR di atas', 'Konfirmasi pembayaran'] as step, i}
+				{#each ['Buka aplikasi mobile banking / e-wallet Anda', 'Pilih menu Scan QR / QRIS', 'Arahkan kamera ke QR di atas', 'Konfirmasi pembayaran'] as step, i (step)}
 					<li class="flex items-center gap-2.5 text-xs font-medium text-gray-600">
-						<span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-teal-50 text-[9px] font-black text-teal-700">{i + 1}</span>
+						<span
+							class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-teal-50 text-[9px] font-black text-teal-700"
+							>{i + 1}</span
+						>
 						{step}
 					</li>
 				{/each}
@@ -378,7 +408,9 @@
 						<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
 							Aktif Hingga
 						</p>
-						<p class="text-sm font-bold text-teal-900">{formatDate(currentSub.current_period_end)}</p>
+						<p class="text-sm font-bold text-teal-900">
+							{formatDate(currentSub.current_period_end)}
+						</p>
 					</div>
 				</div>
 			</div>
@@ -500,8 +532,18 @@
 						href="mailto:admin@tubsamy.tech?subject=Pertanyaan%20Paket%20Enterprise%20KasKu"
 						class="flex w-full items-center justify-center gap-2 rounded-xl border border-[#0a2e31] bg-[#0a2e31] py-3.5 text-[11px] font-black tracking-widest text-white uppercase transition-all hover:bg-[#0d3b3f] active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm"
 					>
-						<svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+						<svg
+							class="h-3.5 w-3.5 sm:h-4 sm:w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+							/>
 						</svg>
 						Hubungi Tim KasKu
 					</a>

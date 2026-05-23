@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import { adminApiFetch } from '$lib/api/admin_client';
 
@@ -49,7 +50,8 @@
 
 	function actionBadge(action: string) {
 		if (action.startsWith('SUSPEND') || action.includes('DELETE')) return 'bg-red-50 text-red-700';
-		if (action.startsWith('LOGIN') || action.startsWith('LOGOUT')) return 'bg-gray-50 text-gray-700';
+		if (action.startsWith('LOGIN') || action.startsWith('LOGOUT'))
+			return 'bg-gray-50 text-gray-700';
 		if (action.startsWith('OVERRIDE')) return 'bg-amber-50 text-amber-700';
 		if (action.startsWith('ACTIVATE')) return 'bg-green-50 text-green-700';
 		return 'bg-teal-50 text-teal-700';
@@ -59,7 +61,7 @@
 		loading = true;
 		error = null;
 		try {
-			const params = new URLSearchParams({
+			const params = new SvelteURLSearchParams({
 				page: String(page),
 				page_size: String(pageSize)
 			});
@@ -113,7 +115,7 @@
 				type="text"
 				bind:value={actionFilter}
 				placeholder="Filter action (e.g. SUSPEND_USER)…"
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
 			/>
 			<button
 				type="submit"
@@ -156,11 +158,18 @@
 					</tr>
 				{:else}
 					{#each entries as e, i (e.id)}
-						<tr in:fly={{ y: 8, delay: i * 10, duration: 180 }} class="transition-colors hover:bg-gray-50/60">
-							<td class="px-6 py-3 text-xs font-mono text-gray-600">{formatDate(e.created_at)}</td>
+						<tr
+							in:fly={{ y: 8, delay: i * 10, duration: 180 }}
+							class="transition-colors hover:bg-gray-50/60"
+						>
+							<td class="px-6 py-3 font-mono text-xs text-gray-600">{formatDate(e.created_at)}</td>
 							<td class="px-6 py-3 text-xs font-bold text-[#0a2e31]">{e.admin_email}</td>
 							<td class="px-6 py-3">
-								<span class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {actionBadge(e.action)}">
+								<span
+									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {actionBadge(
+										e.action
+									)}"
+								>
 									{e.action}
 								</span>
 							</td>
@@ -171,7 +180,7 @@
 									<span class="font-mono">{e.target_type}</span>
 								{/if}
 							</td>
-							<td class="px-6 py-3 text-xs font-mono text-gray-500">{e.ip_address}</td>
+							<td class="px-6 py-3 font-mono text-xs text-gray-500">{e.ip_address}</td>
 						</tr>
 					{/each}
 				{/if}
@@ -182,7 +191,10 @@
 	{#if meta && meta.total > 0}
 		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
 			<span>
-				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(meta.page * meta.page_size, meta.total)} dari {meta.total}
+				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
+					meta.page * meta.page_size,
+					meta.total
+				)} dari {meta.total}
 			</span>
 			<div class="flex items-center gap-2">
 				<button

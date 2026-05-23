@@ -67,7 +67,10 @@
 		try {
 			return await res.json();
 		} catch {
-			return { success: false, error: { message: `Response API tidak valid (HTTP ${res.status})` } };
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
 		}
 	}
 
@@ -95,7 +98,9 @@
 		try {
 			const cached = await categoriesRepo.getAll();
 			if (cached.length > 0) {
-				categories = cached.filter((c) => c.category_type === 'EXPENSE' || c.category_type === 'BOTH');
+				categories = cached.filter(
+					(c) => c.category_type === 'EXPENSE' || c.category_type === 'BOTH'
+				);
 				return;
 			}
 			const res = await apiFetch('/categories');
@@ -230,7 +235,9 @@
 	</div>
 
 	{#if errorMessage && !showModal}
-		<div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+		<div
+			class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600"
+		>
 			{errorMessage}
 		</div>
 	{/if}
@@ -246,11 +253,19 @@
 		<div
 			class="flex flex-col items-center justify-center gap-6 rounded-[2.5rem] border-2 border-dashed border-gray-100 bg-white py-20 text-center"
 		>
-			<div
-				class="flex h-20 w-20 items-center justify-center rounded-3xl bg-teal-50 text-[#217b84]"
-			>
-				<svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h6m-3-8a9 9 0 100 18 9 9 0 000-18z" />
+			<div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-teal-50 text-[#217b84]">
+				<svg
+					class="h-10 w-10"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="1.5"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h6m-3-8a9 9 0 100 18 9 9 0 000-18z"
+					/>
 				</svg>
 			</div>
 			<div class="space-y-2">
@@ -299,16 +314,24 @@
 						</div>
 
 						<!-- Actions (visible on hover) -->
-						<div
-							class="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100"
-						>
+						<div class="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
 							<button
 								onclick={() => openEditModal(b)}
 								aria-label="Edit anggaran {b.name}"
 								class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-[#0a2e31]"
 							>
-								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+									/>
 								</svg>
 							</button>
 							<button
@@ -316,8 +339,18 @@
 								aria-label="Hapus anggaran {b.name}"
 								class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
 							>
-								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
 								</svg>
 							</button>
 						</div>
@@ -348,8 +381,18 @@
 						<div
 							class="flex items-center gap-1.5 rounded-2xl border border-red-100 bg-red-50 px-3 py-2"
 						>
-							<svg class="h-3.5 w-3.5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+							<svg
+								class="h-3.5 w-3.5 shrink-0 text-red-500"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+								/>
 							</svg>
 							<span class="text-[10px] font-black tracking-wider text-red-600 uppercase"
 								>Melebihi Anggaran</span
@@ -359,8 +402,18 @@
 						<div
 							class="flex items-center gap-1.5 rounded-2xl border border-yellow-100 bg-yellow-50 px-3 py-2"
 						>
-							<svg class="h-3.5 w-3.5 shrink-0 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+							<svg
+								class="h-3.5 w-3.5 shrink-0 text-yellow-500"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+								/>
 							</svg>
 							<span class="text-[10px] font-black tracking-wider text-yellow-600 uppercase"
 								>Mendekati Batas</span
@@ -384,28 +437,45 @@
 						<div class="mt-2 space-y-2 border-t border-gray-100 pt-3">
 							<div class="flex items-center justify-between text-[11px]">
 								<span class="font-bold text-gray-400">Jatah dasar</span>
-								<span class="font-black text-gray-500">{formatCurrency(b.daily_base_idr ?? 0)}/hari</span>
+								<span class="font-black text-gray-500"
+									>{formatCurrency(b.daily_base_idr ?? 0)}/hari</span
+								>
 							</div>
 							<div class="flex items-center justify-between text-[11px]">
 								<span class="font-bold text-gray-400">Sisa kemarin</span>
-								<span class="font-black {(b.carryover_idr ?? 0) >= 0 ? 'text-[#217b84]' : 'text-red-500'}">
+								<span
+									class="font-black {(b.carryover_idr ?? 0) >= 0
+										? 'text-[#217b84]'
+										: 'text-red-500'}"
+								>
 									{dailyCarryoverLabel(b.carryover_idr ?? 0)}
 								</span>
 							</div>
 							<div class="flex items-center justify-between text-[11px]">
 								<span class="font-black text-[#0a2e31]">Jatah hari ini</span>
-								<span class="font-black text-[#0a2e31]">{formatCurrency(b.daily_allowance_today_idr ?? 0)}</span>
+								<span class="font-black text-[#0a2e31]"
+									>{formatCurrency(b.daily_allowance_today_idr ?? 0)}</span
+								>
 							</div>
 							<!-- Mini progress bar for today -->
 							<div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
 								<div
-									class="h-full rounded-full transition-all duration-500 {spentTodayPercent(b) >= 100 ? 'bg-red-400' : spentTodayPercent(b) >= 75 ? 'bg-yellow-400' : 'bg-[#217b84]'}"
+									class="h-full rounded-full transition-all duration-500 {spentTodayPercent(b) >=
+									100
+										? 'bg-red-400'
+										: spentTodayPercent(b) >= 75
+											? 'bg-yellow-400'
+											: 'bg-[#217b84]'}"
 									style="width: {Math.min(100, spentTodayPercent(b))}%"
 								></div>
 							</div>
 							<div class="flex items-center justify-between text-[11px]">
 								<span class="font-bold text-gray-400">Terpakai hari ini</span>
-								<span class="font-black {(b.daily_remaining_idr ?? 0) < 0 ? 'text-red-500' : 'text-gray-500'}">{formatCurrency(b.spent_today_idr ?? 0)}</span>
+								<span
+									class="font-black {(b.daily_remaining_idr ?? 0) < 0
+										? 'text-red-500'
+										: 'text-gray-500'}">{formatCurrency(b.spent_today_idr ?? 0)}</span
+								>
 							</div>
 						</div>
 					{/if}
@@ -435,7 +505,13 @@
 						onclick={() => (showModal = false)}
 						class="text-gray-300 transition-colors hover:text-gray-500"
 					>
-						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+						<svg
+							class="h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2.5"
+						>
 							<path d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
@@ -444,7 +520,10 @@
 				<form onsubmit={handleSave} class="space-y-5">
 					<!-- Nama -->
 					<div class="space-y-1.5">
-						<label for="bname" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						<label
+							for="bname"
+							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+						>
 							Nama Anggaran
 						</label>
 						<input
@@ -454,13 +533,16 @@
 							bind:value={form.name}
 							maxlength="100"
 							placeholder="Misal: Makan & Minum"
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 						/>
 					</div>
 
 					<!-- Batas (IDR) -->
 					<div class="space-y-1.5">
-						<label for="blimit" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						<label
+							for="blimit"
+							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+						>
 							Batas Pengeluaran (IDR)
 						</label>
 						<input
@@ -470,19 +552,22 @@
 							min="1"
 							bind:value={form.limit_idr}
 							placeholder="500000"
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 						/>
 					</div>
 
 					<!-- Kategori -->
 					<div class="space-y-1.5">
-						<label for="bcat" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						<label
+							for="bcat"
+							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+						>
 							Kategori (Opsional)
 						</label>
 						<select
 							id="bcat"
 							bind:value={form.category_id}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 						>
 							<option value="">Semua Pengeluaran</option>
 							{#each categories as cat (cat.id)}
@@ -493,13 +578,16 @@
 
 					<!-- Periode -->
 					<div class="space-y-1.5">
-						<label for="bperiod" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						<label
+							for="bperiod"
+							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+						>
 							Periode
 						</label>
 						<select
 							id="bperiod"
 							bind:value={form.period_type}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 						>
 							<option value="MONTHLY">Bulanan</option>
 							<option value="WEEKLY">Mingguan</option>
@@ -510,7 +598,9 @@
 					<!-- Jatah Harian (hanya untuk MONTHLY dan WEEKLY) -->
 					{#if form.period_type === 'MONTHLY' || form.period_type === 'WEEKLY'}
 						<div class="space-y-1.5">
-							<label class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 transition-all hover:bg-teal-50/40">
+							<label
+								class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 transition-all hover:bg-teal-50/40"
+							>
 								<input
 									type="checkbox"
 									bind:checked={form.daily_limit_enabled}
@@ -530,25 +620,31 @@
 					{#if form.period_type === 'CUSTOM'}
 						<div class="grid grid-cols-2 gap-4">
 							<div class="space-y-1.5">
-								<label for="bstart" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+								<label
+									for="bstart"
+									class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+								>
 									Mulai
 								</label>
 								<input
 									id="bstart"
 									type="date"
 									bind:value={form.start_date}
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 								/>
 							</div>
 							<div class="space-y-1.5">
-								<label for="bend" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+								<label
+									for="bend"
+									class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+								>
 									Selesai
 								</label>
 								<input
 									id="bend"
 									type="date"
 									bind:value={form.end_date}
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 								/>
 							</div>
 						</div>
@@ -556,7 +652,10 @@
 
 					<!-- Alert Threshold -->
 					<div class="space-y-1.5">
-						<label for="bthreshold" class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						<label
+							for="bthreshold"
+							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+						>
 							Peringatan saat mencapai (%)
 						</label>
 						<input
@@ -565,15 +664,18 @@
 							min="0"
 							max="100"
 							bind:value={form.alert_threshold}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
 						/>
 						<p class="px-1 text-[10px] font-bold text-gray-300">
-							Tampilkan peringatan kuning saat pengeluaran mencapai {form.alert_threshold}% dari batas.
+							Tampilkan peringatan kuning saat pengeluaran mencapai {form.alert_threshold}% dari
+							batas.
 						</p>
 					</div>
 
 					{#if errorMessage}
-						<div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600">
+						<div
+							class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600"
+						>
 							{errorMessage}
 						</div>
 					{/if}

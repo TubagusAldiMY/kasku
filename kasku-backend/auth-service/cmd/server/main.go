@@ -63,7 +63,11 @@ func main() {
 	if err := redisinfra.PingRedis(ctx, redisClient); err != nil {
 		logger.Fatal().Err(err).Msg("gagal koneksi ke Redis")
 	}
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("gagal menutup Redis client")
+		}
+	}()
 	logger.Info().Msg("Redis terhubung")
 
 	// ── RabbitMQ ──────────────────────────────────────────────────────────────

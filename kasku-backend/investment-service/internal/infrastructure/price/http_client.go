@@ -41,7 +41,7 @@ func (c *HTTPClient) GetPrice(ctx context.Context, symbol string) (float64, bool
 	if err != nil {
 		return 0, false, fmt.Errorf("gagal call price-service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, false, fmt.Errorf("price-service return status %d", resp.StatusCode)

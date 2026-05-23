@@ -30,14 +30,11 @@ jobs:
           cache: true
           cache-dependency-path: kasku-backend/${{ matrix.service }}/go.sum
       - name: Lint (golangci-lint)
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.64.8
+          version: v2.12.2
           working-directory: kasku-backend/${{ matrix.service }}
-          # --go=1.24: binary v1.64.8 dikompilasi dengan go1.24, go.mod kita
-          # menarget go1.25.0 — flag ini override versi target ke 1.24 agar
-          # linter tidak reject. Tidak ada Go 1.25-specific syntax di codebase.
-          args: --timeout=5m --go=1.24
+          args: --timeout=5m
       - name: Test
         run: go test ./... -race -count=1
         working-directory: kasku-backend/${{ matrix.service }}
@@ -72,6 +69,8 @@ jobs:
   frontend:
     name: Frontend check
     runs-on: ubuntu-latest
+    env:
+      PUBLIC_API_BASE_URL: http://localhost:8080/v1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

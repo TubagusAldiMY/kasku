@@ -64,7 +64,11 @@ func main() {
 
 	// ── Redis ───────────────────────────────────────────────────────────
 	redisClient := rdsinfra.NewClient(cfg.Redis.Addr, cfg.Redis.Password)
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("gagal menutup Redis client")
+		}
+	}()
 	if err := rdsinfra.Ping(ctx, redisClient); err != nil {
 		logger.Fatal().Err(err).Msg("gagal ping Redis")
 	}

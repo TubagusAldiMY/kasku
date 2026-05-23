@@ -28,8 +28,12 @@
 	<section class="space-y-3">
 		<h2 class="text-xl font-black">1. Definisi</h2>
 		<ul class="list-disc space-y-2 pl-6 text-sm text-gray-700">
-			<li><strong>"Layanan"</strong> berarti aplikasi KasKu beserta seluruh fitur, situs, dan API terkait.</li>
-			<li><strong>"Penyedia"</strong> berarti TubsAMY (admin@tubsamy.tech) sebagai operator Layanan.</li>
+			<li>
+				<strong>"Layanan"</strong> berarti aplikasi KasKu beserta seluruh fitur, situs, dan API terkait.
+			</li>
+			<li>
+				<strong>"Penyedia"</strong> berarti TubsAMY (admin@tubsamy.tech) sebagai operator Layanan.
+			</li>
 			<li><strong>"Pengguna"</strong> berarti individu yang telah membuat akun di Layanan.</li>
 			<li><strong>"Konten"</strong> berarti data finansial yang Anda masukkan ke Layanan.</li>
 		</ul>
@@ -56,9 +60,15 @@
 		</p>
 		<ul class="list-disc space-y-2 pl-6 text-sm text-gray-700">
 			<li>Mengakses atau mencoba mengakses data Pengguna lain.</li>
-			<li>Melakukan reverse engineering, scraping, atau aktivitas otomatis terhadap API tanpa izin tertulis.</li>
+			<li>
+				Melakukan reverse engineering, scraping, atau aktivitas otomatis terhadap API tanpa izin
+				tertulis.
+			</li>
 			<li>Mengunggah konten ilegal, malware, atau yang melanggar hak pihak ketiga.</li>
-			<li>Menggunakan Layanan untuk pencucian uang, pendanaan terorisme, atau aktivitas ilegal lainnya.</li>
+			<li>
+				Menggunakan Layanan untuk pencucian uang, pendanaan terorisme, atau aktivitas ilegal
+				lainnya.
+			</li>
 		</ul>
 	</section>
 
@@ -67,7 +77,9 @@
 		<ul class="list-disc space-y-2 pl-6 text-sm text-gray-700">
 			<li>Layanan tersedia dalam tier gratis (FREE) dan berbayar (PRO/PREMIUM).</li>
 			<li>Pembayaran diproses oleh Midtrans; tagihan otomatis sesuai periode yang dipilih.</li>
-			<li>Pengembalian dana mengikuti kebijakan refund pro-rata; ajukan melalui email dalam 7 hari.</li>
+			<li>
+				Pengembalian dana mengikuti kebijakan refund pro-rata; ajukan melalui email dalam 7 hari.
+			</li>
 			<li>Penyedia dapat mengubah harga dengan pemberitahuan minimal 30 hari sebelumnya.</li>
 		</ul>
 	</section>

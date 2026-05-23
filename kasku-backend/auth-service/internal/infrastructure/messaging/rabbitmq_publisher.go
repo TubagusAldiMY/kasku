@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -68,8 +69,10 @@ func NewRabbitMQPublisher(amqpURL string) (*RabbitMQPublisher, error) {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("gagal buat channel RabbitMQ: %w", err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal buat channel RabbitMQ: %w", err),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	// Declare exchange sebagai durable topic — idempotent (aman dijalankan ulang)
@@ -82,9 +85,11 @@ func NewRabbitMQPublisher(amqpURL string) (*RabbitMQPublisher, error) {
 		false, // no-wait
 		nil,
 	); err != nil {
-		ch.Close()
-		conn.Close()
-		return nil, fmt.Errorf("gagal declare exchange RabbitMQ: %w", err)
+		return nil, errors.Join(
+			fmt.Errorf("gagal declare exchange RabbitMQ: %w", err),
+			wrapCloseError("gagal tutup channel RabbitMQ", ch.Close()),
+			wrapCloseError("gagal tutup koneksi RabbitMQ", conn.Close()),
+		)
 	}
 
 	return &RabbitMQPublisher{conn: conn, channel: ch}, nil
@@ -154,11 +159,15 @@ func (p *RabbitMQPublisher) Ping() error {
 
 // Close menutup channel dan koneksi RabbitMQ dengan urutan yang benar.
 func (p *RabbitMQPublisher) Close() error {
-	if err := p.channel.Close(); err != nil {
-		return fmt.Errorf("gagal tutup channel RabbitMQ: %w", err)
+	return errors.Join(
+		wrapCloseError("gagal tutup channel RabbitMQ", p.channel.Close()),
+		wrapCloseError("gagal tutup koneksi RabbitMQ", p.conn.Close()),
+	)
+}
+
+func wrapCloseError(message string, err error) error {
+	if err == nil {
+		return nil
 	}
-	if err := p.conn.Close(); err != nil {
-		return fmt.Errorf("gagal tutup koneksi RabbitMQ: %w", err)
-	}
-	return nil
+	return fmt.Errorf("%s: %w", message, err)
 }

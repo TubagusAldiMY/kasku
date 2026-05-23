@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import { adminApiFetch } from '$lib/api/admin_client';
 
@@ -70,7 +71,7 @@
 		loading = true;
 		error = null;
 		try {
-			const params = new URLSearchParams({
+			const params = new SvelteURLSearchParams({
 				page: String(page),
 				page_size: String(pageSize)
 			});
@@ -120,7 +121,7 @@
 			<select
 				bind:value={statusFilter}
 				onchange={applyFilter}
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
 			>
 				<option value="all">Semua status</option>
 				<option value="SUCCESS">Sukses</option>
@@ -171,7 +172,10 @@
 					</tr>
 				{:else}
 					{#each payments as p, i (p.id)}
-						<tr in:fly={{ y: 8, delay: i * 20, duration: 200 }} class="transition-colors hover:bg-gray-50/60">
+						<tr
+							in:fly={{ y: 8, delay: i * 20, duration: 200 }}
+							class="transition-colors hover:bg-gray-50/60"
+						>
 							<td class="px-6 py-4 font-mono text-xs text-[#0a2e31]">{p.order_id}</td>
 							<td class="px-6 py-4 text-sm font-bold text-[#0a2e31]">{p.user_email}</td>
 							<td class="px-6 py-4 text-xs font-bold tracking-widest text-teal-700 uppercase">
@@ -181,7 +185,11 @@
 								{formatCurrency(p.amount_idr)}
 							</td>
 							<td class="px-6 py-4">
-								<span class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {statusBadge(p.status)}">
+								<span
+									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {statusBadge(
+										p.status
+									)}"
+								>
 									{p.status}
 								</span>
 							</td>
@@ -196,7 +204,10 @@
 	{#if meta && meta.total > 0}
 		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
 			<span>
-				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(meta.page * meta.page_size, meta.total)} dari {meta.total}
+				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
+					meta.page * meta.page_size,
+					meta.total
+				)} dari {meta.total}
 			</span>
 			<div class="flex items-center gap-2">
 				<button

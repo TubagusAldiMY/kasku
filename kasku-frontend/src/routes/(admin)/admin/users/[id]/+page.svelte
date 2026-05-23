@@ -119,11 +119,7 @@
 			error = 'Alasan override minimal 3 karakter.';
 			return;
 		}
-		if (
-			!confirm(
-				`Override subscription ke ${overridePlanName}? Aksi ini tercatat di audit log.`
-			)
-		) {
+		if (!confirm(`Override subscription ke ${overridePlanName}? Aksi ini tercatat di audit log.`)) {
 			return;
 		}
 		const ok = await postAction('override-subscription', {
@@ -197,7 +193,9 @@
 					<p class="text-sm font-bold text-[#0a2e31]">{user.subscription_tier}</p>
 				</div>
 				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">Status Subscription</p>
+					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						Status Subscription
+					</p>
 					<p class="text-sm font-bold text-[#0a2e31]">{user.subscription_status}</p>
 				</div>
 				<div class="space-y-1">
@@ -209,7 +207,9 @@
 					<p class="text-sm font-bold text-[#0a2e31]">{formatDate(user.created_at)}</p>
 				</div>
 				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">Login Terakhir</p>
+					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">
+						Login Terakhir
+					</p>
 					<p class="text-sm font-bold text-[#0a2e31]">{formatDate(user.last_login_at)}</p>
 				</div>
 				<div class="space-y-1 md:col-span-2">
@@ -232,7 +232,7 @@
 							type="text"
 							bind:value={suspendReason}
 							placeholder="Contoh: Pelanggaran ToS pasal 3"
-							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400/40"
+							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-red-400/40 focus:outline-none"
 						/>
 					</label>
 					<button
@@ -250,7 +250,7 @@
 							type="text"
 							bind:value={activateReason}
 							placeholder="Contoh: Masalah sudah diselesaikan"
-							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400/40"
+							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-green-400/40 focus:outline-none"
 						/>
 					</label>
 					<button
@@ -274,7 +274,7 @@
 						Tier baru
 						<select
 							bind:value={overridePlanName}
-							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
 						>
 							{#each tierOptions as t (t)}
 								<option value={t}>{t}</option>
@@ -287,7 +287,7 @@
 							type="text"
 							bind:value={overrideReason}
 							placeholder="Contoh: Kompensasi gangguan layanan"
-							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
 						/>
 					</label>
 				</div>

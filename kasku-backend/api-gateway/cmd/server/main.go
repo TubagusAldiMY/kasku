@@ -16,9 +16,9 @@ import (
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/middleware"
 	grpcinfra "github.com/TubagusAldiMY/kasku/api-gateway/internal/infrastructure/grpc"
-	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	redisinfra "github.com/TubagusAldiMY/kasku/api-gateway/internal/infrastructure/redis"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/usecase"
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 )
 
 func main() {
@@ -42,7 +42,11 @@ func main() {
 	if err := redisinfra.Ping(ctx, redisClient); err != nil {
 		logger.Fatal().Err(err).Msg("gagal koneksi ke Redis")
 	}
-	defer redisClient.Close()
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("gagal menutup Redis client")
+		}
+	}()
 	logger.Info().Msg("Redis terhubung")
 
 	// ── Billing gRPC Client ────────────────────────────────────────────────────
