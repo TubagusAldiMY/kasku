@@ -13,10 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func init() {
+	gin.SetMode(gin.TestMode)
+}
+
 // fakeRepo adalah in-memory PreferenceRepository untuk handler test.
 type fakeRepo struct {
-	store    map[string]persistence.NotificationPreference
-	getErr   error
+	store     map[string]persistence.NotificationPreference
+	getErr    error
 	upsertErr error
 }
 
@@ -44,7 +48,6 @@ func (r *fakeRepo) Upsert(_ context.Context, userID string, pref persistence.Not
 }
 
 func setupRouter(repo persistence.PreferenceRepository) *gin.Engine {
-	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	h := NewPreferenceHandler(repo)
 	r.GET("/notifications/preferences", h.Get)
@@ -75,8 +78,8 @@ func TestPreferenceGet_ReturnsDefaultsWhenNoRowExists(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 	var body struct {
-		Success bool                                 `json:"success"`
-		Data    persistence.NotificationPreference  `json:"data"`
+		Success bool                               `json:"success"`
+		Data    persistence.NotificationPreference `json:"data"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("invalid json: %v", err)
