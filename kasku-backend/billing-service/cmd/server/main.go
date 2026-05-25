@@ -21,6 +21,13 @@ import (
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const gracefulShutdownTimeout = 30 * time.Second
@@ -38,6 +45,56 @@ func main() {
 		Str("version", cfg.App.ServiceVersion).
 		Str("env", cfg.App.Env).
 		Msg("billing-service starting")
+
+	// Inisialisasi OpenTelemetry tracing.
+	// Jika OTEL_EXPORTER_OTLP_ENDPOINT tidak diset, gunakan noop provider agar tidak ada overhead.
+	if cfg.App.OTELEndpoint == "" {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+		logger.Info().Msg("OTel tracing nonaktif (OTEL_EXPORTER_OTLP_ENDPOINT tidak diset)")
+	} else {
+		otelCtx := context.Background()
+		exp, otelErr := otlptracegrpc.New(
+			otelCtx,
+			otlptracegrpc.WithEndpoint(cfg.App.OTELEndpoint),
+			otlptracegrpc.WithInsecure(),
+		)
+		if otelErr != nil {
+			logger.Warn().Err(otelErr).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+			otel.SetTracerProvider(noop.NewTracerProvider())
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			))
+		} else {
+			res, _ := resource.New(otelCtx,
+				resource.WithAttributes(
+					semconv.ServiceName("billing-service"),
+					semconv.ServiceVersion(cfg.App.ServiceVersion),
+					semconv.DeploymentEnvironment(cfg.App.Env),
+				),
+			)
+			tp := sdktrace.NewTracerProvider(
+				sdktrace.WithBatcher(exp),
+				sdktrace.WithResource(res),
+				sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			)
+			otel.SetTracerProvider(tp)
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			))
+			defer func() {
+				shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer shutCancel()
+				_ = tp.Shutdown(shutCtx)
+			}()
+			logger.Info().Str("endpoint", cfg.App.OTELEndpoint).Msg("OTel tracing aktif")
+		}
+	}
 
 	// Jalankan migration sebelum menerima traffic apapun
 	logger.Info().Msg("menjalankan database migrations")

@@ -9,7 +9,7 @@ import (
 
 // Config menyimpan seluruh konfigurasi billing-service yang di-load dari environment variables.
 type Config struct {
-	Server  ServerConfig
+	Server   ServerConfig
 	Postgres PostgresConfig
 	RabbitMQ RabbitMQConfig
 	App      AppConfig
@@ -36,11 +36,12 @@ type RabbitMQConfig struct {
 
 // AppConfig menyimpan konfigurasi aplikasi umum.
 type AppConfig struct {
-	Env                            string
-	LogLevel                       string
-	ServiceVersion                 string
-	SubscriptionCheckInterval      time.Duration
-	ExpiringNotificationEnabled    bool
+	Env                         string
+	LogLevel                    string
+	ServiceVersion              string
+	OTELEndpoint                string
+	SubscriptionCheckInterval   time.Duration
+	ExpiringNotificationEnabled bool
 }
 
 // CleanupConfig mengatur retention/garbage-collection job.
@@ -121,6 +122,7 @@ func Load() (*Config, error) {
 			Env:                         getEnvOrDefault("APP_ENV", "development"),
 			LogLevel:                    getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion:              getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
+			OTELEndpoint:                os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 			SubscriptionCheckInterval:   time.Duration(checkIntervalMs) * time.Millisecond,
 			ExpiringNotificationEnabled: expiringEnabled,
 		},

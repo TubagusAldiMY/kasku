@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -53,4 +55,22 @@ func GetCorrelationID(c *gin.Context) string {
 		}
 	}
 	return ""
+}
+
+// BridgeToOTel menjembatani correlation ID ke span OTel yang aktif dan menyimpan
+// trace ID ke Gin context agar bisa disertakan dalam response log.
+// Harus dipasang SETELAH otelgin.Middleware dan CorrelationID middleware.
+func BridgeToOTel() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		span := trace.SpanFromContext(c.Request.Context())
+		if span.IsRecording() {
+			if corrID := GetCorrelationID(c); corrID != "" {
+				span.SetAttributes(attribute.String("kasku.correlation_id", corrID))
+			}
+		}
+		if sc := span.SpanContext(); sc.IsValid() {
+			c.Set("trace_id", sc.TraceID().String())
+		}
+		c.Next()
+	}
 }

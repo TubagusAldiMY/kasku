@@ -6,6 +6,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // NewRouter membuat Gin router dengan semua middleware dan route yang terkonfigurasi.
@@ -16,7 +17,9 @@ func NewRouter(billingHandler *handler.BillingHandler, isDev bool, metricsReg *m
 
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(otelgin.Middleware("billing-service"))
 	r.Use(middleware.CorrelationID())
+	r.Use(middleware.BridgeToOTel())
 	r.Use(metricsReg.HTTPMetrics())
 	r.Use(securityHeadersMiddleware())
 
