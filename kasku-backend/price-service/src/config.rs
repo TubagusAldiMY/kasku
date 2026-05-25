@@ -49,6 +49,11 @@ pub struct Config {
     /// Background scheduler interval in seconds.
     #[serde(default = "default_scheduler_interval")]
     pub price_scheduler_interval_seconds: u64,
+
+    /// OTLP endpoint for OpenTelemetry (e.g. "http://otel-collector:4317").
+    /// Empty string disables tracing.
+    #[serde(default)]
+    pub otel_exporter_otlp_endpoint: String,
 }
 
 impl Config {
