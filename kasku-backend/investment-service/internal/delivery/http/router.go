@@ -5,6 +5,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/delivery/http/middleware"
 	"github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func NewRouter(h *handler.InvestmentHandler, isDev bool, metricsReg *metrics.Registry) *gin.Engine {
@@ -14,7 +15,9 @@ func NewRouter(h *handler.InvestmentHandler, isDev bool, metricsReg *metrics.Reg
 
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(otelgin.Middleware("investment-service"))
 	r.Use(middleware.CorrelationID())
+	r.Use(middleware.BridgeToOTel())
 	r.Use(metricsReg.HTTPMetrics())
 
 	r.GET("/health", h.Health)

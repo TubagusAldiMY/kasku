@@ -16,6 +16,7 @@ import (
 	priceinfra "github.com/TubagusAldiMY/kasku/investment-service/internal/infrastructure/price"
 	"github.com/TubagusAldiMY/kasku/investment-service/internal/usecase"
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
+	obstracing "github.com/TubagusAldiMY/kasku/observability-go/tracing"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -35,6 +36,26 @@ func main() {
 		Str("version", cfg.App.ServiceVersion).
 		Str("env", cfg.App.Env).
 		Msg("investment-service starting")
+
+	// OpenTelemetry tracing — inisialisasi sebelum infra lain.
+	// Jika OTEL_EXPORTER_OTLP_ENDPOINT kosong, noop tracer dipasang (tidak ada data dikirim).
+	tracerShutdown, err := obstracing.InitTracer("investment-service", obstracing.Config{
+		OTLPEndpoint:   cfg.OTEL.Endpoint,
+		ServiceVersion: cfg.App.ServiceVersion,
+		Environment:    cfg.App.Env,
+	})
+	if err != nil {
+		logger.Warn().Err(err).Msg("OTel tracer init gagal, tracing dinonaktifkan")
+	} else if cfg.OTEL.Endpoint != "" {
+		logger.Info().Str("endpoint", cfg.OTEL.Endpoint).Msg("OTel tracing aktif")
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if shutdownErr := tracerShutdown(shutdownCtx); shutdownErr != nil {
+			logger.Warn().Err(shutdownErr).Msg("OTel tracer shutdown error")
+		}
+	}()
 
 	// Database — investment-service tidak punya migration sendiri. Tabel
 	// investment_assets & unit_history di tiap tenant schema dibuat oleh
