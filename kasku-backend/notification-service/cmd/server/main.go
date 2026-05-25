@@ -17,6 +17,7 @@ import (
 	apptemplates "github.com/TubagusAldiMY/kasku/notification-service/internal/templates"
 	"github.com/TubagusAldiMY/kasku/notification-service/internal/usecase"
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
+	"github.com/TubagusAldiMY/kasku/observability-go/tracing"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -39,6 +40,26 @@ func main() {
 		Str("service", "notification-service").
 		Str("version", cfg.App.ServiceVersion).
 		Msg("notification-service starting")
+
+	// Inisialisasi OpenTelemetry tracing. Jika OTELEndpoint kosong, noop tracer dipasang
+	// sehingga service tetap berjalan normal tanpa mengirim data tracing.
+	tracerShutdown, tracerErr := tracing.InitTracer("notification-service", tracing.Config{
+		OTLPEndpoint:   cfg.App.OTELEndpoint,
+		ServiceVersion: cfg.App.ServiceVersion,
+		Environment:    cfg.App.Env,
+	})
+	if tracerErr != nil {
+		logger.Warn().Err(tracerErr).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+	} else if cfg.App.OTELEndpoint != "" {
+		logger.Info().Str("endpoint", cfg.App.OTELEndpoint).Msg("OTel tracing aktif")
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tracerShutdown(shutdownCtx); err != nil {
+			logger.Error().Err(err).Msg("OTel tracer shutdown error")
+		}
+	}()
 
 	ctx := context.Background()
 	pool, err := persistence.NewPostgresPool(ctx, cfg.Postgres.DSN)

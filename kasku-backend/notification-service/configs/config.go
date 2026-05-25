@@ -39,6 +39,7 @@ type AppConfig struct {
 	LogLevel       string
 	ServiceVersion string
 	AppBaseURL     string
+	OTELEndpoint   string
 }
 
 func Load() (*Config, error) {
@@ -69,6 +70,7 @@ func Load() (*Config, error) {
 			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
 			AppBaseURL:     getEnvOrDefault("APP_BASE_URL", "http://localhost:3000"),
+			OTELEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		},
 	}, nil
 }
