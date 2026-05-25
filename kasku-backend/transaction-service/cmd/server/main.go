@@ -18,6 +18,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
@@ -38,6 +45,11 @@ func main() {
 		Str("service", "transaction-service").
 		Str("version", cfg.App.ServiceVersion).
 		Msg("transaction-service starting")
+
+	// Inisialisasi OpenTelemetry distributed tracing.
+	// Jika OTEL_EXPORTER_OTLP_ENDPOINT kosong, noop tracer dipasang — service tetap jalan normal.
+	otelShutdown := initTracer(cfg, logger)
+	defer otelShutdown()
 
 	logger.Info().Msg("menjalankan database migrations")
 	if err := persistence.RunMigrations(cfg.Postgres.DSN); err != nil {
@@ -134,4 +146,70 @@ type appHealthChecker struct{ pool *pgxpool.Pool }
 
 func (h *appHealthChecker) PingPostgres(ctx context.Context) error {
 	return persistence.PingPostgres(ctx, h.pool)
+}
+
+// initTracer menginisialisasi OpenTelemetry tracer provider global.
+// Mengembalikan fungsi shutdown yang harus dipanggil saat graceful shutdown.
+// Jika OTELEndpoint kosong, noop tracer dipasang — tidak pernah crash.
+func initTracer(cfg *configs.Config, logger zerolog.Logger) func() {
+	noopShutdown := func() {}
+	setNoop := func() {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+	}
+
+	if cfg.OTEL.Endpoint == "" {
+		setNoop()
+		return noopShutdown
+	}
+
+	otelCtx := context.Background()
+	exp, err := otlptracegrpc.New(otelCtx,
+		otlptracegrpc.WithEndpoint(cfg.OTEL.Endpoint),
+		otlptracegrpc.WithInsecure(),
+	)
+	if err != nil {
+		logger.Warn().Err(err).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+		setNoop()
+		return noopShutdown
+	}
+
+	res, err := resource.New(otelCtx,
+		resource.WithAttributes(
+			semconv.ServiceName("transaction-service"),
+			semconv.ServiceVersion(cfg.App.ServiceVersion),
+			semconv.DeploymentEnvironment(cfg.App.Env),
+		),
+	)
+	if err != nil {
+		res = resource.Default()
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp,
+			sdktrace.WithBatchTimeout(5*time.Second),
+			sdktrace.WithMaxExportBatchSize(512),
+		),
+		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+	)
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	logger.Info().Str("endpoint", cfg.OTEL.Endpoint).Msg("OTel tracing aktif")
+
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tp.Shutdown(shutdownCtx); err != nil {
+			logger.Error().Err(err).Msg("OTel tracer provider shutdown error")
+		}
+	}
 }

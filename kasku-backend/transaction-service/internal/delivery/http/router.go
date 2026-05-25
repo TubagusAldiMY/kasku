@@ -6,6 +6,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/transaction-service/internal/delivery/http/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Registry, log zerolog.Logger) *gin.Engine {
@@ -14,7 +15,9 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Re
 	}
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(otelgin.Middleware("transaction-service"))
 	r.Use(middleware.CorrelationID())
+	r.Use(middleware.BridgeToOTel())
 	r.Use(metricsReg.HTTPMetrics())
 	r.Use(securityHeaders())
 

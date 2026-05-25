@@ -9,6 +9,11 @@ type Config struct {
 	Server   ServerConfig
 	Postgres PostgresConfig
 	App      AppConfig
+	OTEL     OTELConfig
+}
+
+type OTELConfig struct {
+	Endpoint string
 }
 
 type ServerConfig struct {
@@ -39,6 +44,9 @@ func Load() (*Config, error) {
 			Env:            getEnvOrDefault("APP_ENV", "development"),
 			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
+		},
+		OTEL: OTELConfig{
+			Endpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		},
 	}, nil
 }
