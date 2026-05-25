@@ -38,6 +38,8 @@ volumes:
     name: kasku-loki-data
   alertmanager-data:
     name: kasku-alertmanager-data
+  jaeger-data:
+    name: kasku-jaeger-data
 
 services:
 
@@ -196,6 +198,7 @@ services:
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
       INTERNAL_GRPC_SECRET: ${INTERNAL_GRPC_SECRET:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -244,6 +247,7 @@ services:
       SYNC_SERVICE_URL: http://kasku-sync-service:8088
       NOTIFICATION_SERVICE_URL: http://kasku-notification-service:8089
       ADMIN_SERVICE_URL: http://kasku-admin-service:8090
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-public
       - kasku-internal
@@ -286,6 +290,7 @@ services:
       POSTGRES_BILLING_DSN: postgres://kasku_user_svc:${KASKU_USER_DB_PASS}@postgres:5432/kasku_billing?sslmode=disable
       POSTGRES_USER_DSN: postgres://kasku_user_svc:${KASKU_USER_DB_PASS}@postgres:5432/kasku_user?sslmode=disable
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -327,6 +332,7 @@ services:
       PAYMENT_ORCHESTRATOR_API_KEY: ${KASKU_PAYMENT_ORCHESTRATOR_API_KEY}
       PAYMENT_WEBHOOK_SECRET: ${KASKU_PAYMENT_WEBHOOK_SECRET}
       PAYMENT_CALLBACK_BASE_URL: ${KASKU_PAYMENT_CALLBACK_BASE_URL}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -361,6 +367,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       POSTGRES_DSN: postgres://kasku_finance_svc:${KASKU_FINANCE_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -395,6 +402,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       POSTGRES_DSN: postgres://kasku_transaction_svc:${KASKU_TRANSACTION_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -437,6 +445,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@kasku.app}
       APP_BASE_URL: ${APP_BASE_URL:-https://kasku.app}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -473,6 +482,7 @@ services:
       POSTGRES_DSN: postgres://kasku_investment_svc:${KASKU_INVESTMENT_DB_PASS}@postgres:5432/kasku_finance?sslmode=disable
       PRICE_GRPC_ADDR: kasku-price-service:9087
       PRICE_HTTP_URL: http://kasku-price-service:8087
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -514,6 +524,7 @@ services:
       METALS_LIVE_URL: ${METALS_LIVE_URL:-https://api.metals.live/v1/spot/gold}
       PRICE_SCHEDULER_SYMBOLS: ${PRICE_SCHEDULER_SYMBOLS:-bitcoin,ethereum,XAU}
       PRICE_SCHEDULER_INTERVAL_SECONDS: ${PRICE_SCHEDULER_INTERVAL_SECONDS:-900}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -546,6 +557,7 @@ services:
       FINANCE_SERVICE_GRPC_ADDR: http://kasku-finance-service:9084
       TRANSACTION_SERVICE_GRPC_ADDR: http://kasku-transaction-service:9085
       INVESTMENT_SERVICE_GRPC_ADDR: http://kasku-investment-service:9086
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-internal
       - kasku-data
@@ -597,6 +609,7 @@ services:
       ARGON2_MEMORY_KB: ${ARGON2_MEMORY_KB:-65536}
       ARGON2_THREADS: ${ARGON2_THREADS:-4}
       ARGON2_KEY_LENGTH: ${ARGON2_KEY_LENGTH:-32}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
       - kasku-admin
       - kasku-data
@@ -733,6 +746,60 @@ services:
     depends_on:
       - prometheus
       - loki
+    stop_grace_period: 35s
+
+  # ── Jaeger — distributed tracing UI + storage ────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: kasku-jaeger
+    restart: unless-stopped
+    profiles: ["observability"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    ports:
+      - "127.0.0.1:16686:16686"   # Jaeger UI
+    volumes:
+      - jaeger-data:/badger
+    networks:
+      - kasku-admin
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:14269/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    stop_grace_period: 35s
+
+  # ── OTEL Collector — receives OTLP from services, forwards to Jaeger ──
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: kasku-otel-collector
+    restart: unless-stopped
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+    volumes:
+      - ./infra/otelcollector/otelcollector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"   # OTLP/gRPC — services
+      - "127.0.0.1:4318:4318"   # OTLP/HTTP — frontend browser
+    networks:
+      - kasku-admin
+      - kasku-internal
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/health/status || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     stop_grace_period: 35s
 
   # ============================================================
