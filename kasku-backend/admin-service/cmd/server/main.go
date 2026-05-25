@@ -18,6 +18,13 @@ import (
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const gracefulShutdownTimeout = 30 * time.Second
@@ -36,6 +43,55 @@ func main() {
 		Msg("admin-service starting")
 
 	ctx := context.Background()
+
+	// ── OpenTelemetry tracing ────────────────────────────────────────────
+	if cfg.OTEL.Endpoint == "" {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
+		))
+		logger.Info().Msg("OTel tracing dinonaktifkan (OTEL_EXPORTER_OTLP_ENDPOINT tidak diset)")
+	} else {
+		otelCtx := context.Background()
+		exp, err := otlptracegrpc.New(
+			otelCtx,
+			otlptracegrpc.WithEndpoint(cfg.OTEL.Endpoint),
+			otlptracegrpc.WithInsecure(),
+		)
+		if err != nil {
+			logger.Warn().Err(err).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+			otel.SetTracerProvider(noop.NewTracerProvider())
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			))
+		} else {
+			res, _ := resource.New(otelCtx,
+				resource.WithAttributes(
+					semconv.ServiceName("admin-service"),
+					semconv.ServiceVersion(cfg.App.ServiceVersion),
+					semconv.DeploymentEnvironmentName(cfg.App.Env),
+				),
+			)
+			tp := sdktrace.NewTracerProvider(
+				sdktrace.WithBatcher(exp),
+				sdktrace.WithResource(res),
+				sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			)
+			otel.SetTracerProvider(tp)
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			))
+			defer func() {
+				shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer shutCancel()
+				_ = tp.Shutdown(shutCtx)
+			}()
+			logger.Info().Str("endpoint", cfg.OTEL.Endpoint).Msg("OTel tracing aktif")
+		}
+	}
 
 	// ── Migrations ──────────────────────────────────────────────────────
 	if err := persistence.RunMigrations(cfg.Postgres.AdminDSN); err != nil {

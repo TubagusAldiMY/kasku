@@ -16,6 +16,14 @@ type Config struct {
 	JWT       AdminJWTConfig
 	Argon2    Argon2Config
 	Bootstrap BootstrapAdminConfig
+	OTEL      OTELConfig
+}
+
+// OTELConfig menyimpan konfigurasi OpenTelemetry exporter.
+type OTELConfig struct {
+	// Endpoint OTLP gRPC collector, contoh: "kasku-otel-collector:4317".
+	// Kosongkan untuk menonaktifkan tracing (noop provider).
+	Endpoint string
 }
 
 // ServerConfig adalah pengaturan HTTP server.
@@ -121,6 +129,9 @@ func Load() (*Config, error) {
 		Bootstrap: BootstrapAdminConfig{
 			Username: os.Getenv("ADMIN_BOOTSTRAP_USERNAME"),
 			Password: os.Getenv("ADMIN_BOOTSTRAP_PASSWORD"),
+		},
+		OTEL: OTELConfig{
+			Endpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		},
 	}, nil
 }

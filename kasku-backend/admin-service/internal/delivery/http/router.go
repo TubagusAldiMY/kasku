@@ -11,31 +11,32 @@ import (
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // RouterDeps mengumpulkan semua dependency yang dipakai router.
 // Memudahkan DI tanpa positional args yang panjang.
 type RouterDeps struct {
-	IsDev            bool
-	Logger           zerolog.Logger
-	Metrics          *obsmetrics.Registry
-	HealthHandler    *handler.HealthHandler
-	AuthHandler      *handler.AuthHandler
-	UserHandler      *handler.UserHandler
-	SubHandler       *handler.SubscriptionHandler
-	PaymentHandler   *handler.PaymentHandler
-	StatsHandler     *handler.StatsHandler
-	AuditLogHandler  *handler.AuditLogHandler
-	JWTSigner        *jwt.Signer
-	TokenBlacklist   *redis.TokenBlacklist
+	IsDev           bool
+	Logger          zerolog.Logger
+	Metrics         *obsmetrics.Registry
+	HealthHandler   *handler.HealthHandler
+	AuthHandler     *handler.AuthHandler
+	UserHandler     *handler.UserHandler
+	SubHandler      *handler.SubscriptionHandler
+	PaymentHandler  *handler.PaymentHandler
+	StatsHandler    *handler.StatsHandler
+	AuditLogHandler *handler.AuditLogHandler
+	JWTSigner       *jwt.Signer
+	TokenBlacklist  *redis.TokenBlacklist
 }
 
 // NewRouter merangkai semua route + middleware admin-service.
 //
-//   Public:                /health, /metrics, /v1/admin/auth/login
-//   Authenticated admin:   /v1/admin/auth/{logout,me}, /v1/admin/users/**,
-//                          /v1/admin/payments, /v1/admin/stats/**,
-//                          /v1/admin/audit-log
+//	Public:                /health, /metrics, /v1/admin/auth/login
+//	Authenticated admin:   /v1/admin/auth/{logout,me}, /v1/admin/users/**,
+//	                       /v1/admin/payments, /v1/admin/stats/**,
+//	                       /v1/admin/audit-log
 func NewRouter(deps RouterDeps) *gin.Engine {
 	if !deps.IsDev {
 		gin.SetMode(gin.ReleaseMode)
