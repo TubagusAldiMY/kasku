@@ -15,6 +15,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/finance-service/internal/infrastructure/persistence"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -297,7 +298,9 @@ func (s *FinanceGRPCServer) Start(port string) error {
 	if err != nil {
 		return fmt.Errorf("gagal listen gRPC port %s: %w", port, err)
 	}
-	s.server = grpc.NewServer()
+	s.server = grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	s.server.RegisterService(&financeInternalDesc, s)
 	s.log.Info().Str("port", port).Msg("finance gRPC server listening")
 	go func() {
