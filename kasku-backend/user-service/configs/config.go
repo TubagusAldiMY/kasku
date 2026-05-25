@@ -6,12 +6,13 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Finance  PostgresConfig
-	Billing  PostgresConfig
-	User     PostgresConfig
-	RabbitMQ RabbitMQConfig
-	App      AppConfig
+	Server       ServerConfig
+	Finance      PostgresConfig
+	Billing      PostgresConfig
+	User         PostgresConfig
+	RabbitMQ     RabbitMQConfig
+	App          AppConfig
+	OTELEndpoint string
 }
 
 type ServerConfig struct {
@@ -56,6 +57,7 @@ func Load() (*Config, error) {
 			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
 		},
+		OTELEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	}, nil
 }
 

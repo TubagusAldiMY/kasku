@@ -8,16 +8,23 @@ import (
 	"syscall"
 	"time"
 
+	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/TubagusAldiMY/kasku/user-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/messaging"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/usecase"
-	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func main() {
@@ -34,6 +41,48 @@ func main() {
 		Msg("user-service starting")
 
 	ctx := context.Background()
+
+	// ── OTel Tracing ─────────────────────────────────────────────────────
+	if cfg.OTELEndpoint == "" {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{}, propagation.Baggage{}),
+		)
+		logger.Info().Msg("OTel endpoint tidak dikonfigurasi, tracing dinonaktifkan (noop)")
+	} else {
+		otelCtx := context.Background()
+		exp, err := otlptracegrpc.New(otelCtx,
+			otlptracegrpc.WithEndpoint(cfg.OTELEndpoint),
+			otlptracegrpc.WithInsecure(),
+		)
+		if err != nil {
+			logger.Warn().Err(err).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+			otel.SetTracerProvider(noop.NewTracerProvider())
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{}, propagation.Baggage{}))
+		} else {
+			res, _ := resource.New(otelCtx, resource.WithAttributes(
+				semconv.ServiceName("user-service"),
+				semconv.ServiceVersion(cfg.App.ServiceVersion),
+				semconv.DeploymentEnvironment(cfg.App.Env),
+			))
+			tp := sdktrace.NewTracerProvider(
+				sdktrace.WithBatcher(exp),
+				sdktrace.WithResource(res),
+				sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			)
+			otel.SetTracerProvider(tp)
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{}, propagation.Baggage{}))
+			defer func() {
+				ctx2, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = tp.Shutdown(ctx2)
+			}()
+			logger.Info().Str("endpoint", cfg.OTELEndpoint).Msg("OTel tracing aktif")
+		}
+	}
+	// ─────────────────────────────────────────────────────────────────────
 
 	// PostgreSQL — kasku_finance
 	financePool, err := persistence.NewPostgresPool(ctx, cfg.Finance.DSN)
