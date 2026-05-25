@@ -83,6 +83,7 @@ type AppConfig struct {
 	Env            string
 	LogLevel       string
 	ServiceVersion string
+	OTELEndpoint   string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
 }
 
 // Load membaca semua environment variables dan mengembalikan Config tervalidasi.
@@ -227,6 +228,7 @@ func Load() (*Config, error) {
 			Env:            getEnvOrDefault("APP_ENV", "development"),
 			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
+			OTELEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		},
 	}, nil
 }

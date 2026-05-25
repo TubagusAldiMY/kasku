@@ -13,6 +13,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/usecase"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -107,6 +108,7 @@ func (s *AuthGRPCServer) Start(port string) error {
 	}
 
 	s.server = grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()), // OTel distributed tracing via StatsHandler
 		grpc.ChainUnaryInterceptor(
 			recoveryInterceptor(s.log),
 			correlationIDInterceptor(),

@@ -11,6 +11,7 @@ import (
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // NewRouter membuat dan mengkonfigurasi Gin router dengan semua middleware dan routes.
@@ -36,6 +37,12 @@ func NewRouter(
 
 	// Prometheus HTTP metrics — request count + duration per route
 	r.Use(metricsReg.HTTPMetrics())
+
+	// OTel distributed tracing — instrumen setiap request HTTP
+	r.Use(otelgin.Middleware("auth-service"))
+
+	// Bridge correlation_id → OTel span attribute, dan ekstrak trace_id ke Gin context
+	r.Use(middleware.BridgeToOTel())
 
 	// Security headers — OWASP best practices
 	r.Use(securityHeaders())
@@ -132,6 +139,7 @@ func requestLogger(logger zerolog.Logger) gin.HandlerFunc {
 			Int("status", statusCode).
 			Dur("duration_ms", duration).
 			Str("correlation_id", middleware.GetCorrelationID(c)).
+			Str("trace_id", c.GetString("trace_id")).
 			Str("client_ip", c.ClientIP()).
 			Msg("http request")
 	}
