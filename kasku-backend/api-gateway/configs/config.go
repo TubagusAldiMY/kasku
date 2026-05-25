@@ -27,6 +27,7 @@ type AppConfig struct {
 	ServiceVersion string
 	Env            string
 	LogLevel       string
+	OTELEndpoint   string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = tracing disabled
 }
 
 type ServerConfig struct {
@@ -73,6 +74,7 @@ func Load() (*Config, error) {
 	cfg.App.ServiceVersion = getEnvOrDefault("SERVICE_VERSION", "1.0.0")
 	cfg.App.Env = getEnvOrDefault("APP_ENV", "development")
 	cfg.App.LogLevel = getEnvOrDefault("LOG_LEVEL", "info")
+	cfg.App.OTELEndpoint = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	cfg.Server.Port = getEnvOrDefault("SERVER_PORT", "8080")
 

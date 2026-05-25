@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/middleware"
@@ -43,6 +44,10 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 
 	// Prometheus HTTP metrics (sebelum route apa pun)
 	r.Use(cfg.Metrics.HTTPMetrics())
+
+	// OTel distributed tracing — setelah metrics, sebelum security headers
+	r.Use(otelgin.Middleware("api-gateway"))
+	r.Use(middleware.BridgeToOTel())
 
 	// Security headers (OWASP)
 	r.Use(securityHeaders())
@@ -217,6 +222,7 @@ func requestLogger(logger zerolog.Logger) gin.HandlerFunc {
 			Int("status", statusCode).
 			Dur("duration_ms", duration).
 			Str("correlation_id", middleware.GetCorrelationID(c)).
+			Str("trace_id", c.GetString("trace_id")).
 			Str("client_ip", c.ClientIP()).
 			Msg("http request")
 	}

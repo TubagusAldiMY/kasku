@@ -10,6 +10,13 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/TubagusAldiMY/kasku/api-gateway/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http"
@@ -35,6 +42,51 @@ func main() {
 		Str("version", cfg.App.ServiceVersion).
 		Str("env", cfg.App.Env).
 		Msg("api-gateway starting")
+
+	// ── OTel Tracing ──────────────────────────────────────────────────────────
+	if cfg.App.OTELEndpoint == "" {
+		// Noop provider — otelgin/otelgrpc tetap bisa dipanggil tanpa panic
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{}, propagation.Baggage{},
+		))
+	} else {
+		otelCtx := context.Background()
+		exp, otelErr := otlptracegrpc.New(otelCtx,
+			otlptracegrpc.WithEndpoint(cfg.App.OTELEndpoint),
+			otlptracegrpc.WithInsecure(),
+		)
+		if otelErr != nil {
+			logger.Warn().Err(otelErr).Msg("OTel exporter init gagal, tracing dinonaktifkan")
+			otel.SetTracerProvider(noop.NewTracerProvider())
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{}, propagation.Baggage{},
+			))
+		} else {
+			res, _ := resource.New(otelCtx, resource.WithAttributes(
+				semconv.ServiceName("api-gateway"),
+				semconv.ServiceVersion(cfg.App.ServiceVersion),
+				semconv.DeploymentEnvironment(cfg.App.Env),
+			))
+			tp := sdktrace.NewTracerProvider(
+				sdktrace.WithBatcher(exp),
+				sdktrace.WithResource(res),
+				sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			)
+			otel.SetTracerProvider(tp)
+			otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{}, propagation.Baggage{},
+			))
+			defer func() {
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if shutdownErr := tp.Shutdown(shutdownCtx); shutdownErr != nil {
+					logger.Warn().Err(shutdownErr).Msg("OTel tracer shutdown error")
+				}
+			}()
+			logger.Info().Str("endpoint", cfg.App.OTELEndpoint).Msg("OTel tracing aktif")
+		}
+	}
 
 	// ── Redis ─────────────────────────────────────────────────────────────────
 	ctx := context.Background()
