@@ -43,6 +43,8 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	}
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(otelgin.Middleware("admin-service")) // distributed tracing — noop jika OTEL_EXPORTER_OTLP_ENDPOINT kosong
+	r.Use(middleware.BridgeToOTel())           // enriches active span dengan correlation_id
 	r.Use(deps.Metrics.HTTPMetrics())
 	r.Use(securityHeaders())
 	r.Use(requestLogger(deps.Logger))

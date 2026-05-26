@@ -1,3 +1,8 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: /health/status
+
 receivers:
   otlp:
     protocols:
@@ -24,6 +29,7 @@ exporters:
       insecure: true
 
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]

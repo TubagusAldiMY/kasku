@@ -754,6 +754,7 @@ services:
     container_name: kasku-jaeger
     restart: unless-stopped
     profiles: ["observability"]
+    user: root   # badger volume perlu write permission; all-in-one non-root by default
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
       SPAN_STORAGE_TYPE: badger
@@ -795,10 +796,10 @@ services:
       jaeger:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/health/status || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      # Image distroless — tidak ada shell/wget/curl. health_check extension
+      # expose HTTP di :13133 tapi tidak bisa di-probe dari dalam container.
+      # Container dianggap healthy jika proses otelcol-contrib berjalan.
+      disable: true
       start_period: 10s
     stop_grace_period: 35s
 

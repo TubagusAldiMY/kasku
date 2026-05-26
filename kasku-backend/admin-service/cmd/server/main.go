@@ -71,7 +71,7 @@ func main() {
 				resource.WithAttributes(
 					semconv.ServiceName("admin-service"),
 					semconv.ServiceVersion(cfg.App.ServiceVersion),
-					semconv.DeploymentEnvironmentName(cfg.App.Env),
+					semconv.DeploymentEnvironment(cfg.App.Env),
 				),
 			)
 			tp := sdktrace.NewTracerProvider(
