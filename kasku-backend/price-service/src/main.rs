@@ -9,10 +9,15 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::KeyValue;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::Resource;
 use tokio::signal;
 use tokio::time::{interval, Duration};
 use tonic::transport::Server as TonicServer;
 use tracing::{error, info, warn};
+use tracing_subscriber::prelude::*;
 
 use config::Config;
 use delivery::grpc_handler::PriceGrpcHandler;
@@ -22,6 +27,38 @@ use infrastructure::repository::PriceCacheRepository;
 use proto_gen::price::v1::price_service_server::PriceServiceServer;
 use usecase::fetch_external::{CoinGeckoClient, MetalsLiveClient};
 use usecase::get_price::GetPriceUseCase;
+
+/// Inisialisasi distributed tracing via OpenTelemetry OTLP.
+///
+/// Jika `otlp_endpoint` kosong, tracing dinonaktifkan (noop) — service tetap
+/// jalan normal. Return `Some(provider)` yang wajib di-shutdown saat service berhenti.
+fn init_tracer(
+    service_name: &str,
+    otlp_endpoint: &str,
+) -> Option<opentelemetry_sdk::trace::TracerProvider> {
+    if otlp_endpoint.is_empty() {
+        return None;
+    }
+
+    let resource = Resource::new(vec![KeyValue::new(
+        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+        service_name.to_owned(),
+    )]);
+
+    opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(otlp_endpoint),
+        )
+        .with_trace_config(
+            opentelemetry_sdk::trace::Config::default().with_resource(resource),
+        )
+        .install_batch(opentelemetry_sdk::runtime::Tokio)
+        .map_err(|e| eprintln!("[otel] gagal inisialisasi tracer: {e}, tracing dinonaktifkan"))
+        .ok()
+}
 
 use std::sync::atomic::AtomicU64;
 
@@ -49,15 +86,25 @@ async fn main() {
     // ── Config ──────────────────────────────────────────────────────────
     let cfg = Config::from_env().expect("gagal load konfigurasi dari environment");
 
-    // ── Logger ──────────────────────────────────────────────────────────
+    // ── Tracing (logging + OTel distributed tracing) ────────────────────
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(&cfg.log_level));
 
-    tracing_subscriber::fmt()
-        .with_env_filter(env_filter)
+    let fmt_layer = tracing_subscriber::fmt::layer()
         .json()
         .with_target(false)
-        .with_thread_ids(false)
+        .with_thread_ids(false);
+
+    // OTel layer hanya aktif jika endpoint di-set; noop jika kosong.
+    let tracer_provider = init_tracer("price-service", &cfg.otel_exporter_otlp_endpoint);
+    let otel_layer = tracer_provider.as_ref().map(|tp| {
+        tracing_opentelemetry::layer().with_tracer(tp.tracer("price-service"))
+    });
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .with(otel_layer)
         .init();
 
     info!(
@@ -160,6 +207,13 @@ async fn main() {
             if let Err(e) = result {
                 error!(error = %e, "gRPC server error");
             }
+        }
+    }
+
+    // Flush pending OTel spans sebelum proses berakhir.
+    if let Some(provider) = tracer_provider {
+        if let Err(e) = provider.shutdown() {
+            eprintln!("[otel] gagal shutdown tracer provider: {e}");
         }
     }
 
