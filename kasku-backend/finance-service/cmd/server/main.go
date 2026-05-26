@@ -19,7 +19,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -52,9 +52,9 @@ func main() {
 		logger.Info().Msg("OTel endpoint tidak dikonfigurasi, tracing dinonaktifkan (noop)")
 	} else {
 		otelCtx := context.Background()
-		exp, err := otlptracegrpc.New(otelCtx,
-			otlptracegrpc.WithEndpoint(cfg.App.OTELEndpoint),
-			otlptracegrpc.WithInsecure(),
+		exp, err := otlptracehttp.New(otelCtx,
+			otlptracehttp.WithEndpoint(cfg.App.OTELEndpoint),
+			otlptracehttp.WithInsecure(),
 		)
 		if err != nil {
 			logger.Warn().Err(err).Msg("OTel exporter init gagal, tracing dinonaktifkan")

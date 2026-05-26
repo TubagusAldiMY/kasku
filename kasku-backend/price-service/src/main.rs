@@ -51,8 +51,8 @@ fn init_tracer(
         .tracing()
         .with_exporter(
             opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_endpoint(otlp_endpoint),
+                .http()
+                .with_endpoint(format!("http://{otlp_endpoint}")),
         )
         .with_trace_config(
             opentelemetry_sdk::trace::Config::default().with_resource(resource),

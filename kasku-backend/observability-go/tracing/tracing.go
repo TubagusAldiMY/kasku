@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -52,9 +52,9 @@ func InitTracer(serviceName string, cfg Config) (ShutdownFunc, error) {
 	}
 
 	ctx := context.Background()
-	exp, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(cfg.OTLPEndpoint),
-		otlptracegrpc.WithInsecure(),
+	exp, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(cfg.OTLPEndpoint),
+		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {
 		// Gagal buat exporter — fallback ke noop agar service tetap jalan

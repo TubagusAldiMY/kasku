@@ -22,7 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -57,10 +57,10 @@ func main() {
 		logger.Info().Msg("OTel tracing nonaktif (OTEL_EXPORTER_OTLP_ENDPOINT tidak diset)")
 	} else {
 		otelCtx := context.Background()
-		exp, otelErr := otlptracegrpc.New(
+		exp, otelErr := otlptracehttp.New(
 			otelCtx,
-			otlptracegrpc.WithEndpoint(cfg.App.OTELEndpoint),
-			otlptracegrpc.WithInsecure(),
+			otlptracehttp.WithEndpoint(cfg.App.OTELEndpoint),
+			otlptracehttp.WithInsecure(),
 		)
 		if otelErr != nil {
 			logger.Warn().Err(otelErr).Msg("OTel exporter init gagal, tracing dinonaktifkan")
