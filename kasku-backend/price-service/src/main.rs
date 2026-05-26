@@ -9,9 +9,11 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::Resource;
 use tokio::signal;
 use tokio::time::{interval, Duration};
@@ -86,14 +88,23 @@ async fn main() {
     // ── Config ──────────────────────────────────────────────────────────
     let cfg = Config::from_env().expect("gagal load konfigurasi dari environment");
 
+    // ── OTel propagator global — harus di-set sebelum subscriber init ───
+    // TraceContextPropagator menangani W3C traceparent/tracestate header.
+    // fetch_external menggunakan global::get_text_map_propagator() untuk
+    // inject traceparent ke outgoing HTTP requests ke CoinGecko/metals.live.
+    global::set_text_map_propagator(TraceContextPropagator::new());
+
     // ── Tracing (logging + OTel distributed tracing) ────────────────────
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(&cfg.log_level));
 
+    // with_span_list(true) menyertakan span context (trace_id, span_id) di setiap
+    // log record JSON. Ini diperlukan agar log bisa di-correlate dengan trace di Jaeger.
     let fmt_layer = tracing_subscriber::fmt::layer()
         .json()
         .with_target(false)
-        .with_thread_ids(false);
+        .with_thread_ids(false)
+        .with_span_list(true);
 
     // OTel layer hanya aktif jika endpoint di-set; noop jika kosong.
     let tracer_provider = init_tracer("price-service", &cfg.otel_exporter_otlp_endpoint);

@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/delivery/http/middleware"
 )
@@ -81,6 +83,12 @@ func (h *ProxyHandler) ProxyTo(upstreamName string) gin.HandlerFunc {
 		if correlationID != "" {
 			c.Request.Header.Set(middleware.CorrelationIDHeader, correlationID)
 		}
+
+		// Inject W3C TraceContext headers (traceparent, tracestate) ke request upstream
+		// agar trace menerus dari api-gateway ke downstream service dalam satu trace ID.
+		// otel.GetTextMapPropagator() mengembalikan propagator yang dikonfigurasi di main.go
+		// (TraceContext + Baggage), sehingga tidak hardcode format propagasi.
+		otel.GetTextMapPropagator().Inject(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
 
 		// auth-service routes are mounted at /auth/* internally, while the
 		// public gateway contract is /v1/auth/*.

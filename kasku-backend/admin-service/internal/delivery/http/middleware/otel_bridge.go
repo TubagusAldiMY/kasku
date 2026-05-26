@@ -9,6 +9,8 @@ import (
 // BridgeToOTel enriches the active OTel span (injected by otelgin) dengan
 // atribut kasku-specific dan mengekspos trace_id ke gin context agar bisa
 // disertakan dalam response header atau log.
+// Setelah handler selesai, meng-inject X-Trace-ID response header
+// agar developer bisa copy-paste trace ID ke Jaeger/Tempo UI untuk debugging.
 //
 // Middleware ini HARUS dipasang SETELAH otelgin.Middleware() di router.
 func BridgeToOTel() gin.HandlerFunc {
@@ -22,8 +24,11 @@ func BridgeToOTel() gin.HandlerFunc {
 		}
 
 		// Ekspos trace_id ke gin context agar bisa dipakai di log / response header.
+		// X-Trace-ID dikirim ke client hanya jika trace aktif (bukan zero value).
 		if sc := span.SpanContext(); sc.IsValid() {
-			c.Set("trace_id", sc.TraceID().String())
+			traceID := sc.TraceID().String()
+			c.Set("trace_id", traceID)
+			c.Header("X-Trace-ID", traceID)
 		}
 
 		c.Next()

@@ -1,3 +1,4 @@
+use opentelemetry::global;
 use reqwest::Client;
 use rust_decimal::Decimal;
 use serde::Deserialize;
@@ -7,6 +8,31 @@ use tracing::{error, warn};
 use url::Url;
 
 use crate::domain::error::DomainError;
+
+/// Adaptor yang mengimplementasikan `opentelemetry::propagation::Injector`
+/// untuk `reqwest::header::HeaderMap`. Memungkinkan propagator W3C TraceContext
+/// menyuntikkan `traceparent` dan `tracestate` ke outgoing HTTP request.
+struct ReqwestHeaderInjector<'a>(&'a mut reqwest::header::HeaderMap);
+
+impl opentelemetry::propagation::Injector for ReqwestHeaderInjector<'_> {
+    fn set(&mut self, key: &str, value: String) {
+        if let Ok(header_name) = reqwest::header::HeaderName::from_bytes(key.as_bytes()) {
+            if let Ok(header_value) = reqwest::header::HeaderValue::from_str(&value) {
+                self.0.insert(header_name, header_value);
+            }
+        }
+    }
+}
+
+/// Menyuntikkan W3C TraceContext headers (traceparent, tracestate) ke HeaderMap
+/// agar trace dari price-service menerus ke external API (CoinGecko / metals.live).
+/// Dipanggil sebelum setiap outgoing HTTP request ke layanan eksternal.
+fn inject_trace_context(headers: &mut reqwest::header::HeaderMap) {
+    let cx = opentelemetry::Context::current();
+    global::get_text_map_propagator(|propagator| {
+        propagator.inject_context(&cx, &mut ReqwestHeaderInjector(headers));
+    });
+}
 
 /// SSRF protection: only these domains are allowed for external requests.
 const ALLOWED_DOMAINS: &[&str] = &["api.coingecko.com", "api.metals.live"];
@@ -53,15 +79,26 @@ impl CoinGeckoClient {
         // SSRF protection
         validate_url_domain(&url)?;
 
-        let mut request = self.client.get(&url);
+        let mut headers = reqwest::header::HeaderMap::new();
+        // Inject W3C traceparent header agar span dari CoinGecko request
+        // menjadi child span dari trace yang sedang aktif.
+        inject_trace_context(&mut headers);
         if !self.api_key.is_empty() {
-            request = request.header("x-cg-demo-api-key", &self.api_key);
+            if let Ok(v) = reqwest::header::HeaderValue::from_str(&self.api_key) {
+                headers.insert("x-cg-demo-api-key", v);
+            }
         }
 
-        let response = request.send().await.map_err(|e| {
-            error!(coin_id = coin_id, error = %e, "CoinGecko API request gagal");
-            DomainError::ExternalApiFailed(format!("CoinGecko: {}", e))
-        })?;
+        let response = self
+            .client
+            .get(&url)
+            .headers(headers)
+            .send()
+            .await
+            .map_err(|e| {
+                error!(coin_id = coin_id, error = %e, "CoinGecko API request gagal");
+                DomainError::ExternalApiFailed(format!("CoinGecko: {}", e))
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -136,9 +173,15 @@ impl MetalsLiveClient {
         // SSRF protection
         validate_url_domain(&self.metals_live_url)?;
 
+        let mut headers = reqwest::header::HeaderMap::new();
+        // Inject W3C traceparent header agar span dari metals.live request
+        // menjadi child span dari trace yang sedang aktif.
+        inject_trace_context(&mut headers);
+
         let response = self
             .client
             .get(&self.metals_live_url)
+            .headers(headers)
             .send()
             .await
             .map_err(|e| {

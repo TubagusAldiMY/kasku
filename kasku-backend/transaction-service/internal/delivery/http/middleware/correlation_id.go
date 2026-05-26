@@ -41,6 +41,8 @@ func GetCorrelationID(c *gin.Context) string {
 
 // BridgeToOTel menjembatani correlation ID ke active OTel span dan
 // meng-inject trace_id ke Gin context untuk keperluan logging.
+// Setelah handler selesai, meng-inject X-Trace-ID response header
+// agar client bisa menyalin trace ID ke Jaeger/Tempo UI untuk debugging.
 // Harus dipasang SETELAH otelgin.Middleware dan CorrelationID.
 func BridgeToOTel() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -51,7 +53,11 @@ func BridgeToOTel() gin.HandlerFunc {
 			}
 		}
 		if sc := span.SpanContext(); sc.IsValid() {
-			c.Set("trace_id", sc.TraceID().String())
+			traceID := sc.TraceID().String()
+			c.Set("trace_id", traceID)
+			// X-Trace-ID dikirim ke client hanya jika trace aktif (bukan zero value),
+			// sehingga developer bisa copy-paste langsung ke Jaeger/Tempo UI.
+			c.Header("X-Trace-ID", traceID)
 		}
 		c.Next()
 	}
