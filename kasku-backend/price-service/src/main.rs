@@ -9,6 +9,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
@@ -52,7 +53,10 @@ fn init_tracer(
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .http()
-                .with_endpoint(format!("http://{otlp_endpoint}")),
+                // Sertakan path lengkap /v1/traces karena SDK HTTP memakai provided_endpoint
+                // as-is (tanpa menambahkan path) berbeda dengan env var OTEL_EXPORTER_OTLP_ENDPOINT
+                // yang di-append dengan signal path.
+                .with_endpoint(format!("http://{otlp_endpoint}/v1/traces")),
         )
         .with_trace_config(
             opentelemetry_sdk::trace::Config::default().with_resource(resource),
@@ -177,6 +181,10 @@ async fn main() {
         .route("/health", get(http_handler::health))
         .route("/metrics", get(http_handler::metrics))
         .route("/v1/prices/:symbol", get(http_handler::get_price))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO)),
+        )
         .with_state(app_state);
 
     let http_addr = SocketAddr::from(([0, 0, 0, 0], cfg.http_port));
