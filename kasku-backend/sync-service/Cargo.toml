@@ -18,7 +18,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # Database
 sqlx = { package = "sqlx-core", version = "=0.8.6", default-features = false, features = ["_rt-tokio", "_tls-rustls-ring-webpki", "uuid", "chrono", "json", "migrate"] }
-sqlx-postgres = { version = "=0.8.6", default-features = false, features = ["uuid", "chrono", "json", "migrate"] }
+sqlx-postgres = { version = "=0.9.0", default-features = false, features = ["uuid", "chrono", "json", "migrate"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
