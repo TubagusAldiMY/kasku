@@ -52,7 +52,7 @@
 		"fake-indexeddb": "^6.2.5",
 		"globals": "^17.4.0",
 		"mdsvex": "^0.12.7",
-		"playwright": "^1.59.1",
+		"playwright": "^1.60.0",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.5.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
