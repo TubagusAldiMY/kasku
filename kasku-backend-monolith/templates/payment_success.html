@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><title>Pembayaran Berhasil - KasKu</title></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+  <h2 style="color: #22c55e;">Pembayaran Berhasil!</h2>
+  <p>Halo <strong>{{ email }}</strong>,</p>
+  <p>Pembayaran Anda telah berhasil diproses. Berikut detail transaksi:</p>
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+    <tr style="background: #f9fafb;">
+      <td style="padding: 10px; border: 1px solid #e5e7eb;">Order ID</td>
+      <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>{{ order_id }}</strong></td>
+    </tr>
+    <tr>
+      <td style="padding: 10px; border: 1px solid #e5e7eb;">Plan</td>
+      <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>{{ plan_name }}</strong></td>
+    </tr>
+    <tr style="background: #f9fafb;">
+      <td style="padding: 10px; border: 1px solid #e5e7eb;">Jumlah</td>
+      <td style="padding: 10px; border: 1px solid #e5e7eb;"><strong>Rp {{ amount_idr }}</strong></td>
+    </tr>
+  </table>
+  <p>Subscription Anda telah diaktifkan. Selamat menggunakan fitur premium KasKu!</p>
+  <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+  <p style="color: #999; font-size: 12px;">KasKu &mdash; Kelola keuangan Anda dengan bijak.</p>
+</body>
+</html>
