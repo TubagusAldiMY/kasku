@@ -11,11 +11,11 @@ services:
 
   postgres:
     ports:
-      - "5433:5432"   # mapped to 5433 locally (5432 used by host/existing Postgres)
+      - "5435:5432"   # mapped to 5435 locally (5432-5434 already used on host)
 
   redis:
     ports:
-      - "6380:6379"   # mapped to 6380 locally (6379 used by host Redis)
+      - "6381:6379"   # mapped to 6381 locally (6379-6380 already used on host)
 
   rabbitmq:
     ports:

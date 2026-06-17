@@ -1,6 +1,18 @@
 -- 20260008: provision_tenant() + ensure_tenant_runtime_objects()
--- Final version consolidated from finance-service migrations 000002–000010.
--- All per-service role grants replaced with kasku_app (single monolith role).
+-- Consolidated dari finance-service migrations 000002–000010 (state akhir).
+-- Semua per-service grant (kasku_finance_svc, kasku_transaction_svc,
+-- kasku_investment_svc, kasku_sync_svc, kasku_user_svc) diganti dengan
+-- kasku_app sebagai single monolith role.
+--
+-- State akhir tabel per tenant schema:
+--   - financial_accounts (initial_balance, CHECK balance >= 0)        -- 000002, 000006, 000007
+--   - transactions (budget_id UUID NULL + index)                       -- 000002, 000010
+--   - categories (tanpa seed default, unique index untuk is_default)   -- 000002, 000005, 000004
+--   - balance_history                                                  -- 000002
+--   - investment_assets + idx_investment_assets_active                 -- 000003
+--   - unit_history + idx_unit_history_asset_recorded                   -- 000003
+--   - budgets (daily_limit_enabled) + budgets_user_active              -- 000008, 000009
+--   - sync_log + 2 index                                               -- 000004
 
 CREATE OR REPLACE FUNCTION public.provision_tenant(p_user_id UUID)
 RETURNS void
@@ -124,20 +136,21 @@ BEGIN
 
     EXECUTE format('
         CREATE TABLE IF NOT EXISTS %I.budgets (
-            id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id         UUID         NOT NULL,
-            sync_id         VARCHAR(100) UNIQUE,
-            name            VARCHAR(100) NOT NULL,
-            limit_idr       BIGINT       NOT NULL CHECK (limit_idr > 0),
-            category_id     UUID         NULL,
-            period_type     VARCHAR(20)  NOT NULL DEFAULT ''MONTHLY'',
-            start_date      DATE         NOT NULL DEFAULT CURRENT_DATE,
-            end_date        DATE         NULL,
-            alert_threshold SMALLINT     NOT NULL DEFAULT 80 CHECK (alert_threshold BETWEEN 0 AND 100),
-            is_deleted      BOOLEAN      NOT NULL DEFAULT false,
-            deleted_at      TIMESTAMPTZ  NULL,
-            created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
-            updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
+            id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id             UUID         NOT NULL,
+            sync_id             VARCHAR(100) UNIQUE,
+            name                VARCHAR(100) NOT NULL,
+            limit_idr           BIGINT       NOT NULL CHECK (limit_idr > 0),
+            category_id         UUID         NULL,
+            period_type         VARCHAR(20)  NOT NULL DEFAULT ''MONTHLY'',
+            start_date          DATE         NOT NULL DEFAULT CURRENT_DATE,
+            end_date            DATE         NULL,
+            alert_threshold     SMALLINT     NOT NULL DEFAULT 80 CHECK (alert_threshold BETWEEN 0 AND 100),
+            daily_limit_enabled BOOLEAN      NOT NULL DEFAULT false,
+            is_deleted          BOOLEAN      NOT NULL DEFAULT false,
+            deleted_at          TIMESTAMPTZ  NULL,
+            created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+            updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
         )', v_schema);
 
     EXECUTE format('
@@ -231,6 +244,13 @@ BEGIN
 
     EXECUTE format(
         'CREATE INDEX IF NOT EXISTS transactions_budget_active ON %I.transactions (budget_id) WHERE is_deleted = false',
+        p_tenant_schema
+    );
+
+    -- Ensure daily_limit_enabled column on budgets (drift correction untuk
+    -- tenant lama yang sudah ada sebelum kolom ini ditambahkan).
+    EXECUTE format(
+        'ALTER TABLE %I.budgets ADD COLUMN IF NOT EXISTS daily_limit_enabled BOOLEAN NOT NULL DEFAULT false',
         p_tenant_schema
     );
 
