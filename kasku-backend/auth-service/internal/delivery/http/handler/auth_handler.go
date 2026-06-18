@@ -37,6 +37,7 @@ type AuthHandler struct {
 	verifyEmailUC        usecase.VerifyEmailUseCase
 	resendVerificationUC usecase.ResendVerificationUseCase
 	loginUC              usecase.LoginUseCase
+	googleLoginUC        usecase.GoogleLoginUseCase
 	refreshTokenUC       usecase.RefreshTokenUseCase
 	logoutUC             usecase.LogoutUseCase
 	forgotPasswordUC     usecase.ForgotPasswordUseCase
@@ -54,6 +55,7 @@ func NewAuthHandler(
 	verifyEmailUC usecase.VerifyEmailUseCase,
 	resendVerificationUC usecase.ResendVerificationUseCase,
 	loginUC usecase.LoginUseCase,
+	googleLoginUC usecase.GoogleLoginUseCase,
 	refreshTokenUC usecase.RefreshTokenUseCase,
 	logoutUC usecase.LogoutUseCase,
 	forgotPasswordUC usecase.ForgotPasswordUseCase,
@@ -69,6 +71,7 @@ func NewAuthHandler(
 		verifyEmailUC:        verifyEmailUC,
 		resendVerificationUC: resendVerificationUC,
 		loginUC:              loginUC,
+		googleLoginUC:        googleLoginUC,
 		refreshTokenUC:       refreshTokenUC,
 		logoutUC:             logoutUC,
 		forgotPasswordUC:     forgotPasswordUC,
@@ -155,6 +158,39 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	})
 	if err != nil {
 		h.logError(c, "login", err)
+		response.HandleError(c, err)
+		return
+	}
+
+	h.setRefreshTokenCookie(c, out.RefreshTokenCookie)
+
+	response.OK(c, dto.LoginResponse{
+		AccessToken: out.AccessToken,
+		TokenType:   out.TokenType,
+		ExpiresIn:   out.ExpiresIn,
+	})
+}
+
+// GoogleLogin menangani POST /auth/google
+// Menerima Google ID token dari frontend (Google Identity Services),
+// lalu melakukan login atau auto-register user.
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	var req struct {
+		IDToken string `json:"id_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "VALIDATION_ERROR", "id_token wajib diisi.", nil)
+		return
+	}
+
+	out, err := h.googleLoginUC.Execute(c.Request.Context(), usecase.GoogleLoginInput{
+		IDToken:   req.IDToken,
+		UserAgent: c.Request.UserAgent(),
+		IPAddress: c.ClientIP(),
+		IsDev:     h.isDev,
+	})
+	if err != nil {
+		h.logError(c, "google-login", err)
 		response.HandleError(c, err)
 		return
 	}

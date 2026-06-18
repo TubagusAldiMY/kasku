@@ -94,6 +94,7 @@ func NewRouter(
 		auth.POST("/verify-email", authHandler.VerifyEmail) // query param: ?token=
 		auth.POST("/resend-verification", authHandler.ResendVerification)
 		auth.POST("/login", loginHandlers...)
+		auth.POST("/google", authHandler.GoogleLogin)
 		auth.POST("/refresh", authHandler.Refresh)
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/forgot-password", forgotHandlers...)

@@ -18,6 +18,7 @@ type User struct {
 	FailedLoginCount int16
 	LockedUntil      *time.Time
 	LastLoginAt      *time.Time
+	GoogleID         *string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

@@ -41,4 +41,14 @@ type UserRepository interface {
 
 	// UpdatePassword meng-update password_hash user.
 	UpdatePassword(ctx context.Context, userID uuid.UUID, newPasswordHash string) error
+
+	// FindByGoogleID mencari user berdasarkan google_id.
+	// Mengembalikan nil, nil jika tidak ditemukan.
+	FindByGoogleID(ctx context.Context, googleID string) (*entity.User, error)
+
+	// SaveGoogleID menyimpan google_id ke user yang sudah ada (account linking).
+	SaveGoogleID(ctx context.Context, userID uuid.UUID, googleID string) error
+
+	// CreateOAuthUser membuat user baru dari OAuth (tanpa password, email sudah terverifikasi).
+	CreateOAuthUser(ctx context.Context, user *entity.User) error
 }

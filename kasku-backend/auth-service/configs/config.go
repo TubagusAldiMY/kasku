@@ -84,6 +84,7 @@ type AppConfig struct {
 	LogLevel       string
 	ServiceVersion string
 	OTELEndpoint   string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
+	GoogleClientID string // GOOGLE_CLIENT_ID — empty = audience check dinonaktifkan (dev only)
 }
 
 // Load membaca semua environment variables dan mengembalikan Config tervalidasi.
@@ -229,6 +230,7 @@ func Load() (*Config, error) {
 			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
 			OTELEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
 		},
 	}, nil
 }

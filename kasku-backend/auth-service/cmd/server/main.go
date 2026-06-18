@@ -207,6 +207,12 @@ func main() {
 		argon2Cfg,
 		cfg.BruteForce.MaxAttempts, cfg.BruteForce.LockoutDuration,
 	)
+	googleLoginUC := usecase.NewGoogleLoginUseCase(
+		pool, userRepo, refreshTokenRepo, publisher,
+		privKey,
+		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
+		cfg.App.GoogleClientID,
+	)
 	refreshTokenUC := usecase.NewRefreshTokenUseCase(
 		userRepo, refreshTokenRepo,
 		privKey,
@@ -226,6 +232,7 @@ func main() {
 		verifyEmailUC,
 		resendVerifUC,
 		loginUC,
+		googleLoginUC,
 		refreshTokenUC,
 		logoutUC,
 		forgotPasswordUC,

@@ -69,6 +69,7 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 		v1Auth.POST("/verify-email", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/resend-verification", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/login", cfg.ProxyHandler.ProxyTo("auth"))
+		v1Auth.POST("/google", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/refresh", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/forgot-password", cfg.ProxyHandler.ProxyTo("auth"))
 		v1Auth.POST("/reset-password", cfg.ProxyHandler.ProxyTo("auth"))

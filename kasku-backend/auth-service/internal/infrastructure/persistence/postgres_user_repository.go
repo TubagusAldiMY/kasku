@@ -23,26 +23,25 @@ func NewPostgresUserRepository(pool *pgxpool.Pool) repository.UserRepository {
 	return &postgresUserRepository{pool: pool}
 }
 
+const selectUserCols = `
+	SELECT id, email, username, password_hash, is_active, email_verified,
+	       failed_login_count, locked_until, last_login_at, google_id, created_at, updated_at
+	FROM public.users
+`
+
 func (r *postgresUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
-	query := `
-		SELECT id, email, username, password_hash, is_active, email_verified,
-		       failed_login_count, locked_until, last_login_at, created_at, updated_at
-		FROM public.users
-		WHERE LOWER(email) = LOWER($1)
-		LIMIT 1
-	`
+	query := selectUserCols + `WHERE LOWER(email) = LOWER($1) LIMIT 1`
 	return r.scanUser(ctx, query, email)
 }
 
 func (r *postgresUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
-	query := `
-		SELECT id, email, username, password_hash, is_active, email_verified,
-		       failed_login_count, locked_until, last_login_at, created_at, updated_at
-		FROM public.users
-		WHERE id = $1
-		LIMIT 1
-	`
+	query := selectUserCols + `WHERE id = $1 LIMIT 1`
 	return r.scanUser(ctx, query, id)
+}
+
+func (r *postgresUserRepository) FindByGoogleID(ctx context.Context, googleID string) (*entity.User, error) {
+	query := selectUserCols + `WHERE google_id = $1 LIMIT 1`
+	return r.scanUser(ctx, query, googleID)
 }
 
 func (r *postgresUserRepository) scanUser(ctx context.Context, query string, arg interface{}) (*entity.User, error) {
@@ -51,7 +50,7 @@ func (r *postgresUserRepository) scanUser(ctx context.Context, query string, arg
 	var u entity.User
 	err := row.Scan(
 		&u.ID, &u.Email, &u.Username, &u.PasswordHash, &u.IsActive, &u.EmailVerified,
-		&u.FailedLoginCount, &u.LockedUntil, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.FailedLoginCount, &u.LockedUntil, &u.LastLoginAt, &u.GoogleID, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -61,6 +60,32 @@ func (r *postgresUserRepository) scanUser(ctx context.Context, query string, arg
 	}
 
 	return &u, nil
+}
+
+func (r *postgresUserRepository) SaveGoogleID(ctx context.Context, userID uuid.UUID, googleID string) error {
+	query := `UPDATE public.users SET google_id = $2, updated_at = $3 WHERE id = $1`
+	_, err := r.pool.Exec(ctx, query, userID, googleID, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("gagal simpan google_id: %w", err)
+	}
+	return nil
+}
+
+func (r *postgresUserRepository) CreateOAuthUser(ctx context.Context, u *entity.User) error {
+	query := `
+		INSERT INTO public.users
+			(id, email, username, password_hash, is_active, email_verified,
+			 failed_login_count, google_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+	_, err := r.pool.Exec(ctx, query,
+		u.ID, u.Email, u.Username, u.PasswordHash, u.IsActive, u.EmailVerified,
+		u.FailedLoginCount, u.GoogleID, u.CreatedAt, u.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("gagal insert oauth user: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresUserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
