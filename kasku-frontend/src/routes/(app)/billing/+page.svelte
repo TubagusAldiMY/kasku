@@ -29,8 +29,11 @@
 		order_id: string;
 	};
 
+	const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 	let billingCycle = $state<'monthly' | 'yearly'>('monthly');
 	let loading = $state(true);
+	let plansLoaded = $state(false);
 	let subscribing = $state<string | null>(null);
 	let currentSub = $state<Subscription | null>(null);
 	let message = $state<{ tone: 'info' | 'error' | 'success'; text: string } | null>(null);
@@ -158,6 +161,7 @@
 
 	async function fetchBillingData() {
 		loading = true;
+		plansLoaded = false;
 		try {
 			const [plansRes, subRes] = await Promise.all([
 				apiFetch('/billing/plans'),
@@ -167,7 +171,7 @@
 			const plansData = await plansRes.json();
 			const subData = await subRes.json();
 
-			if (plansData.success && plansData.data.length > 0) {
+			if (plansData.success && Array.isArray(plansData.data) && plansData.data.length > 0) {
 				// Update id (UUID) dan harga dari backend — id frontend adalah slug fallback,
 				// subscribe endpoint memerlukan UUID dari database.
 				plans = plans.map((p) => {
@@ -185,6 +189,12 @@
 					// Plan tidak ada di backend (mis. ULTIMATE/Enterprise = contact sales) → tetap disabled
 					return { ...p, disabled: true };
 				});
+				plansLoaded = true;
+			} else {
+				message = {
+					tone: 'error',
+					text: 'Gagal memuat data paket. Coba muat ulang halaman.'
+				};
 			}
 
 			if (subData.success) {
@@ -192,12 +202,23 @@
 			}
 		} catch (err) {
 			console.error('Gagal memuat data billing:', err);
+			message = {
+				tone: 'error',
+				text: 'Gagal terhubung ke server. Periksa koneksi Anda dan coba lagi.'
+			};
 		} finally {
 			loading = false;
 		}
 	}
 
 	async function handleSubscribe(planId: string) {
+		if (!UUID_RE.test(planId)) {
+			message = {
+				tone: 'error',
+				text: 'Data paket belum dimuat dari server. Muat ulang halaman lalu coba lagi.'
+			};
+			return;
+		}
 		message = null;
 		subscribing = planId;
 		try {
@@ -388,7 +409,18 @@
 						? 'border-green-100 bg-green-50 text-green-700'
 						: 'border-amber-100 bg-amber-50 text-amber-800'}"
 			>
-				{message.text}
+				<div class="flex items-center justify-between gap-3">
+					<span>{message.text}</span>
+					{#if tone === 'error' && !plansLoaded}
+						<button
+							type="button"
+							onclick={fetchBillingData}
+							class="shrink-0 rounded-lg bg-red-100 px-3 py-1 text-xs font-black text-red-700 transition hover:bg-red-200"
+						>
+							Coba Lagi
+						</button>
+					{/if}
+				</div>
 			</div>
 		{/if}
 
@@ -550,7 +582,11 @@
 				{:else}
 					<button
 						onclick={() => handleSubscribe(plan.id)}
-						disabled={loading || isCurrent || plan.disabled || subscribing !== null}
+						disabled={loading ||
+							!plansLoaded ||
+							isCurrent ||
+							plan.disabled ||
+							subscribing !== null}
 						class="w-full rounded-xl py-3.5 text-[11px] font-black tracking-widest uppercase transition-all active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm {plan.isPopular
 							? 'bg-[#217b84] text-white shadow-xl shadow-teal-900/20 hover:bg-[#1a5f66]'
 							: 'border border-gray-100 bg-gray-50 text-[#0a2e31] hover:bg-gray-100'} disabled:cursor-default disabled:opacity-50"
