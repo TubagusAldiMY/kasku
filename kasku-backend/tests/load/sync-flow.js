@@ -1,5 +1,5 @@
 // k6 load test — Sync flow: login → push 10 ops → pull
-// Run: k6 run --env BASE_URL=http://localhost:8080 \
+// Run: k6 run --env BASE_URL=http://localhost:18080 \
 //            --env TEST_USER_EMAIL=verified@kasku.test \
 //            --env TEST_USER_PASSWORD=TestPass1! \
 //            sync-flow.js
@@ -8,7 +8,7 @@ import { check, sleep } from "k6";
 import { smokeOptions } from "./k6-config.js";
 import { uuidv4 } from "https://jslib.k6.io/k6-utils/1.4.0/index.js";
 
-const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:18080";
 const TEST_EMAIL = __ENV.TEST_USER_EMAIL || "";
 const TEST_PASS = __ENV.TEST_USER_PASSWORD || "";
 

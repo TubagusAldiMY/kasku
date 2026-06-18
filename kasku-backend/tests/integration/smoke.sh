@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:18080}"
 
 check() {
   name="$1"
@@ -16,16 +16,16 @@ check() {
 }
 
 check "gateway" "$BASE_URL/health"
-check "auth" "${AUTH_URL:-http://localhost:8081}/health"
-check "user" "${USER_URL:-http://localhost:8082}/health"
-check "billing" "${BILLING_URL:-http://localhost:8083}/health"
-check "finance" "${FINANCE_URL:-http://localhost:8084}/health"
-check "transaction" "${TRANSACTION_URL:-http://localhost:8085}/health"
-check "investment" "${INVESTMENT_URL:-http://localhost:8086}/health"
-check "price" "${PRICE_URL:-http://localhost:8087}/health"
-check "sync" "${SYNC_URL:-http://localhost:8088}/health"
-check "notification" "${NOTIFICATION_URL:-http://localhost:8089}/health"
-check "admin" "${ADMIN_URL:-http://localhost:8090}/health"
+check "auth" "${AUTH_URL:-http://localhost:18081}/health"
+check "user" "${USER_URL:-http://localhost:18082}/health"
+check "billing" "${BILLING_URL:-http://localhost:18083}/health"
+check "finance" "${FINANCE_URL:-http://localhost:18084}/health"
+check "transaction" "${TRANSACTION_URL:-http://localhost:18085}/health"
+check "investment" "${INVESTMENT_URL:-http://localhost:18086}/health"
+check "price" "${PRICE_URL:-http://localhost:18087}/health"
+check "sync" "${SYNC_URL:-http://localhost:18088}/health"
+check "notification" "${NOTIFICATION_URL:-http://localhost:18089}/health"
+check "admin" "${ADMIN_URL:-http://localhost:18090}/health"
 
 # Metrics endpoints (Prometheus scrape target untuk service yang sudah implement).
 # Tidak fail kalau service belum expose /metrics — pakai check_optional.
@@ -40,19 +40,19 @@ check_optional() {
   fi
 }
 
-check_optional "admin" "${ADMIN_URL:-http://localhost:8090}/metrics"
-check_optional "billing" "${BILLING_URL:-http://localhost:8083}/metrics"
-check_optional "auth" "${AUTH_URL:-http://localhost:8081}/metrics"
-check_optional "user" "${USER_URL:-http://localhost:8082}/metrics"
-check_optional "finance" "${FINANCE_URL:-http://localhost:8084}/metrics"
-check_optional "transaction" "${TRANSACTION_URL:-http://localhost:8085}/metrics"
-check_optional "investment" "${INVESTMENT_URL:-http://localhost:8086}/metrics"
-check_optional "price" "${PRICE_URL:-http://localhost:8087}/metrics"
-check_optional "sync" "${SYNC_URL:-http://localhost:8088}/metrics"
-check_optional "notification" "${NOTIFICATION_URL:-http://localhost:8089}/metrics"
+check_optional "admin" "${ADMIN_URL:-http://localhost:18090}/metrics"
+check_optional "billing" "${BILLING_URL:-http://localhost:18083}/metrics"
+check_optional "auth" "${AUTH_URL:-http://localhost:18081}/metrics"
+check_optional "user" "${USER_URL:-http://localhost:18082}/metrics"
+check_optional "finance" "${FINANCE_URL:-http://localhost:18084}/metrics"
+check_optional "transaction" "${TRANSACTION_URL:-http://localhost:18085}/metrics"
+check_optional "investment" "${INVESTMENT_URL:-http://localhost:18086}/metrics"
+check_optional "price" "${PRICE_URL:-http://localhost:18087}/metrics"
+check_optional "sync" "${SYNC_URL:-http://localhost:18088}/metrics"
+check_optional "notification" "${NOTIFICATION_URL:-http://localhost:18089}/metrics"
 
 # Observability stack (hanya aktif kalau --profile observability).
-check_optional "prometheus" "${PROMETHEUS_URL:-http://localhost:9090}/-/ready"
-check_optional "alertmanager" "${ALERTMANAGER_URL:-http://localhost:9093}/-/ready"
-check_optional "grafana" "${GRAFANA_URL:-http://localhost:3000}/api/health"
-check_optional "loki" "${LOKI_URL:-http://localhost:3100}/ready"
+check_optional "prometheus" "${PROMETHEUS_URL:-http://localhost:19090}/-/ready"
+check_optional "alertmanager" "${ALERTMANAGER_URL:-http://localhost:19093}/-/ready"
+check_optional "grafana" "${GRAFANA_URL:-http://localhost:13000}/api/health"
+check_optional "loki" "${LOKI_URL:-http://localhost:13100}/ready"

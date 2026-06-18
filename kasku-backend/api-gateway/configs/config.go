@@ -103,7 +103,7 @@ func Load() (*Config, error) {
 	cfg.JWT.PublicKey = pubKey
 
 	// CORS
-	originsRaw := getEnvOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+	originsRaw := getEnvOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:18173,http://localhost:18300")
 	cfg.CORS.AllowedOrigins = strings.Split(originsRaw, ",")
 	for i := range cfg.CORS.AllowedOrigins {
 		cfg.CORS.AllowedOrigins[i] = strings.TrimSpace(cfg.CORS.AllowedOrigins[i])

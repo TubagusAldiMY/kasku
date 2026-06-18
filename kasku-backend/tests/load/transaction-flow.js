@@ -1,7 +1,7 @@
 // k6 load test — Transaction flow: login → list accounts → create transaction → get balance
 // Membutuhkan user yang sudah verified dan tenant yang sudah di-provision.
 // Siapkan via: TEST_USER_EMAIL dan TEST_USER_PASSWORD di env.
-// Run: k6 run --env BASE_URL=http://localhost:8080 \
+// Run: k6 run --env BASE_URL=http://localhost:18080 \
 //            --env TEST_USER_EMAIL=verified@kasku.test \
 //            --env TEST_USER_PASSWORD=TestPass1! \
 //            transaction-flow.js
@@ -9,7 +9,7 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 import { stageOptions } from "./k6-config.js";
 
-const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:18080";
 const TEST_EMAIL = __ENV.TEST_USER_EMAIL || "";
 const TEST_PASS = __ENV.TEST_USER_PASSWORD || "";
 

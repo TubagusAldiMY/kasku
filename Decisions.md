@@ -5,6 +5,60 @@ Claude Code membaca file ini untuk memahami konteks keputusan yang sudah final �
 
 ---
 
+# Port Registry KasKu
+
+Blok port yang direservasi untuk KasKu local dev. Gunakan tabel ini sebagai referensi tunggal saat ada perubahan port.
+
+## Prinsip Penamaan
+
+| Jenis | Pola | Contoh |
+|-------|------|--------|
+| App services HTTP | `1808x` | api-gateway → `18080` |
+| App services gRPC (exposed) | `1818x` | auth gRPC → `18181` |
+| Infra database/cache | `1{port-standar}` | postgres 5432 → `15432`, redis 6379 → `16379` |
+| Observability (100xx+) | `1{port-standar}` | prometheus 9090 → `19090`, grafana 3000 → `13000` |
+
+## App Services (docker-compose.override.yml)
+
+| Service | HTTP host | gRPC host |
+|---------|-----------|-----------|
+| api-gateway | 18080 | — |
+| auth-service | 18081 | 18181 |
+| user-service | 18082 | 18182 |
+| billing-service | 18083 | 18183 |
+| finance-service | 18084 | 18184 |
+| transaction-service | 18085 | 18185 |
+| investment-service | 18086 | 18186 |
+| price-service | 18087 | 18187 |
+| sync-service | 18088 | — |
+| notification-service | 18089 | — |
+| admin-service | 18090 | — |
+| Frontend dev (vite) | 18173 | — |
+| Frontend preview | 18300 | — |
+
+## Infra (docker-compose.override.yml)
+
+| Komponen | Host port | Container port | Mnemonic |
+|----------|-----------|---------------|---------|
+| PostgreSQL | **15432** | 5432 | 1 + 5432 |
+| Redis | **16379** | 6379 | 1 + 6379 |
+| RabbitMQ AMQP | 18672 | 5672 | suffix 672 |
+| RabbitMQ UI | 18673 | 15672 | 18672 + 1 |
+
+## Observability (docker-compose.yml, profile observability)
+
+| Komponen | Host port | Container port | Mnemonic |
+|----------|-----------|---------------|---------|
+| Grafana | **13000** | 3000 | 1 + 3000 |
+| Prometheus | **19090** | 9090 | 1 + 9090 |
+| Alertmanager | **19093** | 9093 | 1 + 9093 |
+| Loki | **13100** | 3100 | 1 + 3100 |
+| Jaeger UI | 18686 | 16686 | suffix 686 |
+| OTEL Collector gRPC | 18417 | 4317 | suffix 417 |
+| OTEL Collector HTTP | 18418 | 4318 | suffix 418 |
+
+---
+
 # ADR-001: gRPC Internal Tanpa TLS (insecure.NewCredentials)
 
 **Date:** 2026-06-18

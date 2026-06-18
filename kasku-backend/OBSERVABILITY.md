@@ -13,9 +13,9 @@ Akses UI:
 
 | UI | URL | Default Creds |
 |---|---|---|
-| Grafana | http://localhost:3000 | admin / admin (override via `.env`) |
-| Prometheus | http://localhost:9090 | — |
-| Alertmanager | http://localhost:9093 | — |
+| Grafana | http://localhost:13000 | admin / admin (override via `.env`) |
+| Prometheus | http://localhost:19090 | — |
+| Alertmanager | http://localhost:19093 | — |
 | Loki | (via Grafana Explore saja, tidak punya UI sendiri) | — |
 
 Stop:
@@ -27,19 +27,19 @@ docker compose --profile observability down
 
 ## Komponen
 
-### 1. Prometheus (port 9090)
+### 1. Prometheus (host 19090, container 9090)
 - Scrape interval 15s untuk semua service Go (8 service), Rust (price + sync), admin-service, dan RabbitMQ Prometheus plugin (port 15692).
 - Alert rule di `infra/prometheus/alert-rules.yml` — di-evaluate tiap 30–60s.
-- Reload config tanpa restart: `curl -X POST http://localhost:9090/-/reload`.
+- Reload config tanpa restart: `curl -X POST http://localhost:19090/-/reload`.
 
-### 2. Loki (port 3100, akses via Grafana)
+### 2. Loki (host 13100, container 3100, akses via Grafana)
 - TSDB storage di volume `loki-data`, retention **7 hari** (168h).
 - Promtail discovery container Docker, extract label:
   - `service` — dari nama container `kasku-<X>`
   - `level`, `correlation_id` — dari field JSON log
 - LogQL filter cepat: `{service="auth-service"} | correlation_id="abc-123"`.
 
-### 3. Grafana (port 3000)
+### 3. Grafana (host 13000, container 3000)
 - Auto-provision dari `infra/grafana/provisioning/`:
   - **Data sources**: Prometheus (default) + Loki
   - **Folder**: `KasKu` dengan 4 dashboard preset
@@ -49,7 +49,7 @@ docker compose --profile observability down
   - **Sync Operations** (`kasku-sync`): push/pull/conflict/error counter + rate.
   - **RabbitMQ DLQ Watch** (`kasku-dlq`): DLQ count (threshold colored), DLQ growth, all queues backlog.
 
-### 4. Alertmanager (port 9093)
+### 4. Alertmanager (host 19093, container 9093)
 - Route by severity:
   - `critical` → receiver `webhook-critical`
   - `warning` → receiver `webhook-warning`
@@ -84,7 +84,7 @@ receivers:
 
 Lalu reload Alertmanager:
 ```bash
-curl -X POST http://localhost:9093/-/reload
+curl -X POST http://localhost:19093/-/reload
 ```
 
 Atau pakai sidecar webhook adapter (mis. [bitnami/alertmanager-webhook-relay](https://hub.docker.com/r/bitnami/alertmanager-webhook-relay)) yang bisa baca dari env var dan forward ke URL final.
@@ -135,16 +135,16 @@ Untuk Rust, ikuti pola `sync-service` (AtomicU64 counter + manual Prometheus tex
 ## Troubleshooting
 
 ### Service tidak muncul di Prometheus targets
-- Cek `http://localhost:9090/targets` — apakah `state: UP`?
+- Cek `http://localhost:19090/targets` — apakah `state: UP`?
 - Kalau `state: DOWN`, cek `docker compose logs <service>` — apakah service expose /metrics di port yang benar?
 - Cek network — Prometheus harus bisa reach service (network `kasku-internal` + `kasku-data`).
 
 ### Dashboard kosong
-- Datasource kosong: cek `http://localhost:3000/datasources` — harus ada "Prometheus" dan "Loki".
-- Tidak ada metric: trigger sample request (`curl http://localhost:8081/health` 5x), tunggu 15s, refresh.
+- Datasource kosong: cek `http://localhost:13000/datasources` — harus ada "Prometheus" dan "Loki".
+- Tidak ada metric: trigger sample request (`curl http://localhost:18081/health` 5x), tunggu 15s, refresh.
 
 ### Alert firing tapi webhook tidak sampai
-- Cek `http://localhost:9093/#/status` — receiver config benar?
+- Cek `http://localhost:19093/#/status` — receiver config benar?
 - Webhook URL placeholder default 9999 — pasti gagal. Edit `infra/alertmanager/alertmanager.yml`.
 - Cek `docker compose logs alertmanager` untuk error pengiriman.
 

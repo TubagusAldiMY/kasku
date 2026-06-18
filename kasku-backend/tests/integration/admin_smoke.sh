@@ -22,7 +22,7 @@
 #   - jq, curl, uuidgen, docker tersedia
 #
 # Env override:
-#   BASE_URL=http://localhost:8080
+#   BASE_URL=http://localhost:18080
 #   PG_CONTAINER=kasku-postgres
 #   PG_USER=kasku_superuser
 #   ADMIN_USERNAME=superadmin
@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:18080}"
 PG_CONTAINER="${PG_CONTAINER:-kasku-postgres}"
 PG_USER="${PG_USER:-kasku_superuser}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-superadmin}"

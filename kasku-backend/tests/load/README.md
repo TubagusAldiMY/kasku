@@ -28,18 +28,18 @@ Pastikan stack `docker compose up -d` sudah berjalan dan semua service healthy.
 cd kasku-backend/tests/load
 
 # Auth flow (tidak butuh user pre-created)
-k6 run --env BASE_URL=http://localhost:8080 auth-flow.js
+k6 run --env BASE_URL=http://localhost:18080 auth-flow.js
 
 # Transaction flow (butuh user verified + tenant provisioned)
 k6 run \
-  --env BASE_URL=http://localhost:8080 \
+  --env BASE_URL=http://localhost:18080 \
   --env TEST_USER_EMAIL=verified@kasku.test \
   --env TEST_USER_PASSWORD=TestPass1! \
   transaction-flow.js
 
 # Sync flow (butuh user verified + tenant provisioned)
 k6 run \
-  --env BASE_URL=http://localhost:8080 \
+  --env BASE_URL=http://localhost:18080 \
   --env TEST_USER_EMAIL=verified@kasku.test \
   --env TEST_USER_PASSWORD=TestPass1! \
   sync-flow.js
@@ -59,11 +59,11 @@ k6 run \
 
 ```bash
 # Start InfluxDB
-docker run -d -p 8086:8086 --name influxdb influxdb:1.8
+docker run -d -p 18886:8086 --name influxdb influxdb:1.8
 
 # Run dengan output ke InfluxDB
-k6 run --out influxdb=http://localhost:8086/k6 \
-  --env BASE_URL=http://localhost:8080 \
+k6 run --out influxdb=http://localhost:18886/k6 \
+  --env BASE_URL=http://localhost:18080 \
   auth-flow.js
 ```
 

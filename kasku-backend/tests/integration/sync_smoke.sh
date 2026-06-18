@@ -20,16 +20,16 @@
 #   bash tests/integration/sync_smoke.sh
 #
 # Env override:
-#   BASE_URL=http://localhost:8080
-#   SYNC_URL=http://localhost:8088
+#   BASE_URL=http://localhost:18080
+#   SYNC_URL=http://localhost:18088
 #   PG_CONTAINER=kasku-postgres
 #   PG_DB=kasku_auth   (untuk force-verify)
 #   PG_USER=kasku_superuser
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
-SYNC_URL="${SYNC_URL:-http://localhost:8088}"
+BASE_URL="${BASE_URL:-http://localhost:18080}"
+SYNC_URL="${SYNC_URL:-http://localhost:18088}"
 PG_CONTAINER="${PG_CONTAINER:-kasku-postgres}"
 PG_AUTH_DB="${PG_AUTH_DB:-kasku_auth}"
 PG_FINANCE_DB="${PG_FINANCE_DB:-kasku_finance}"

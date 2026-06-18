@@ -666,7 +666,7 @@ services:
     restart: unless-stopped
     profiles: ["observability"]
     ports:
-      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:19090:9090"
     volumes:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infra/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
@@ -687,7 +687,7 @@ services:
     restart: unless-stopped
     profiles: ["observability"]
     ports:
-      - "127.0.0.1:9093:9093"
+      - "127.0.0.1:19093:9093"
     volumes:
       - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
@@ -704,6 +704,8 @@ services:
     restart: unless-stopped
     profiles: ["observability"]
     command: ["-config.file=/etc/loki/loki-config.yml"]
+    ports:
+      - "127.0.0.1:13100:3100"
     volumes:
       - ./infra/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki-data:/loki
@@ -736,7 +738,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change_this_grafana_pass}
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:13000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -762,7 +764,7 @@ services:
       BADGER_DIRECTORY_VALUE: /badger/data
       BADGER_DIRECTORY_KEY: /badger/key
     ports:
-      - "127.0.0.1:16686:16686"   # Jaeger UI
+      - "127.0.0.1:18686:16686"   # Jaeger UI
     volumes:
       - jaeger-data:/badger
     networks:
@@ -787,8 +789,8 @@ services:
     volumes:
       - ./infra/otelcollector/otelcollector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "127.0.0.1:4317:4317"   # OTLP/gRPC — services
-      - "127.0.0.1:4318:4318"   # OTLP/HTTP — frontend browser
+      - "127.0.0.1:18417:4317"   # OTLP/gRPC — services
+      - "127.0.0.1:18418:4318"   # OTLP/HTTP — frontend browser
     networks:
       - kasku-admin
       - kasku-internal

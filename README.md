@@ -118,17 +118,35 @@ Compose override lokal otomatis membuka port penting berikut:
 
 | Komponen | URL/Port |
 | --- | --- |
-| API gateway | `http://localhost:8080` |
-| PostgreSQL | `localhost:5433` |
-| Redis | `localhost:6380` |
-| RabbitMQ AMQP | `localhost:5672` |
-| RabbitMQ Management | `http://localhost:15672` |
-| Sync service direct | `http://localhost:8088` |
+| API gateway | `http://localhost:18080` |
+| PostgreSQL | `localhost:15432` |
+| Redis | `localhost:16379` |
+| RabbitMQ AMQP | `localhost:18672` |
+| RabbitMQ Management | `http://localhost:18673` |
+| Sync service direct | `http://localhost:18088` |
+| Frontend compose preview | `http://localhost:18300` |
+
+Service HTTP yang diexpose langsung oleh override lokal:
+
+| Service | URL |
+| --- | --- |
+| Auth | `http://localhost:18081` |
+| User | `http://localhost:18082` |
+| Billing | `http://localhost:18083` |
+| Finance | `http://localhost:18084` |
+| Transaction | `http://localhost:18085` |
+| Investment | `http://localhost:18086` |
+| Price | `http://localhost:18087` |
+| Sync | `http://localhost:18088` |
+| Notification | `http://localhost:18089` |
+| Admin | `http://localhost:18090` |
+
+Service gRPC yang diexpose ke host untuk debugging lokal: `18181` sampai `18187` mengikuti urutan Auth, User, Billing, Finance, Transaction, Investment, dan Price.
 
 Cek health gateway:
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:18080/health
 ```
 
 ### 3. Jalankan frontend
@@ -142,9 +160,9 @@ npm ci
 npm run dev
 ```
 
-Frontend development server berjalan di `http://localhost:5173`. Default
+Frontend development server berjalan di `http://localhost:18173`. Default
 `PUBLIC_API_BASE_URL` di `kasku-frontend/.env.example` sudah mengarah ke
-`http://localhost:8080/v1`.
+`http://localhost:18080/v1`.
 
 ## Command Development
 
@@ -208,9 +226,8 @@ bash tests/integration/admin_smoke.sh
 
 Catatan: beberapa smoke test membutuhkan stack lengkap yang sudah healthy,
 akses Docker/PostgreSQL, serta tool seperti `curl`, `jq`, dan `uuidgen`.
-`smoke.sh` default mengecek beberapa service lewat `localhost:8081` sampai
-`localhost:8090`; expose port service tersebut atau override env URL jika
-setup lokal hanya membuka api-gateway.
+`smoke.sh` default mengecek beberapa service lewat `localhost:18081` sampai
+`localhost:18090`; override env URL jika service dijalankan di luar compose.
 
 Load test k6 tersedia di `kasku-backend/tests/load/`.
 
@@ -227,10 +244,10 @@ UI lokal:
 
 | Tool | URL |
 | --- | --- |
-| Grafana | `http://localhost:3000` |
-| Prometheus | `http://localhost:9090` |
-| Alertmanager | `http://localhost:9093` |
-| Jaeger | `http://localhost:16686` |
+| Grafana | `http://localhost:13000` |
+| Prometheus | `http://localhost:19090` |
+| Alertmanager | `http://localhost:19093` |
+| Jaeger | `http://localhost:18686` |
 
 Detail lengkap ada di `kasku-backend/OBSERVABILITY.md`.
 

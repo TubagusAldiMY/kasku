@@ -3,42 +3,87 @@
 # Applied automatically by `docker compose up -d`.
 # NOT used in production (run with -f docker-compose.yml only).
 #
-# Exposes infra ports directly so developers can connect with
-# pgAdmin, redis-cli, RabbitMQ Management UI, etc.
+# Exposes infra ports on the reserved local-dev KasKu block.
+# Services (app + gRPC): 18xxx. Infra DB/cache: suffix = standard port (1{port}).
 # ==============================================================
 
 services:
 
   postgres:
     ports:
-      - "5435:5432"   # mapped to 5435 locally (5432-5434 already used on host)
+      - "15432:5432"
 
   redis:
     ports:
-      - "6381:6379"   # mapped to 6381 locally (6379-6380 already used on host)
+      - "16379:6379"
 
   rabbitmq:
     ports:
-      - "5672:5672"    # AMQP — Go/Rust services
-      - "15672:15672"  # Management UI — http://localhost:15672
+      - "18672:5672"    # AMQP
+      - "18673:15672"   # Management UI — http://localhost:18673
 
-  # Expose api-gateway so the frontend dev server (browser) can reach localhost:8080
+  # Expose application services on reserved local-dev ports.
+  # HTTP uses 1808x; gRPC uses 1818x. Container-internal ports stay unchanged.
   api-gateway:
     ports:
-      - "8080:8080"
+      - "18080:8080"
 
-  # Expose sync-service so integration smoke test (sync_smoke.sh) bisa fetch /metrics
-  # langsung tanpa lewat docker exec. Internal-only di production.
+  auth-service:
+    ports:
+      - "18081:8081"
+      - "18181:9081"
+
+  user-service:
+    ports:
+      - "18082:8082"
+      - "18182:9082"
+
+  billing-service:
+    ports:
+      - "18083:8083"
+      - "18183:9083"
+
+  finance-service:
+    ports:
+      - "18084:8084"
+      - "18184:9084"
+
+  transaction-service:
+    ports:
+      - "18085:8085"
+      - "18185:9085"
+
+  investment-service:
+    ports:
+      - "18086:8086"
+      - "18186:9086"
+
+  price-service:
+    ports:
+      - "18087:8087"
+      - "18187:9087"
+
   sync-service:
     ports:
-      - "8088:8088"
+      - "18088:8088"
 
-  # notification-service: gunakan SMTP sungguhan di local dev
-  # (APP_ENV=development di .env global → NoOpSender; override ke production supaya email terkirim)
   notification-service:
+    ports:
+      - "18089:8089"
     environment:
       APP_ENV: production
-      APP_BASE_URL: http://localhost:5173
+      APP_BASE_URL: http://localhost:18173
+
+  admin-service:
+    ports:
+      - "18090:8090"
+
+  frontend:
+    build:
+      args:
+        PUBLIC_API_BASE_URL: http://localhost:18080/v1
+    ports:
+      - "18300:3000"
 
   # Disable Traefik in local dev (services expose ports directly via override)
   traefik:

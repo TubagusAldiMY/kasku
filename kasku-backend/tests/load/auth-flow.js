@@ -1,11 +1,11 @@
 // k6 load test — Auth flow: register → login → refresh → logout
-// Run: k6 run --env BASE_URL=http://localhost:8080 auth-flow.js
+// Run: k6 run --env BASE_URL=http://localhost:18080 auth-flow.js
 import http from "k6/http";
 import { check, sleep } from "k6";
 import { Counter, Trend } from "k6/metrics";
 import { stageOptions } from "./k6-config.js";
 
-const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:18080";
 
 export const options = {
   ...stageOptions,

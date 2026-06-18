@@ -178,4 +178,4 @@ fn default_external_timeout() -> u64 { 10 }
 fn default_gold_rate() -> f64 { 16000.0 }
 fn default_price_symbols() -> String { "XAU".into() }
 fn default_price_interval() -> u64 { 900 }
-fn default_cors_origins() -> String { "http://localhost:5173".into() }
+fn default_cors_origins() -> String { "http://localhost:18173".into() }

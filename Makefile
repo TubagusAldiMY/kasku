@@ -101,7 +101,7 @@ svc: ## Target di satu service. Contoh: make svc SERVICE=auth-service TARGET=lin
 # Frontend (kasku-frontend/)
 # =============================================================================
 
-fe-dev: ## Dev server frontend → http://localhost:5173
+fe-dev: ## Dev server frontend → http://localhost:18173
 	cd $(FRONTEND) && npm run dev
 
 fe-build: ## Build frontend production
