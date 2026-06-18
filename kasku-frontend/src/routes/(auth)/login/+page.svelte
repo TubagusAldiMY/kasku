@@ -102,6 +102,7 @@
 				// @ts-ignore — google GIS SDK loaded dynamically
 				google.accounts.id.initialize({
 					client_id: googleClientId,
+					use_fedcm_for_prompt: true,
 					callback: async (response: { credential: string }) => {
 						try {
 							const apiResponse = await apiFetch('/auth/google', {
