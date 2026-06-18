@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 WORKDIR /app
 COPY observability-go ./observability-go
 COPY admin-service/go.mod admin-service/go.sum ./admin-service/

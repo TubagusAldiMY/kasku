@@ -4,7 +4,7 @@ Dashboard backend untuk operator KasKu — manajemen user, override subscription
 audit log, dan statistik platform. Diisolasi dari user-facing services di network
 `kasku-admin`.
 
-- Tech: Go 1.25 + Gin + pgx + zerolog
+- Tech: Go 1.26.4 + Gin + pgx + zerolog
 - Port: HTTP **8090** (tidak menjalankan gRPC server)
 - Database utama: `kasku_admin` (R/W)
 - Cross-DB credential: `kasku_auth_svc` (R/W terbatas) + `kasku_billing_svc` (R/W terbatas)
