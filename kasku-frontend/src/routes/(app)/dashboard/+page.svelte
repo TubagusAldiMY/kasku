@@ -224,20 +224,22 @@
 
 <div class="animate-in fade-in space-y-10 duration-700">
 	<!-- Top Section: Welcome & Quick Stats -->
-	<div class="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+	<div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
 		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Halo, {auth.user?.username || 'Juragan'}!</h1>
-			<p class="font-medium text-gray-500">Berikut adalah ringkasan finansial Anda bulan ini.</p>
+			<h1 class="text-2xl font-black text-[#0a2e31] sm:text-3xl">
+				Halo, {auth.user?.username || 'Juragan'}!
+			</h1>
+			<p class="text-sm font-medium text-gray-500">Ringkasan finansial bulan ini.</p>
 		</div>
-		<div class="flex gap-3">
+		<div class="flex flex-wrap gap-2 sm:gap-3">
 			<a
 				href={resolve('/transactions')}
-				class="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-[#0a2e31] shadow-sm transition-all hover:bg-gray-50"
+				class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] shadow-sm transition-all hover:bg-gray-50 sm:px-5 sm:py-2.5 sm:text-sm"
 				>Riwayat</a
 			>
 			<a
 				href={resolve('/reports')}
-				class="rounded-xl bg-[#217b84] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-teal-900/10 transition-all hover:bg-[#1a5f66]"
+				class="rounded-xl bg-[#217b84] px-4 py-2 text-xs font-bold text-white shadow-lg shadow-teal-900/10 transition-all hover:bg-[#1a5f66] sm:px-5 sm:py-2.5 sm:text-sm"
 				>Laporan</a
 			>
 		</div>
@@ -247,7 +249,7 @@
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 		<!-- Main Balance Card -->
 		<div
-			class="relative overflow-hidden rounded-[2.5rem] bg-[#0a2e31] p-10 text-white shadow-2xl lg:col-span-2"
+			class="relative overflow-hidden rounded-[2.5rem] bg-[#0a2e31] p-5 text-white shadow-2xl sm:p-10 lg:col-span-2"
 		>
 			<div class="absolute top-0 right-0 p-8 opacity-10">
 				<svg class="h-32 w-32" fill="currentColor" viewBox="0 0 24 24"
@@ -295,12 +297,12 @@
 							{/if}
 						</button>
 					</div>
-					<div class="text-5xl font-black tracking-tighter">
+					<div class="text-3xl font-black tracking-tighter sm:text-5xl">
 						{loading ? '...' : balanceHidden ? 'Rp ••••••••' : formatCurrency(stats.totalBalance)}
 					</div>
 				</div>
 
-				<div class="flex items-center gap-6 pt-4">
+				<div class="flex items-center gap-3 pt-4 sm:gap-6">
 					<div class="flex items-center gap-2">
 						<div
 							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-green-400"
@@ -347,7 +349,7 @@
 
 		<!-- Savings Card -->
 		<div
-			class="flex flex-col justify-between rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm"
+			class="flex flex-col justify-between rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-10"
 		>
 			<div class="space-y-4">
 				<span class="text-[11px] font-bold tracking-[0.2em] text-gray-400 uppercase"
@@ -390,7 +392,7 @@
 	</div>
 
 	<!-- Analytics Section: Expense Chart -->
-	<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
+	<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-10">
 		<div class="flex items-center justify-between">
 			<div class="space-y-1">
 				<h3 class="text-xl font-bold text-[#0a2e31]">Pengeluaran 7 Hari Terakhir</h3>
@@ -442,7 +444,7 @@
 
 	<!-- Budget Overview Widget (hanya tampil jika ada data) -->
 	{#if !loading && topBudgets.length > 0}
-		<div class="rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
+		<div class="rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-10">
 			<div class="mb-6 flex items-center justify-between">
 				<div class="space-y-1">
 					<h3 class="text-xl font-bold text-[#0a2e31]">Anggaran Bulan Ini</h3>
@@ -531,22 +533,22 @@
 				{:else}
 					<div class="divide-y divide-gray-50">
 						{#each recentTransactions as tx (tx.id)}
-							<div class="flex items-center justify-between p-6 transition-colors hover:bg-gray-50">
-								<div class="flex items-center gap-4">
+							<div class="flex items-center justify-between p-3 transition-colors hover:bg-gray-50 sm:p-6">
+								<div class="flex items-center gap-3 sm:gap-4">
 									<div
-										class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-xs font-bold text-[#0a2e31] uppercase"
+										class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-xs font-bold text-[#0a2e31] uppercase sm:h-12 sm:w-12 sm:rounded-2xl"
 									>
 										{tx.category.substring(0, 2)}
 									</div>
-									<div>
-										<p class="font-bold text-[#0a2e31]">{tx.title}</p>
-										<p class="text-[10px] font-bold tracking-wider text-gray-400 uppercase">
+									<div class="min-w-0">
+										<p class="truncate font-bold text-[#0a2e31]">{tx.title}</p>
+										<p class="truncate text-[10px] font-bold tracking-wider text-gray-400 uppercase">
 											{tx.category} • {tx.date}
 										</p>
 									</div>
 								</div>
 								<p
-									class="font-black tracking-tight {tx.amount > 0
+									class="shrink-0 text-sm font-black tracking-tight {tx.amount > 0
 										? 'text-green-600'
 										: 'text-[#0a2e31]'}"
 								>

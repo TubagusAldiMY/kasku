@@ -132,7 +132,10 @@ jobs:
               f'INTERNAL_GRPC_SECRET={get("INTERNAL_GRPC_SECRET")}',
               # api-gateway
               f'KASKU_API_DOMAIN={get("KASKU_API_DOMAIN") or ("api." + get("APP_DOMAIN"))}',
-              f'CORS_ALLOWED_ORIGINS=https://{get("APP_DOMAIN")}',
+              # CORS_ALLOWED_ORIGINS: comma-separated list. Jika CORS_ALLOWED_ORIGINS secret tidak di-set,
+              # fallback ke https://{APP_DOMAIN}. Set secret ini jika frontend domain berbeda dari APP_DOMAIN
+              # (mis. frontend di kasku.tubsamy.dev tapi APP_DOMAIN=tubsamy.dev).
+              f'CORS_ALLOWED_ORIGINS={get("CORS_ALLOWED_ORIGINS") or "https://" + get("APP_DOMAIN")}',
               f'RATE_LIMIT_REDIS_KEY_PREFIX=kasku:rl:',
               # billing-service — Payment Orchestrator
               f'KASKU_PAYMENT_ORCHESTRATOR_API_KEY={get("KASKU_PAYMENT_ORCHESTRATOR_API_KEY")}',
@@ -207,6 +210,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
           GITHUB_SHA: ${{ github.sha }}
 
       - name: Login to GHCR

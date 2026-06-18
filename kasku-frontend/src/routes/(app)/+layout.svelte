@@ -431,10 +431,10 @@
 		<div class="flex min-h-screen flex-1 flex-col">
 			<!-- Header Mobile -->
 			<header
-				class="flex h-16 items-center justify-between border-b border-gray-100 bg-white px-6 lg:hidden"
+				class="flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4 sm:px-6 lg:hidden"
 			>
 				<span class="font-black text-[#0a2e31]">KasKu</span>
-				<div class="flex items-center gap-4">
+				<div class="flex items-center gap-3">
 					<button onclick={() => (showNotifications = true)} class="relative p-1 text-[#0a2e31]">
 						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
 							><path
@@ -456,7 +456,7 @@
 				</div>
 			</header>
 
-			<main class="flex-1 overflow-y-auto p-6 pb-24 lg:p-12 lg:pb-12">
+			<main class="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 lg:p-12 lg:pb-12">
 				<div class="mx-auto max-w-6xl">
 					{@render children()}
 				</div>
@@ -467,17 +467,17 @@
 				class="fixed right-0 bottom-0 left-0 z-50 border-t border-gray-100 bg-white lg:hidden"
 				style="padding-bottom: env(safe-area-inset-bottom);"
 			>
-				<div class="flex items-stretch">
+				<div class="flex items-stretch overflow-hidden">
 					<a
 						href={resolve('/dashboard')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive(
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
 							'/dashboard'
 						)
 							? 'text-[#0a2e31]'
 							: 'text-gray-400'}"
 					>
 						<svg
-							class="h-5 w-5"
+							class="h-[18px] w-[18px]"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -489,24 +489,24 @@
 								d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
 							/>
 						</svg>
-						<span>Dashboard</span>
+						<span>Home</span>
 						{#if isActive('/dashboard')}
-							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
-							<span class="h-1 w-4"></span>
+							<span class="h-0.5 w-3"></span>
 						{/if}
 					</a>
 
 					<a
 						href={resolve('/transactions')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive(
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
 							'/transactions'
 						)
 							? 'text-[#0a2e31]'
 							: 'text-gray-400'}"
 					>
 						<svg
-							class="h-5 w-5"
+							class="h-[18px] w-[18px]"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -520,22 +520,22 @@
 						</svg>
 						<span>Transaksi</span>
 						{#if isActive('/transactions')}
-							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
-							<span class="h-1 w-4"></span>
+							<span class="h-0.5 w-3"></span>
 						{/if}
 					</a>
 
 					<a
 						href={resolve('/accounts')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive(
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
 							'/accounts'
 						)
 							? 'text-[#0a2e31]'
 							: 'text-gray-400'}"
 					>
 						<svg
-							class="h-5 w-5"
+							class="h-[18px] w-[18px]"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -549,22 +549,22 @@
 						</svg>
 						<span>Rekening</span>
 						{#if isActive('/accounts')}
-							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
-							<span class="h-1 w-4"></span>
+							<span class="h-0.5 w-3"></span>
 						{/if}
 					</a>
 
 					<a
 						href={resolve('/investments')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive(
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
 							'/investments'
 						)
 							? 'text-[#0a2e31]'
 							: 'text-gray-400'}"
 					>
 						<svg
-							class="h-5 w-5"
+							class="h-[18px] w-[18px]"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -578,15 +578,15 @@
 						</svg>
 						<span>Investasi</span>
 						{#if isActive('/investments')}
-							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
-							<span class="h-1 w-4"></span>
+							<span class="h-0.5 w-3"></span>
 						{/if}
 					</a>
 
 					<a
 						href={resolve('/profile')}
-						class="flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold tracking-wide transition-colors {isActive(
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
 							'/profile'
 						) ||
 						isActive('/categories') ||
@@ -597,7 +597,7 @@
 							: 'text-gray-400'}"
 					>
 						<svg
-							class="h-5 w-5"
+							class="h-[18px] w-[18px]"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -611,9 +611,9 @@
 						</svg>
 						<span>Profil</span>
 						{#if isActive('/profile') || isActive('/categories') || isActive('/reports') || isActive('/billing') || isActive('/budgets')}
-							<span class="h-1 w-4 rounded-full bg-[#0a2e31]"></span>
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
-							<span class="h-1 w-4"></span>
+							<span class="h-0.5 w-3"></span>
 						{/if}
 					</a>
 				</div>
