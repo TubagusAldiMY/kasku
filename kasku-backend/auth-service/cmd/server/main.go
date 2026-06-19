@@ -212,6 +212,7 @@ func main() {
 		privKey,
 		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
 		cfg.App.GoogleClientID,
+		cfg.App.GoogleClientSecret,
 	)
 	refreshTokenUC := usecase.NewRefreshTokenUseCase(
 		userRepo, refreshTokenRepo,

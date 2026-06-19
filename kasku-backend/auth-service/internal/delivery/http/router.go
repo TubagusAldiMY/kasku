@@ -95,6 +95,7 @@ func NewRouter(
 		auth.POST("/resend-verification", authHandler.ResendVerification)
 		auth.POST("/login", loginHandlers...)
 		auth.POST("/google", authHandler.GoogleLogin)
+		auth.POST("/google/code", authHandler.GoogleCode)
 		auth.POST("/refresh", authHandler.Refresh)
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/forgot-password", forgotHandlers...)

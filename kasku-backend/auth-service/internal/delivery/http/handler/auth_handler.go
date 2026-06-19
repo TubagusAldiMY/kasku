@@ -204,6 +204,41 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	})
 }
 
+// GoogleCode menangani POST /auth/google/code
+// Menerima authorization code dari redirect flow, menukar ke token via Google token endpoint
+// menggunakan client secret (server-side), lalu login/auto-register user.
+func (h *AuthHandler) GoogleCode(c *gin.Context) {
+	var req struct {
+		Code        string `json:"code"         binding:"required"`
+		RedirectURI string `json:"redirect_uri" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "VALIDATION_ERROR", "code dan redirect_uri wajib diisi.", nil)
+		return
+	}
+
+	out, err := h.googleLoginUC.ExchangeCode(c.Request.Context(), usecase.GoogleCodeInput{
+		Code:        req.Code,
+		RedirectURI: req.RedirectURI,
+		UserAgent:   c.Request.UserAgent(),
+		IPAddress:   c.ClientIP(),
+		IsDev:       h.isDev,
+	})
+	if err != nil {
+		h.logError(c, "google-code", err)
+		response.HandleError(c, err)
+		return
+	}
+
+	h.setRefreshTokenCookie(c, out.RefreshTokenCookie)
+
+	response.OK(c, dto.LoginResponse{
+		AccessToken: out.AccessToken,
+		TokenType:   out.TokenType,
+		ExpiresIn:   out.ExpiresIn,
+	})
+}
+
 // Refresh menangani POST /auth/refresh
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	rawRefreshToken, err := c.Cookie(refreshTokenCookieName)

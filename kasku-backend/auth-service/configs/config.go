@@ -80,11 +80,12 @@ type CleanupConfig struct {
 }
 
 type AppConfig struct {
-	Env            string
-	LogLevel       string
-	ServiceVersion string
-	OTELEndpoint   string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
-	GoogleClientID string // GOOGLE_CLIENT_ID — empty = audience check dinonaktifkan (dev only)
+	Env                string
+	LogLevel           string
+	ServiceVersion     string
+	OTELEndpoint       string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
+	GoogleClientID     string // GOOGLE_CLIENT_ID — empty = audience check dinonaktifkan (dev only)
+	GoogleClientSecret string // GOOGLE_CLIENT_SECRET — wajib untuk authorization code flow
 }
 
 // Load membaca semua environment variables dan mengembalikan Config tervalidasi.
@@ -226,11 +227,12 @@ func Load() (*Config, error) {
 			DryRun:   cleanupDryRun,
 		},
 		App: AppConfig{
-			Env:            getEnvOrDefault("APP_ENV", "development"),
-			LogLevel:       getEnvOrDefault("LOG_LEVEL", "info"),
-			ServiceVersion: getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
-			OTELEndpoint:   os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-			GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
+			Env:                getEnvOrDefault("APP_ENV", "development"),
+			LogLevel:           getEnvOrDefault("LOG_LEVEL", "info"),
+			ServiceVersion:     getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
+			OTELEndpoint:       os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+			GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		},
 	}, nil
 }

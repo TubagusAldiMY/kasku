@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -21,15 +22,35 @@ import (
 
 const (
 	googleTokenInfoURL    = "https://oauth2.googleapis.com/tokeninfo"
+	googleTokenURL        = "https://oauth2.googleapis.com/token"
 	oauthPasswordSentinel = "OAUTH_NO_PASSWORD" // tidak valid sebagai Argon2id hash
 )
 
-// GoogleLoginInput merupakan data yang dikirim saat login via Google.
+// GoogleLoginInput merupakan data yang dikirim saat login via Google ID token (popup flow).
 type GoogleLoginInput struct {
 	IDToken   string
 	UserAgent string
 	IPAddress string
 	IsDev     bool
+}
+
+// GoogleCodeInput merupakan data untuk authorization code flow (redirect flow).
+type GoogleCodeInput struct {
+	Code        string
+	RedirectURI string
+	UserAgent   string
+	IPAddress   string
+	IsDev       bool
+}
+
+// googleTokenResponse adalah response dari Google token endpoint.
+type googleTokenResponse struct {
+	IDToken     string `json:"id_token"`
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	Error       string `json:"error"`
+	ErrorDesc   string `json:"error_description"`
 }
 
 // GoogleTokenInfo adalah subset dari response Google tokeninfo endpoint.
@@ -49,18 +70,20 @@ type GoogleTokenInfo struct {
 //go:generate mockgen -source=$GOFILE -destination=../../tests/mocks/mock_google_login_usecase.go -package=mocks
 type GoogleLoginUseCase interface {
 	Execute(ctx context.Context, input GoogleLoginInput) (*LoginOutput, error)
+	ExchangeCode(ctx context.Context, input GoogleCodeInput) (*LoginOutput, error)
 }
 
 type googleLoginUseCase struct {
-	pool             *pgxpool.Pool
-	userRepo         repository.UserRepository
-	refreshTokenRepo repository.RefreshTokenRepository
-	publisher        messaging.EventPublisher
-	jwtPrivateKey    *rsa.PrivateKey
-	accessTokenTTL   time.Duration
-	refreshTokenTTL  time.Duration
-	googleClientID   string // kosong = skip audience check (development mode)
-	httpClient       *http.Client
+	pool               *pgxpool.Pool
+	userRepo           repository.UserRepository
+	refreshTokenRepo   repository.RefreshTokenRepository
+	publisher          messaging.EventPublisher
+	jwtPrivateKey      *rsa.PrivateKey
+	accessTokenTTL     time.Duration
+	refreshTokenTTL    time.Duration
+	googleClientID     string // kosong = skip audience check (development mode)
+	googleClientSecret string // wajib untuk authorization code flow
+	httpClient         *http.Client
 }
 
 // NewGoogleLoginUseCase membuat instance GoogleLoginUseCase.
@@ -73,18 +96,71 @@ func NewGoogleLoginUseCase(
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
 	googleClientID string,
+	googleClientSecret string,
 ) GoogleLoginUseCase {
 	return &googleLoginUseCase{
-		pool:             pool,
-		userRepo:         userRepo,
-		refreshTokenRepo: refreshTokenRepo,
-		publisher:        publisher,
-		jwtPrivateKey:    jwtPrivateKey,
-		accessTokenTTL:   accessTokenTTL,
-		refreshTokenTTL:  refreshTokenTTL,
-		googleClientID:   googleClientID,
-		httpClient:       &http.Client{Timeout: 10 * time.Second},
+		pool:               pool,
+		userRepo:           userRepo,
+		refreshTokenRepo:   refreshTokenRepo,
+		publisher:          publisher,
+		jwtPrivateKey:      jwtPrivateKey,
+		accessTokenTTL:     accessTokenTTL,
+		refreshTokenTTL:    refreshTokenTTL,
+		googleClientID:     googleClientID,
+		googleClientSecret: googleClientSecret,
+		httpClient:         &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+// ExchangeCode menukar authorization code (redirect flow) menjadi LoginOutput.
+// Code ditukar ke Google token endpoint menggunakan client secret (server-side),
+// lalu id_token yang didapat diproses lewat alur Execute yang sudah ada.
+func (uc *googleLoginUseCase) ExchangeCode(ctx context.Context, input GoogleCodeInput) (*LoginOutput, error) {
+	if uc.googleClientSecret == "" {
+		return nil, fmt.Errorf("GOOGLE_CLIENT_SECRET tidak dikonfigurasi di server")
+	}
+
+	idToken, err := uc.exchangeAuthCode(input.Code, input.RedirectURI)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domainerrors.ErrInvalidCredentials, err)
+	}
+
+	return uc.Execute(ctx, GoogleLoginInput{
+		IDToken:   idToken,
+		UserAgent: input.UserAgent,
+		IPAddress: input.IPAddress,
+		IsDev:     input.IsDev,
+	})
+}
+
+// exchangeAuthCode menukar OAuth2 authorization code ke id_token via Google token endpoint.
+func (uc *googleLoginUseCase) exchangeAuthCode(code, redirectURI string) (string, error) {
+	resp, err := uc.httpClient.PostForm(googleTokenURL, url.Values{
+		"code":          {code},
+		"client_id":     {uc.googleClientID},
+		"client_secret": {uc.googleClientSecret},
+		"redirect_uri":  {redirectURI},
+		"grant_type":    {"authorization_code"},
+	})
+	if err != nil {
+		return "", fmt.Errorf("gagal hubungi Google token endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tokenResp googleTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return "", fmt.Errorf("gagal decode token response: %w", err)
+	}
+
+	if tokenResp.Error != "" {
+		return "", fmt.Errorf("google token error: %s — %s", tokenResp.Error, tokenResp.ErrorDesc)
+	}
+
+	if tokenResp.IDToken == "" {
+		return "", fmt.Errorf("id_token tidak ada dalam response Google token endpoint")
+	}
+
+	return tokenResp.IDToken, nil
 }
 
 // Execute menjalankan alur login / auto-register via Google ID token:
