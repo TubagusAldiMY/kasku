@@ -99,7 +99,7 @@
 		{ value: 'CRYPTO', label: 'Kripto', hint: 'Gunakan ID CoinGecko (bitcoin, ethereum)' },
 		{ value: 'STOCK', label: 'Saham', hint: 'Kode saham (BBCA, TLKM)' },
 		{ value: 'MUTUAL_FUND', label: 'Reksa Dana' },
-		{ value: 'GOLD', label: 'Emas', hint: 'Gunakan XAU untuk harga emas' }
+		{ value: 'GOLD', label: 'Emas', hint: 'Simbol: tether-gold · Satuan units = gram · Harga live per gram (otomatis)' }
 	];
 
 	const selectedAssetTypeHint = $derived(
@@ -442,7 +442,7 @@
 								</p>
 								<p class="text-base font-black text-[#0a2e31]">
 									{formatNumber(asset.units)}
-									<span class="ml-0.5 text-xs font-bold text-gray-400">Unit</span>
+									<span class="ml-0.5 text-xs font-bold text-gray-400">{asset.asset_type === 'GOLD' ? 'gram' : 'Unit'}</span>
 								</p>
 							</div>
 
@@ -602,7 +602,7 @@
 								placeholder={assetForm.asset_type === 'CRYPTO'
 									? 'bitcoin'
 									: assetForm.asset_type === 'GOLD'
-										? 'XAU'
+										? 'tether-gold'
 										: 'BBCA'}
 								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-bold text-[#0a2e31] outline-none transition-all focus:ring-4 focus:ring-teal-50"
 							/>
@@ -627,7 +627,7 @@
 									<label
 										for="qty"
 										class="block text-[11px] font-black tracking-widest text-gray-400 uppercase"
-										>Jumlah Unit</label
+										>{assetForm.asset_type === 'GOLD' ? 'Jumlah (gram)' : 'Jumlah Unit'}</label
 									>
 									<input
 										id="qty"
@@ -635,7 +635,7 @@
 										step="any"
 										min="0"
 										bind:value={assetForm.units}
-										placeholder="0.00004408"
+										placeholder={assetForm.asset_type === 'GOLD' ? '10' : '0.00004408'}
 										class="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
 									/>
 								</div>

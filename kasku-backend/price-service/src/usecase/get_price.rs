@@ -1,11 +1,19 @@
 use chrono::Utc;
 use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
 use tracing::{info, warn};
 
 use crate::domain::entity::{PriceResult, PriceSource};
 use crate::domain::error::DomainError;
 use crate::infrastructure::repository::PriceCacheRepository;
 use crate::usecase::fetch_external::{CoinGeckoClient, MetalsLiveClient};
+
+/// CoinGecko coin IDs yang merepresentasikan 1 token = 1 troy ounce emas.
+/// Harga dari CoinGecko untuk simbol ini perlu dibagi 31.1034768 agar menjadi harga per gram.
+const TROY_OZ_GOLD_TOKENS: &[&str] = &["tether-gold", "pax-gold"];
+
+/// 1 troy ounce = 31.1034768 gram.
+const TROY_OZ_TO_GRAM: f64 = 31.1034768;
 
 /// Use case: Get price for a symbol, using cache-first strategy.
 ///
@@ -68,7 +76,17 @@ impl GetPriceUseCase {
         };
 
         match fetch_result {
-            Ok((price_usd, price_idr)) => {
+            Ok((mut price_usd, mut price_idr)) => {
+                // Konversi per troy ounce → per gram untuk gold token di CoinGecko.
+                // tether-gold (XAUT) & pax-gold (PAXG): 1 token = 1 troy oz emas.
+                // Platform KasKu mencatat emas dalam satuan gram.
+                if TROY_OZ_GOLD_TOKENS.contains(&symbol) {
+                    let factor = Decimal::try_from(TROY_OZ_TO_GRAM)
+                        .map_err(|e| DomainError::Internal(format!("decimal conversion: {}", e)))?;
+                    price_usd = price_usd / factor;
+                    price_idr = price_idr / factor;
+                }
+
                 // Step 3: Upsert into cache
                 let cached = self
                     .repo

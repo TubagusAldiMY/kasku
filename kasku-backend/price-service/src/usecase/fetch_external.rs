@@ -168,7 +168,9 @@ impl MetalsLiveClient {
         })
     }
 
-    /// Fetch gold price from metals.live. Returns (price_usd, price_idr) per troy ounce.
+    /// Fetch gold price from metals.live.
+    /// Returns (price_usd, price_idr) **per gram** (converted from troy ounce).
+    /// 1 troy ounce = 31.1034768 grams.
     pub async fn fetch_gold_price(&self) -> Result<(Decimal, Decimal), DomainError> {
         // SSRF protection
         validate_url_domain(&self.metals_live_url)?;
@@ -204,17 +206,21 @@ impl MetalsLiveClient {
             DomainError::ExternalApiFailed(format!("metals.live parse error: {}", e))
         })?;
 
-        let gold_usd = data
+        let gold_usd_per_troy_oz = data
             .first()
             .and_then(|s| s.gold)
             .ok_or_else(|| DomainError::PriceNotFound("XAU".to_string()))?;
 
-        let gold_idr = gold_usd * self.gold_usd_idr_rate;
+        // Konversi dari per troy ounce ke per gram.
+        // Platform KasKu menggunakan satuan gram untuk emas.
+        const TROY_OZ_TO_GRAM: f64 = 31.1034768;
+        let gold_usd_per_gram = gold_usd_per_troy_oz / TROY_OZ_TO_GRAM;
+        let gold_idr_per_gram = gold_usd_per_gram * self.gold_usd_idr_rate;
 
         Ok((
-            Decimal::try_from(gold_usd)
+            Decimal::try_from(gold_usd_per_gram)
                 .map_err(|e| DomainError::Internal(format!("decimal conversion: {}", e)))?,
-            Decimal::try_from(gold_idr)
+            Decimal::try_from(gold_idr_per_gram)
                 .map_err(|e| DomainError::Internal(format!("decimal conversion: {}", e)))?,
         ))
     }

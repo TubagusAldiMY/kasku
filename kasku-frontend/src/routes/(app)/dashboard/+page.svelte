@@ -9,6 +9,7 @@
 		transactionsRepo,
 		categoriesRepo,
 		budgetsRepo,
+		investmentsRepo,
 		type AccountRow,
 		type TransactionRow,
 		type CategoryRow,
@@ -49,6 +50,13 @@
 	let budgets = $state<BudgetRow[]>([]);
 	let loading = $state(true);
 	let balanceHidden = $state(false);
+
+	let investmentCostBasis = $state(0);
+	let debtSummary = $state({ totalReceivable: 0, totalPayable: 0, overdueCount: 0 });
+
+	let trueNetWorth = $derived(
+		stats.totalBalance + investmentCostBasis - debtSummary.totalPayable
+	);
 
 	function toggleBalance() {
 		balanceHidden = !balanceHidden;
@@ -164,6 +172,47 @@
 		}
 	}
 
+	async function loadInvestmentValue() {
+		try {
+			const rows = await investmentsRepo.getAll();
+			investmentCostBasis = rows
+				.filter((r) => !r._deleted)
+				.reduce((sum, r) => sum + r.units * r.avg_buy_price_idr, 0);
+		} catch {
+			// Tidak fatal — tampilkan 0
+		}
+	}
+
+	async function loadDebtSummary() {
+		try {
+			const res = await apiFetch('/debts');
+			const json = await res.json();
+			if (!res.ok || !json.success) return;
+			const now = new Date();
+			// Debt entity tidak pakai json tags — field PascalCase
+			const all = json.data as Array<{
+				Direction: string;
+				Status: string;
+				RemainingAmount: number;
+				DueDate?: string;
+			}>;
+			const active = all.filter((d) => d.Status === 'ACTIVE');
+			debtSummary = {
+				totalReceivable: active
+					.filter((d) => d.Direction === 'RECEIVABLE')
+					.reduce((s, d) => s + d.RemainingAmount, 0),
+				totalPayable: active
+					.filter((d) => d.Direction === 'PAYABLE')
+					.reduce((s, d) => s + d.RemainingAmount, 0),
+				overdueCount: active.filter(
+					(d) => d.DueDate && new Date(d.DueDate) < now
+				).length
+			};
+		} catch {
+			// Offline — tidak tampil
+		}
+	}
+
 	async function hydrateBudgetsFromServer() {
 		try {
 			const res = await apiFetch('/budgets');
@@ -218,6 +267,8 @@
 		loading = false;
 		void hydrateCategoriesFromServer();
 		void hydrateBudgetsFromServer();
+		void loadInvestmentValue();
+		void loadDebtSummary();
 		void triggerManualSync();
 	});
 </script>
@@ -263,7 +314,7 @@
 				<div class="space-y-1">
 					<div class="flex items-center gap-2">
 						<span class="text-[11px] font-bold tracking-[0.2em] text-teal-400 uppercase"
-							>Total Net Worth</span
+							>Kekayaan Bersih</span
 						>
 						<button
 							onclick={toggleBalance}
@@ -272,75 +323,56 @@
 						>
 							{#if balanceHidden}
 								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-									/>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
 								</svg>
 							{:else}
 								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-									/>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-									/>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
 								</svg>
 							{/if}
 						</button>
 					</div>
 					<div class="text-3xl font-black tracking-tighter sm:text-5xl">
-						{loading ? '...' : balanceHidden ? 'Rp ••••••••' : formatCurrency(stats.totalBalance)}
+						{loading ? '...' : balanceHidden ? 'Rp ••••••••' : formatCurrency(trueNetWorth)}
 					</div>
+					<!-- Net worth breakdown chips -->
+					{#if !loading && !balanceHidden}
+						<div class="flex flex-wrap gap-2 pt-1">
+							<span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">
+								Rekening {formatCurrency(stats.totalBalance)}
+							</span>
+							{#if investmentCostBasis > 0}
+								<span class="rounded-full bg-teal-500/20 px-2.5 py-1 text-[10px] font-bold text-teal-300">
+									+Investasi {formatCurrency(investmentCostBasis)}
+								</span>
+							{/if}
+							{#if debtSummary.totalPayable > 0}
+								<span class="rounded-full bg-red-500/20 px-2.5 py-1 text-[10px] font-bold text-red-300">
+									−Hutang {formatCurrency(debtSummary.totalPayable)}
+								</span>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
-				<div class="flex items-center gap-3 pt-4 sm:gap-6">
+				<div class="flex items-center gap-3 pt-2 sm:gap-6">
 					<div class="flex items-center gap-2">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-green-400"
-						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="3"
-									d="M5 10l7-7m0 0l7 7m-7-7v18"
-								/></svg
-							>
+						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-green-400">
+							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
 						</div>
 						<div>
 							<p class="text-[10px] font-bold tracking-wider text-white/40 uppercase">Income</p>
-							<p class="text-sm font-bold text-white">
-								{balanceHidden ? '••••••' : formatCurrency(stats.monthlyIncome)}
-							</p>
+							<p class="text-sm font-bold text-white">{balanceHidden ? '••••••' : formatCurrency(stats.monthlyIncome)}</p>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-red-400"
-						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="3"
-									d="M19 14l-7 7m0 0l-7-7m7 7V3"
-								/></svg
-							>
+						<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-red-400">
+							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
 						</div>
 						<div>
 							<p class="text-[10px] font-bold tracking-wider text-white/40 uppercase">Expense</p>
-							<p class="text-sm font-bold text-white">
-								{balanceHidden ? '••••••' : formatCurrency(stats.monthlyExpense)}
-							</p>
+							<p class="text-sm font-bold text-white">{balanceHidden ? '••••••' : formatCurrency(stats.monthlyExpense)}</p>
 						</div>
 					</div>
 				</div>
@@ -508,6 +540,55 @@
 						</div>
 					</div>
 				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Overdue Alert -->
+	{#if !loading && debtSummary.overdueCount > 0}
+		<a
+			href={resolve('/debts')}
+			class="flex items-center justify-between rounded-2xl border border-red-100 bg-red-50 px-5 py-3 transition-all hover:bg-red-100"
+		>
+			<div class="flex items-center gap-3">
+				<svg class="h-5 w-5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+				</svg>
+				<span class="text-sm font-bold text-red-700">
+					{debtSummary.overdueCount} catatan hutang/piutang telah jatuh tempo
+				</span>
+			</div>
+			<svg class="h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+			</svg>
+		</a>
+	{/if}
+
+	<!-- Hutang & Piutang Summary -->
+	{#if !loading && (debtSummary.totalReceivable > 0 || debtSummary.totalPayable > 0)}
+		<div class="rounded-[2.5rem] border border-gray-100 bg-white p-5 shadow-sm sm:p-8">
+			<div class="mb-5 flex items-center justify-between">
+				<div class="space-y-0.5">
+					<h3 class="text-xl font-bold text-[#0a2e31]">Hutang & Piutang</h3>
+					<p class="text-xs font-bold tracking-wider text-gray-400 uppercase">Status Aktif</p>
+				</div>
+				<a href={resolve('/debts')} class="text-xs font-bold text-[#217b84] hover:underline">Kelola</a>
+			</div>
+			<div class="grid grid-cols-2 gap-4">
+				<div class="rounded-2xl border border-teal-100 bg-teal-50 p-4">
+					<p class="mb-1 text-[10px] font-bold tracking-widest text-teal-600 uppercase">Piutang Saya</p>
+					<p class="text-xl font-black text-[#0a2e31]">
+						{balanceHidden ? 'Rp ••••••' : formatCurrency(debtSummary.totalReceivable)}
+					</p>
+					<p class="mt-0.5 text-[10px] text-teal-500">Orang berhutang ke Anda</p>
+				</div>
+				<div class="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+					<p class="mb-1 text-[10px] font-bold tracking-widest text-orange-500 uppercase">Hutang Saya</p>
+					<p class="text-xl font-black text-[#0a2e31]">
+						{balanceHidden ? 'Rp ••••••' : formatCurrency(debtSummary.totalPayable)}
+					</p>
+					<p class="mt-0.5 text-[10px] text-orange-400">Anda berhutang ke orang lain</p>
+				</div>
 			</div>
 		</div>
 	{/if}
