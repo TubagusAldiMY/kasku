@@ -319,6 +319,20 @@
 					Investasi
 				</a>
 				<a
+					href={resolve('/debts')}
+					class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/10"
+				>
+					<svg class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+						><path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+						/></svg
+					>
+					Hutang & Piutang
+				</a>
+				<a
 					href={resolve('/profile')}
 					class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors hover:bg-white/10"
 				>
@@ -578,6 +592,35 @@
 						</svg>
 						<span>Investasi</span>
 						{#if isActive('/investments')}
+							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
+						{:else}
+							<span class="h-0.5 w-3"></span>
+						{/if}
+					</a>
+
+					<a
+						href={resolve('/debts')}
+						class="flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold transition-colors {isActive(
+							'/debts'
+						)
+							? 'text-[#0a2e31]'
+							: 'text-gray-400'}"
+					>
+						<svg
+							class="h-[18px] w-[18px]"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width={isActive('/debts') ? 2.5 : 1.8}
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+							/>
+						</svg>
+						<span>Hutang</span>
+						{#if isActive('/debts')}
 							<span class="h-0.5 w-3 rounded-full bg-[#0a2e31]"></span>
 						{:else}
 							<span class="h-0.5 w-3"></span>

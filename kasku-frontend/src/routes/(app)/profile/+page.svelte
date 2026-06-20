@@ -11,8 +11,14 @@
 	let profile = $state({
 		username: auth.user?.username || '',
 		email: auth.user?.email || '',
-		displayName: ''
+		displayName: '',
+		createdAt: ''
 	});
+
+	// Subscription state
+	let subscriptionPlanName = $state<string>('—');
+	let subscriptionStatus = $state<string>('');
+	let subscriptionLoading = $state(true);
 
 	// Password change state
 	let passwordData = $state({
@@ -54,8 +60,8 @@
 				profile.username = result.data.username || auth.user?.username || '';
 				profile.email = result.data.email || auth.user?.email || '';
 				profile.displayName = result.data.display_name || '';
+				profile.createdAt = result.data.created_at || '';
 
-				// Update store
 				auth.setUser({
 					...auth.user!,
 					username: profile.username,
@@ -66,6 +72,54 @@
 			console.error('Gagal memuat profil user:', err);
 		}
 	}
+
+	async function fetchSubscription() {
+		subscriptionLoading = true;
+		try {
+			const [plansRes, subRes] = await Promise.all([
+				apiFetch('/billing/plans'),
+				apiFetch('/billing/subscription')
+			]);
+			const plansData = await plansRes.json();
+			const subData = await subRes.json();
+
+			if (subData.success && subData.data) {
+				subscriptionStatus = subData.data.status ?? '';
+				const planId: string = subData.data.plan_id ?? '';
+				if (plansData.success && Array.isArray(plansData.data)) {
+					const matched = (plansData.data as { id: string; name: string }[]).find(
+						(p) => p.id === planId
+					);
+					subscriptionPlanName = matched?.name ?? planId;
+				} else {
+					subscriptionPlanName = planId;
+				}
+			} else {
+				subscriptionPlanName = 'Gratis';
+				subscriptionStatus = 'FREE';
+			}
+		} catch {
+			subscriptionPlanName = '—';
+		} finally {
+			subscriptionLoading = false;
+		}
+	}
+
+	function formatJoinDate(iso: string): string {
+		if (!iso) return '—';
+		try {
+			return new Date(iso).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+		} catch {
+			return '—';
+		}
+	}
+
+	const tierBadgeClass = $derived(() => {
+		const name = subscriptionPlanName.toLowerCase();
+		if (name.includes('ultimate')) return 'bg-amber-500';
+		if (name.includes('pro') || name.includes('premium')) return 'bg-indigo-600';
+		return 'bg-teal-600';
+	});
 
 	async function updatePreferences() {
 		prefLoading = true;
@@ -91,6 +145,7 @@
 	onMount(() => {
 		fetchPreferences();
 		fetchUserProfile();
+		fetchSubscription();
 	});
 
 	async function updateProfile(e: SubmitEvent) {
@@ -223,12 +278,30 @@
 
 				<div class="mt-8 flex flex-col gap-2 border-t border-gray-50 pt-6">
 					<div class="flex items-center justify-between px-2 text-xs">
-						<span class="font-bold text-gray-400 uppercase">Tier</span>
-						<span class="rounded-full bg-teal-600 px-3 py-1 font-black text-white">FREE</span>
+						<span class="font-bold text-gray-400 uppercase">Paket</span>
+						{#if subscriptionLoading}
+							<span class="h-5 w-16 animate-pulse rounded-full bg-gray-100"></span>
+						{:else}
+							<span class="rounded-full px-3 py-1 font-black text-white {tierBadgeClass()}">
+								{subscriptionPlanName}
+							</span>
+						{/if}
 					</div>
+					{#if subscriptionStatus && subscriptionStatus !== 'FREE'}
+						<div class="flex items-center justify-between px-2 text-xs">
+							<span class="font-bold text-gray-400 uppercase">Status</span>
+							<span
+								class="font-bold {subscriptionStatus === 'ACTIVE'
+									? 'text-green-600'
+									: 'text-yellow-600'}"
+							>
+								{subscriptionStatus === 'ACTIVE' ? 'Aktif' : subscriptionStatus}
+							</span>
+						</div>
+					{/if}
 					<div class="flex items-center justify-between px-2 text-xs">
 						<span class="font-bold text-gray-400 uppercase">Bergabung</span>
-						<span class="font-bold text-[#0a2e31]">Mei 2026</span>
+						<span class="font-bold text-[#0a2e31]">{formatJoinDate(profile.createdAt)}</span>
 					</div>
 				</div>
 			</div>

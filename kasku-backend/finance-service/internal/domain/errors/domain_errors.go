@@ -16,6 +16,10 @@ var (
 	ErrAccountLimitReached = &DomainError{Code: "ACCOUNT_LIMIT_REACHED", Message: "Batas jumlah akun keuangan tercapai. Upgrade subscription untuk menambah lebih banyak akun."}
 	ErrInvalidInput        = &DomainError{Code: "INVALID_INPUT", Message: "Input tidak valid."}
 	ErrInternal            = &DomainError{Code: "INTERNAL_ERROR", Message: "Terjadi kesalahan internal."}
+
+	ErrDebtNotFound       = &DomainError{Code: "DEBT_NOT_FOUND", Message: "Catatan hutang tidak ditemukan."}
+	ErrDebtAlreadySettled = &DomainError{Code: "DEBT_ALREADY_SETTLED", Message: "Hutang ini sudah lunas."}
+	ErrPaymentExceedsDebt = &DomainError{Code: "PAYMENT_EXCEEDS_DEBT", Message: "Jumlah pembayaran melebihi sisa hutang."}
 )
 
 func IsDomainError(err error) (*DomainError, bool) {

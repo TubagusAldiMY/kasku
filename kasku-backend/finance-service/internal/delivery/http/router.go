@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func NewRouter(h *handler.AccountHandler, isDev bool, metricsReg *metrics.Registry) *gin.Engine {
+func NewRouter(h *handler.AccountHandler, dh *handler.DebtHandler, isDev bool, metricsReg *metrics.Registry) *gin.Engine {
 	if !isDev {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -34,6 +34,17 @@ func NewRouter(h *handler.AccountHandler, isDev bool, metricsReg *metrics.Regist
 			accounts.PUT("/:id", h.UpdateAccount)
 			accounts.DELETE("/:id", h.DeleteAccount)
 			accounts.GET("/:id/history", h.GetBalanceHistory)
+		}
+
+		debts := v1.Group("/debts")
+		{
+			debts.GET("", dh.ListDebts)
+			debts.POST("", dh.CreateDebt)
+			debts.GET("/:id", dh.GetDebt)
+			debts.PUT("/:id", dh.UpdateDebt)
+			debts.DELETE("/:id", dh.DeleteDebt)
+			debts.POST("/:id/payments", dh.RecordPayment)
+			debts.GET("/:id/payments", dh.ListPayments)
 		}
 	}
 

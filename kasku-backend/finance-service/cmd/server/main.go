@@ -106,6 +106,7 @@ func main() {
 
 	// Dependency injection: wiring semua layer
 	accountRepo := persistence.NewPostgresAccountRepository(pool)
+	debtRepo := persistence.NewPostgresDebtRepository(pool)
 
 	createUC := usecase.NewCreateAccountUseCase(accountRepo)
 	listUC := usecase.NewListAccountsUseCase(accountRepo)
@@ -114,15 +115,27 @@ func main() {
 	deleteUC := usecase.NewDeleteAccountUseCase(accountRepo)
 	historyUC := usecase.NewGetBalanceHistoryUseCase(accountRepo)
 
+	createDebtUC := usecase.NewCreateDebtUseCase(debtRepo)
+	listDebtsUC := usecase.NewListDebtsUseCase(debtRepo)
+	getDebtUC := usecase.NewGetDebtUseCase(debtRepo)
+	updateDebtUC := usecase.NewUpdateDebtUseCase(debtRepo)
+	deleteDebtUC := usecase.NewDeleteDebtUseCase(debtRepo)
+	recordPayUC := usecase.NewRecordDebtPaymentUseCase(debtRepo)
+	listPayUC := usecase.NewListDebtPaymentsUseCase(debtRepo)
+
 	healthChecker := &postgresHealthChecker{pool: pool}
 	accountHandler := handler.NewAccountHandler(
 		createUC, listUC, getUC, updateUC, deleteUC, historyUC,
 		healthChecker, cfg.App.ServiceVersion, logger,
 	)
+	debtHandler := handler.NewDebtHandler(
+		createDebtUC, listDebtsUC, getDebtUC, updateDebtUC, deleteDebtUC,
+		recordPayUC, listPayUC, logger,
+	)
 
 	metricsReg := obsmetrics.NewRegistry("finance-service")
 	metricsReg.RegisterDBPool(pool)
-	router := deliveryhttp.NewRouter(accountHandler, cfg.IsDevelopment(), metricsReg)
+	router := deliveryhttp.NewRouter(accountHandler, debtHandler, cfg.IsDevelopment(), metricsReg)
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Server.Port,
