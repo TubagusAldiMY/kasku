@@ -126,6 +126,7 @@ func buildHandler(pool *pgxpool.Pool, cfg *configs.Config, logger zerolog.Logger
 		usecase.NewUpdateTransactionUseCase(txRepo),
 		usecase.NewDeleteTransactionUseCase(txRepo),
 		usecase.NewExportCSVUseCase(txRepo),
+		usecase.NewGetReportUseCase(txRepo),
 		usecase.NewListCategoriesUseCase(catRepo),
 		usecase.NewCreateCategoryUseCase(catRepo),
 		usecase.NewUpdateCategoryUseCase(catRepo),

@@ -36,3 +36,27 @@ type TransactionSummary struct {
 	TotalExpense int64
 	NetAmount    int64
 }
+
+type CategoryBreakdown struct {
+	CategoryID   string  `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	TotalAmount  int64   `json:"total_amount"`
+	Count        int     `json:"count"`
+	Percentage   float64 `json:"percentage"`
+}
+
+type MonthlyPoint struct {
+	Month   string `json:"month"`
+	Income  int64  `json:"income"`
+	Expense int64  `json:"expense"`
+}
+
+type ReportData struct {
+	PeriodFrom        string              `json:"period_from"`
+	PeriodTo          string              `json:"period_to"`
+	TotalIncome       int64               `json:"total_income"`
+	TotalExpense      int64               `json:"total_expense"`
+	NetAmount         int64               `json:"net_amount"`
+	CategoryBreakdown []CategoryBreakdown `json:"category_breakdown"`
+	MonthlyTrend      []MonthlyPoint      `json:"monthly_trend"`
+}

@@ -16,6 +16,8 @@ type TransactionRepository interface {
 	Update(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error
 	SoftDelete(ctx context.Context, tenantSchema, id, userID string) error
 	GetSummary(ctx context.Context, tenantSchema, userID string, from, to time.Time) (*entity.TransactionSummary, error)
+	GetCategoryBreakdown(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.CategoryBreakdown, error)
+	GetMonthlyTrend(ctx context.Context, tenantSchema, userID string, months int) ([]entity.MonthlyPoint, error)
 	ListForExport(ctx context.Context, tenantSchema, userID string, from, to *time.Time) ([]entity.Transaction, error)
 }
 

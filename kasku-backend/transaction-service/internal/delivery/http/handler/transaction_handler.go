@@ -35,6 +35,7 @@ type TransactionHandler struct {
 	updateTxUC     *usecase.UpdateTransactionUseCase
 	deleteTxUC     *usecase.DeleteTransactionUseCase
 	exportCSVUC    *usecase.ExportCSVUseCase
+	getReportUC    *usecase.GetReportUseCase
 	listCatUC      *usecase.ListCategoriesUseCase
 	createCatUC    *usecase.CreateCategoryUseCase
 	updateCatUC    *usecase.UpdateCategoryUseCase
@@ -56,6 +57,7 @@ func NewTransactionHandler(
 	updateTxUC *usecase.UpdateTransactionUseCase,
 	deleteTxUC *usecase.DeleteTransactionUseCase,
 	exportCSVUC *usecase.ExportCSVUseCase,
+	getReportUC *usecase.GetReportUseCase,
 	listCatUC *usecase.ListCategoriesUseCase,
 	createCatUC *usecase.CreateCategoryUseCase,
 	updateCatUC *usecase.UpdateCategoryUseCase,
@@ -76,6 +78,7 @@ func NewTransactionHandler(
 		updateTxUC:     updateTxUC,
 		deleteTxUC:     deleteTxUC,
 		exportCSVUC:    exportCSVUC,
+		getReportUC:    getReportUC,
 		listCatUC:      listCatUC,
 		createCatUC:    createCatUC,
 		updateCatUC:    updateCatUC,
@@ -337,6 +340,45 @@ func (h *TransactionHandler) ExportCSV(c *gin.Context) {
 	c.Header("Content-Type", "text/csv")
 	c.Header("Content-Disposition", "attachment; filename=transactions.csv")
 	c.Data(http.StatusOK, "text/csv", data)
+}
+
+func (h *TransactionHandler) GetReport(c *gin.Context) {
+	userID, tenantSchema, ok := h.extractRequestContext(c)
+	if !ok {
+		return
+	}
+
+	var from, to time.Time
+	if v := c.Query("from"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			from = t
+		}
+	}
+	if v := c.Query("to"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			to = t
+		}
+	}
+
+	months := 6
+	if v := c.Query("months"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			months = n
+		}
+	}
+
+	report, err := h.getReportUC.Execute(c.Request.Context(), usecase.GetReportInput{
+		TenantSchema: tenantSchema,
+		UserID:       userID,
+		From:         from,
+		To:           to,
+		Months:       months,
+	})
+	if err != nil {
+		h.handleDomainError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": report})
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────

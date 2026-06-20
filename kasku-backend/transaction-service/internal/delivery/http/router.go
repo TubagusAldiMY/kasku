@@ -31,6 +31,7 @@ func NewRouter(h *handler.TransactionHandler, isDev bool, metricsReg *metrics.Re
 			txs.GET("", h.ListTransactions)
 			txs.POST("", h.CreateTransaction)
 			txs.GET("/export", h.ExportCSV)
+			txs.GET("/reports", h.GetReport)
 			txs.GET("/:id", h.GetTransaction)
 			txs.PUT("/:id", h.UpdateTransaction)
 			txs.DELETE("/:id", h.DeleteTransaction)

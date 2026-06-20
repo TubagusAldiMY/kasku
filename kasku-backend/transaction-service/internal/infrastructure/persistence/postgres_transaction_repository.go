@@ -490,3 +490,91 @@ func (r *postgresTransactionRepository) ListForExport(ctx context.Context, tenan
 	}
 	return txs, rows.Err()
 }
+
+func (r *postgresTransactionRepository) GetCategoryBreakdown(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.CategoryBreakdown, error) {
+	if err := ValidateTenantSchema(tenantSchema); err != nil {
+		return nil, err
+	}
+	query := fmt.Sprintf(`
+		SELECT
+			COALESCE(t.category_id::text, 'uncategorized') AS category_id,
+			COALESCE(c.name, 'Tidak Dikategorikan') AS category_name,
+			SUM(t.amount_idr) AS total_amount,
+			COUNT(*) AS cnt
+		FROM %s.transactions t
+		JOIN %s.financial_accounts a ON t.account_id = a.id
+		LEFT JOIN %s.categories c ON t.category_id = c.id
+		WHERE a.user_id = $1
+		  AND t.is_deleted = false
+		  AND t.transaction_type = 'EXPENSE'
+		  AND t.transaction_date >= $2
+		  AND t.transaction_date <= $3
+		GROUP BY t.category_id, c.name
+		ORDER BY total_amount DESC
+	`, tenantSchema, tenantSchema, tenantSchema)
+
+	rows, err := r.pool.Query(ctx, query, userID, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("gagal query category breakdown: %w", err)
+	}
+	defer rows.Close()
+
+	var items []entity.CategoryBreakdown
+	var totalExpense int64
+	for rows.Next() {
+		var item entity.CategoryBreakdown
+		if err := rows.Scan(&item.CategoryID, &item.CategoryName, &item.TotalAmount, &item.Count); err != nil {
+			return nil, fmt.Errorf("gagal scan category breakdown: %w", err)
+		}
+		totalExpense += item.TotalAmount
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		if totalExpense > 0 {
+			items[i].Percentage = float64(items[i].TotalAmount) / float64(totalExpense) * 100
+		}
+	}
+	return items, nil
+}
+
+func (r *postgresTransactionRepository) GetMonthlyTrend(ctx context.Context, tenantSchema, userID string, months int) ([]entity.MonthlyPoint, error) {
+	if err := ValidateTenantSchema(tenantSchema); err != nil {
+		return nil, err
+	}
+	if months <= 0 || months > 24 {
+		months = 6
+	}
+	query := fmt.Sprintf(`
+		SELECT
+			TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,
+			SUM(CASE WHEN t.transaction_type = 'INCOME' THEN t.amount_idr ELSE 0 END) AS income,
+			SUM(CASE WHEN t.transaction_type = 'EXPENSE' THEN t.amount_idr ELSE 0 END) AS expense
+		FROM %s.transactions t
+		JOIN %s.financial_accounts a ON t.account_id = a.id
+		WHERE a.user_id = $1
+		  AND t.is_deleted = false
+		  AND t.transaction_type IN ('INCOME', 'EXPENSE')
+		  AND t.transaction_date >= DATE_TRUNC('month', NOW() - (($2 - 1) || ' months')::interval)
+		GROUP BY DATE_TRUNC('month', t.transaction_date)
+		ORDER BY 1 ASC
+	`, tenantSchema, tenantSchema)
+
+	rows, err := r.pool.Query(ctx, query, userID, months)
+	if err != nil {
+		return nil, fmt.Errorf("gagal query monthly trend: %w", err)
+	}
+	defer rows.Close()
+
+	var points []entity.MonthlyPoint
+	for rows.Next() {
+		var p entity.MonthlyPoint
+		if err := rows.Scan(&p.Month, &p.Income, &p.Expense); err != nil {
+			return nil, fmt.Errorf("gagal scan monthly trend: %w", err)
+		}
+		points = append(points, p)
+	}
+	return points, rows.Err()
+}
