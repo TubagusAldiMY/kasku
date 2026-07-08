@@ -52,15 +52,15 @@
 	}
 
 	function barColor(b: BudgetRow) {
-		if (b.is_over_budget) return 'bg-red-500';
-		if (b.progress_percent > 75) return 'bg-yellow-400';
-		return 'bg-[#217b84]';
+		if (b.is_over_budget) return 'bg-clay';
+		if (b.progress_percent > 75) return 'bg-gold';
+		return 'bg-teal';
 	}
 
 	function textColor(b: BudgetRow) {
-		if (b.is_over_budget) return 'text-red-500';
-		if (b.progress_percent > 75) return 'text-yellow-500';
-		return 'text-[#217b84]';
+		if (b.is_over_budget) return 'text-clay';
+		if (b.progress_percent > 75) return 'text-gold';
+		return 'text-ink';
 	}
 
 	async function readApiResult(res: Response) {
@@ -216,50 +216,65 @@
 		void fetchCategories();
 		await refreshFromServer();
 	});
+
+	// ── Editorial presentation helper (additive, no logic change) ──
+	const totals = $derived({
+		spent: budgets.reduce((s, b) => s + b.spent_idr, 0),
+		limit: budgets.reduce((s, b) => s + b.limit_idr, 0)
+	});
 </script>
 
-<div class="animate-in fade-in space-y-8 pb-20 duration-500">
-	<div class="flex items-start justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Anggaran</h1>
-			<p class="text-sm font-medium text-gray-500">
-				Tetapkan batas pengeluaran dan pantau realisasinya.
+<div>
+	<!-- ═══════════ Header ═══════════ -->
+	<div class="flex flex-wrap items-end justify-between gap-4 border-b border-ink/10 pb-8">
+		<div>
+			<h1 class="font-serif text-4xl tracking-tight text-ink">Anggaran</h1>
+			<p class="mt-2.5 text-sm text-ink/60">
+				{#if !loading && budgets.length > 0}
+					Terpakai <span class="font-semibold text-ink">{formatCurrency(totals.spent)}</span> dari
+					<span class="font-semibold text-ink">{formatCurrency(totals.limit)}</span>.
+				{:else}
+					Tetapkan batas pengeluaran dan pantau realisasinya.
+				{/if}
 			</p>
 		</div>
 		<button
 			onclick={openAddModal}
-			class="rounded-xl bg-[#0a2e31] px-5 py-3 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98]"
+			class="rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 		>
-			+ Tambah Anggaran
+			+ Buat anggaran
 		</button>
 	</div>
 
 	{#if errorMessage && !showModal}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600"
-		>
+		<div class="mt-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
 			{errorMessage}
 		</div>
 	{/if}
 
 	{#if loading}
-		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+		<div class="pt-2">
 			{#each [0, 1, 2] as i (i)}
-				<div class="h-48 animate-pulse rounded-[2.5rem] bg-gray-100"></div>
+				<div class="border-t border-ink/10 py-7">
+					<div class="mb-3 h-6 w-40 animate-pulse rounded bg-ink/5"></div>
+					<div class="h-1 animate-pulse rounded bg-ink/10"></div>
+				</div>
 			{/each}
 		</div>
 	{:else if budgets.length === 0}
 		<!-- Empty State -->
 		<div
-			class="flex flex-col items-center justify-center gap-6 rounded-[2.5rem] border-2 border-dashed border-gray-100 bg-white py-20 text-center"
+			class="flex flex-col items-center justify-center gap-5 border-y border-dashed border-ink/15 py-24 text-center"
 		>
-			<div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-teal-50 text-[#217b84]">
+			<div
+				class="flex h-16 w-16 items-center justify-center rounded-full border border-ink/12 text-teal"
+			>
 				<svg
-					class="h-10 w-10"
+					class="h-8 w-8"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
-					stroke-width="1.5"
+					stroke-width="1.4"
 				>
 					<path
 						stroke-linecap="round"
@@ -268,214 +283,171 @@
 					/>
 				</svg>
 			</div>
-			<div class="space-y-2">
-				<h3 class="text-xl font-black text-[#0a2e31]">Belum Ada Anggaran</h3>
-				<p class="max-w-xs text-sm font-medium text-gray-400">
+			<div class="space-y-1.5">
+				<h3 class="font-serif text-2xl text-ink">Belum ada anggaran</h3>
+				<p class="max-w-xs text-sm text-ink/55">
 					Buat anggaran pertama Anda untuk mulai memantau pengeluaran per kategori.
 				</p>
 			</div>
 			<button
 				onclick={openAddModal}
-				class="rounded-xl bg-[#0a2e31] px-6 py-3 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black"
+				class="rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 			>
-				Buat Anggaran Pertama
+				Buat anggaran pertama
 			</button>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+		<div class="pt-2">
 			{#each budgets as b (b.id)}
-				<div
-					class="group relative flex flex-col gap-5 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm transition-all hover:shadow-lg"
-				>
-					<!-- Header -->
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0 flex-1">
-							<h3 class="truncate text-base font-black text-[#0a2e31]">{b.name}</h3>
-							<div class="mt-1 flex flex-wrap items-center gap-2">
+				{@const pct = Math.round(b.progress_percent)}
+				<div class="group border-t border-ink/10 py-7 last:border-b">
+					<!-- Row header: name + tag · percent -->
+					<div class="mb-2.5 flex items-baseline justify-between gap-4">
+						<div class="flex min-w-0 items-baseline gap-3">
+							<span class="truncate font-serif text-[22px] text-ink">{b.name}</span>
+							{#if b.category_name}
 								<span
-									class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-gray-500 uppercase"
+									class="shrink-0 rounded-full border border-gold/30 px-2 py-px text-[11px] text-gold"
 								>
-									{periodLabel(b.period_type)}
+									{b.category_name}
 								</span>
-								{#if b.category_name}
-									<span
-										class="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-bold tracking-wider text-[#217b84] uppercase"
-									>
-										{b.category_name}
-									</span>
-								{:else}
-									<span
-										class="rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-bold tracking-wider text-gray-400 uppercase"
-									>
-										Semua Pengeluaran
-									</span>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Actions (visible on hover) -->
-						<div class="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-							<button
-								onclick={() => openEditModal(b)}
-								aria-label="Edit anggaran {b.name}"
-								class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-[#0a2e31]"
-							>
-								<svg
-									class="h-4 w-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="2"
+							{:else}
+								<span
+									class="shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/55"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/>
-								</svg>
-							</button>
-							<button
-								onclick={() => handleDelete(b.id)}
-								aria-label="Hapus anggaran {b.name}"
-								class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+									Semua pengeluaran
+								</span>
+							{/if}
+							<span
+								class="hidden shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/45 sm:inline"
 							>
-								<svg
-									class="h-4 w-4"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="2"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-									/>
-								</svg>
-							</button>
-						</div>
-					</div>
-
-					<!-- Progress -->
-					<div class="space-y-2">
-						<div class="flex items-center justify-between">
-							<span class="text-xs font-bold text-gray-400">Terpakai</span>
-							<span class="text-xs font-black {textColor(b)}">
-								{Math.round(b.progress_percent)}%
+								{periodLabel(b.period_type)}
 							</span>
 						</div>
-						<div class="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-							<div
-								class="h-full rounded-full transition-all duration-700 {barColor(b)}"
-								style="width: {Math.min(100, b.progress_percent)}%"
-							></div>
-						</div>
-						<div class="flex items-center justify-between text-[11px] font-bold">
-							<span class="text-gray-500">{formatCurrency(b.spent_idr)}</span>
-							<span class="text-gray-300">dari {formatCurrency(b.limit_idr)}</span>
+						<div class="flex shrink-0 items-baseline gap-3">
+							<span class="font-serif text-[22px] tabular-nums {textColor(b)}">{pct}%</span>
+							<!-- Actions (visible on hover) -->
+							<div class="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+								<button
+									onclick={() => openEditModal(b)}
+									aria-label="Edit anggaran {b.name}"
+									class="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+								>
+									<svg
+										class="h-4 w-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="1.8"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									</svg>
+								</button>
+								<button
+									onclick={() => handleDelete(b.id)}
+									aria-label="Hapus anggaran {b.name}"
+									class="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-clay/10 hover:text-clay"
+								>
+									<svg
+										class="h-4 w-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="1.8"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							</div>
 						</div>
 					</div>
 
-					<!-- Over Budget Badge -->
-					{#if b.is_over_budget}
+					<!-- Track -->
+					<div class="mb-2.5 h-1 bg-ink/10">
 						<div
-							class="flex items-center gap-1.5 rounded-2xl border border-red-100 bg-red-50 px-3 py-2"
-						>
-							<svg
-								class="h-3.5 w-3.5 shrink-0 text-red-500"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-								/>
-							</svg>
-							<span class="text-[10px] font-black tracking-wider text-red-600 uppercase"
-								>Melebihi Anggaran</span
-							>
-						</div>
-					{:else if b.progress_percent >= (b.alert_threshold ?? 80)}
-						<div
-							class="flex items-center gap-1.5 rounded-2xl border border-yellow-100 bg-yellow-50 px-3 py-2"
-						>
-							<svg
-								class="h-3.5 w-3.5 shrink-0 text-yellow-500"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-								/>
-							</svg>
-							<span class="text-[10px] font-black tracking-wider text-yellow-600 uppercase"
-								>Mendekati Batas</span
-							>
-						</div>
-					{/if}
+							class="h-full transition-all duration-700 {barColor(b)}"
+							style="width: {Math.min(100, b.progress_percent)}%"
+						></div>
+					</div>
 
-					<!-- Remaining -->
-					{#if !b.is_over_budget}
-						<p class="text-[11px] font-bold text-gray-400">
-							Sisa: <span class="text-[#0a2e31]">{formatCurrency(b.remaining_idr)}</span>
-						</p>
-					{:else}
-						<p class="text-[11px] font-bold text-red-400">
-							Kelebihan: <span class="text-red-600">{formatCurrency(-b.remaining_idr)}</span>
+					<!-- Caption line -->
+					<div
+						class="flex flex-wrap items-baseline justify-between gap-x-3 text-[12.5px] text-ink/55"
+					>
+						<span class="tabular-nums">{formatCurrency(b.spent_idr)} terpakai</span>
+						<span class="tabular-nums">
+							limit {formatCurrency(b.limit_idr)} ·
+							{#if b.is_over_budget}
+								<span class="font-semibold text-clay">lewat {formatCurrency(-b.remaining_idr)}</span
+								>
+							{:else}
+								sisa {formatCurrency(b.remaining_idr)}
+							{/if}
+						</span>
+					</div>
+
+					<!-- Warn caption when approaching threshold (not yet over) -->
+					{#if !b.is_over_budget && b.progress_percent >= (b.alert_threshold ?? 80)}
+						<p class="mt-2 text-[11px] font-semibold tracking-[0.08em] text-gold uppercase">
+							Mendekati batas
 						</p>
 					{/if}
 
 					<!-- Daily allowance section -->
 					{#if b.daily_limit_enabled}
-						<div class="mt-2 space-y-2 border-t border-gray-100 pt-3">
-							<div class="flex items-center justify-between text-[11px]">
-								<span class="font-bold text-gray-400">Jatah dasar</span>
-								<span class="font-black text-gray-500"
+						<div
+							class="mt-4 grid gap-x-8 gap-y-2 border-t border-ink/8 pt-4 text-[12.5px] sm:grid-cols-2"
+						>
+							<div class="flex items-baseline justify-between">
+								<span class="text-ink/50">Jatah dasar</span>
+								<span class="text-ink/70 tabular-nums"
 									>{formatCurrency(b.daily_base_idr ?? 0)}/hari</span
 								>
 							</div>
-							<div class="flex items-center justify-between text-[11px]">
-								<span class="font-bold text-gray-400">Sisa kemarin</span>
+							<div class="flex items-baseline justify-between">
+								<span class="text-ink/50">Sisa kemarin</span>
 								<span
-									class="font-black {(b.carryover_idr ?? 0) >= 0
-										? 'text-[#217b84]'
-										: 'text-red-500'}"
+									class="font-semibold tabular-nums {(b.carryover_idr ?? 0) >= 0
+										? 'text-teal'
+										: 'text-clay'}"
 								>
 									{dailyCarryoverLabel(b.carryover_idr ?? 0)}
 								</span>
 							</div>
-							<div class="flex items-center justify-between text-[11px]">
-								<span class="font-black text-[#0a2e31]">Jatah hari ini</span>
-								<span class="font-black text-[#0a2e31]"
+							<div class="flex items-baseline justify-between">
+								<span class="font-medium text-ink">Jatah hari ini</span>
+								<span class="font-semibold text-ink tabular-nums"
 									>{formatCurrency(b.daily_allowance_today_idr ?? 0)}</span
 								>
 							</div>
+							<div class="flex items-baseline justify-between">
+								<span class="text-ink/50">Terpakai hari ini</span>
+								<span
+									class="font-semibold tabular-nums {(b.daily_remaining_idr ?? 0) < 0
+										? 'text-clay'
+										: 'text-ink/70'}"
+								>
+									{formatCurrency(b.spent_today_idr ?? 0)}
+								</span>
+							</div>
 							<!-- Mini progress bar for today -->
-							<div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+							<div class="h-1 bg-ink/10 sm:col-span-2">
 								<div
-									class="h-full rounded-full transition-all duration-500 {spentTodayPercent(b) >=
-									100
-										? 'bg-red-400'
+									class="h-full transition-all duration-500 {spentTodayPercent(b) >= 100
+										? 'bg-clay'
 										: spentTodayPercent(b) >= 75
-											? 'bg-yellow-400'
-											: 'bg-[#217b84]'}"
+											? 'bg-gold'
+											: 'bg-teal'}"
 									style="width: {Math.min(100, spentTodayPercent(b))}%"
 								></div>
-							</div>
-							<div class="flex items-center justify-between text-[11px]">
-								<span class="font-bold text-gray-400">Terpakai hari ini</span>
-								<span
-									class="font-black {(b.daily_remaining_idr ?? 0) < 0
-										? 'text-red-500'
-										: 'text-gray-500'}">{formatCurrency(b.spent_today_idr ?? 0)}</span
-								>
 							</div>
 						</div>
 					{/if}
@@ -488,29 +460,29 @@
 <!-- Modal Buat/Edit Anggaran -->
 {#if showModal}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2e31]/40 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
-			class="w-full max-w-sm overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
+			class="w-full max-w-sm overflow-hidden rounded-2xl border border-ink/10 bg-card shadow-2xl"
 			in:fly={{ y: 20, duration: 400 }}
 		>
 			<div class="max-h-[90vh] space-y-6 overflow-y-auto p-8">
 				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-black text-[#0a2e31]">
-						{form.id ? 'Edit Anggaran' : 'Anggaran Baru'}
+					<h2 class="font-serif text-2xl text-ink">
+						{form.id ? 'Edit anggaran' : 'Anggaran baru'}
 					</h2>
 					<button
 						aria-label="Tutup modal"
 						onclick={() => (showModal = false)}
-						class="text-gray-300 transition-colors hover:text-gray-500"
+						class="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 					>
 						<svg
-							class="h-6 w-6"
+							class="h-5 w-5"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
-							stroke-width="2.5"
+							stroke-width="2"
 						>
 							<path d="M6 18L18 6M6 6l12 12" />
 						</svg>
@@ -522,9 +494,9 @@
 					<div class="space-y-1.5">
 						<label
 							for="bname"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 						>
-							Nama Anggaran
+							Nama anggaran
 						</label>
 						<input
 							id="bname"
@@ -533,7 +505,7 @@
 							bind:value={form.name}
 							maxlength="100"
 							placeholder="Misal: Makan & Minum"
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						/>
 					</div>
 
@@ -541,9 +513,9 @@
 					<div class="space-y-1.5">
 						<label
 							for="blimit"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 						>
-							Batas Pengeluaran (IDR)
+							Batas pengeluaran (IDR)
 						</label>
 						<input
 							id="blimit"
@@ -552,7 +524,7 @@
 							min="1"
 							bind:value={form.limit_idr}
 							placeholder="500000"
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						/>
 					</div>
 
@@ -560,14 +532,14 @@
 					<div class="space-y-1.5">
 						<label
 							for="bcat"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 						>
-							Kategori (Opsional)
+							Kategori (opsional)
 						</label>
 						<select
 							id="bcat"
 							bind:value={form.category_id}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						>
 							<option value="">Semua Pengeluaran</option>
 							{#each categories as cat (cat.id)}
@@ -580,14 +552,14 @@
 					<div class="space-y-1.5">
 						<label
 							for="bperiod"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 						>
 							Periode
 						</label>
 						<select
 							id="bperiod"
 							bind:value={form.period_type}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						>
 							<option value="MONTHLY">Bulanan</option>
 							<option value="WEEKLY">Mingguan</option>
@@ -599,16 +571,16 @@
 					{#if form.period_type === 'MONTHLY' || form.period_type === 'WEEKLY'}
 						<div class="space-y-1.5">
 							<label
-								class="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 transition-all hover:bg-teal-50/40"
+								class="flex cursor-pointer items-center gap-3 rounded-[10px] border border-ink/15 bg-field px-4 py-3 transition-colors hover:border-teal/40"
 							>
 								<input
 									type="checkbox"
 									bind:checked={form.daily_limit_enabled}
-									class="h-4 w-4 rounded accent-[#217b84]"
+									class="h-4 w-4 rounded accent-teal"
 								/>
 								<div>
-									<p class="text-sm font-black text-[#0a2e31]">Aktifkan Jatah Harian</p>
-									<p class="text-[10px] font-bold text-gray-400">
+									<p class="text-sm font-semibold text-ink">Aktifkan jatah harian</p>
+									<p class="text-[11px] text-ink/50">
 										Anggaran dibagi rata per hari. Sisa/kelebihan hari ini terbawa ke esok.
 									</p>
 								</div>
@@ -622,7 +594,7 @@
 							<div class="space-y-1.5">
 								<label
 									for="bstart"
-									class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+									class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>
 									Mulai
 								</label>
@@ -630,13 +602,13 @@
 									id="bstart"
 									type="date"
 									bind:value={form.start_date}
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+									class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 								/>
 							</div>
 							<div class="space-y-1.5">
 								<label
 									for="bend"
-									class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+									class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>
 									Selesai
 								</label>
@@ -644,7 +616,7 @@
 									id="bend"
 									type="date"
 									bind:value={form.end_date}
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+									class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 								/>
 							</div>
 						</div>
@@ -654,7 +626,7 @@
 					<div class="space-y-1.5">
 						<label
 							for="bthreshold"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 						>
 							Peringatan saat mencapai (%)
 						</label>
@@ -664,18 +636,15 @@
 							min="0"
 							max="100"
 							bind:value={form.alert_threshold}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						/>
-						<p class="px-1 text-[10px] font-bold text-gray-300">
-							Tampilkan peringatan kuning saat pengeluaran mencapai {form.alert_threshold}% dari
-							batas.
+						<p class="text-[11px] text-ink/45">
+							Tampilkan peringatan saat pengeluaran mencapai {form.alert_threshold}% dari batas.
 						</p>
 					</div>
 
 					{#if errorMessage}
-						<div
-							class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600"
-						>
+						<div class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-xs text-clay">
 							{errorMessage}
 						</div>
 					{/if}
@@ -686,7 +655,7 @@
 								type="button"
 								onclick={() => handleDelete(form.id)}
 								disabled={saving}
-								class="rounded-xl border border-red-100 px-5 py-3 text-[10px] font-black tracking-widest text-red-500 uppercase transition-all hover:bg-red-50"
+								class="rounded-full border border-ink/15 px-5 py-2.5 text-[13px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5 disabled:opacity-60"
 							>
 								Hapus
 							</button>
@@ -694,9 +663,9 @@
 						<button
 							type="submit"
 							disabled={saving}
-							class="flex-1 rounded-xl bg-[#0a2e31] py-3 text-[10px] font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+							class="flex-1 rounded-full bg-teal py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
 						>
-							{saving ? 'Menyimpan...' : form.id ? 'Simpan Perubahan' : 'Buat Anggaran'}
+							{saving ? 'Menyimpan…' : form.id ? 'Simpan perubahan' : 'Buat anggaran'}
 						</button>
 					</div>
 				</form>

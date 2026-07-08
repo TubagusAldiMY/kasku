@@ -99,7 +99,11 @@
 		{ value: 'CRYPTO', label: 'Kripto', hint: 'Gunakan ID CoinGecko (bitcoin, ethereum)' },
 		{ value: 'STOCK', label: 'Saham', hint: 'Kode saham (BBCA, TLKM)' },
 		{ value: 'MUTUAL_FUND', label: 'Reksa Dana' },
-		{ value: 'GOLD', label: 'Emas', hint: 'Simbol: tether-gold · Satuan units = gram · Harga live per gram (otomatis)' }
+		{
+			value: 'GOLD',
+			label: 'Emas',
+			hint: 'Simbol: tether-gold · Satuan units = gram · Harga live per gram (otomatis)'
+		}
 	];
 
 	const selectedAssetTypeHint = $derived(
@@ -203,7 +207,14 @@
 	}
 
 	function openAddModal() {
-		assetForm = { id: '', name: '', asset_type: 'CRYPTO', symbol: '', units: 0, nilai_pembelian: 0 };
+		assetForm = {
+			id: '',
+			name: '',
+			asset_type: 'CRYPTO',
+			symbol: '',
+			units: 0,
+			nilai_pembelian: 0
+		};
 		showAssetModal = true;
 	}
 
@@ -248,7 +259,9 @@
 		}, 0)
 	);
 
-	const totalCostBasis = $derived(assets.reduce((acc, a) => acc + a.units * a.avg_buy_price_idr, 0));
+	const totalCostBasis = $derived(
+		assets.reduce((acc, a) => acc + a.units * a.avg_buy_price_idr, 0)
+	);
 	const totalGainLoss = $derived(totalCurrentValue - totalCostBasis);
 	const totalGainLossPct = $derived(
 		totalCostBasis > 0 ? (totalGainLoss / totalCostBasis) * 100 : 0
@@ -272,98 +285,67 @@
 	}
 </script>
 
-<div class="animate-in fade-in space-y-8 pb-20 duration-500">
-	<!-- Header & Summary -->
-	<div class="flex flex-col justify-between gap-6 md:flex-row md:items-start">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Portofolio Investasi</h1>
-			<p class="text-sm font-medium text-gray-500">
-				Pantau nilai aset dan pertumbuhan portofolio Anda secara real-time.
-			</p>
-		</div>
-
-		<!-- Summary Cards -->
-		<div class="flex flex-col gap-3 sm:flex-row">
-			<div
-				class="flex flex-col items-end rounded-[2rem] bg-[#0a2e31] px-7 py-5 text-white shadow-xl shadow-teal-950/20"
-			>
-				<span class="mb-1 text-[10px] font-black tracking-[0.2em] text-teal-400/80 uppercase">
-					Nilai Portofolio
-					{#if assetsWithPrice > 0}
-						<span class="ml-1 rounded-full bg-teal-700/40 px-1.5 py-0.5 text-[9px] text-teal-300"
-							>Live</span
-						>
-					{/if}
-				</span>
-				<span class="text-2xl font-black tabular-nums">{formatCurrency(totalCurrentValue)}</span>
-				{#if totalCostBasis > 0}
-					<span
-						class="mt-1 text-[11px] font-bold {totalGainLoss >= 0
-							? 'text-green-400'
-							: 'text-red-400'}"
-					>
-						{formatPct(totalGainLossPct)}
-						({totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)})
-					</span>
+<div class="pb-4">
+	<!-- ═══════════ Header & Summary ═══════════ -->
+	<div
+		class="flex flex-col justify-between gap-6 border-b border-ink/10 pb-8 md:flex-row md:items-end"
+	>
+		<div>
+			<p class="mb-2 text-[12px] font-semibold tracking-[0.14em] text-ink/45 uppercase">
+				Nilai portofolio
+				{#if assetsWithPrice > 0}
+					<span class="text-teal">· ● live</span>
 				{/if}
-			</div>
-
+			</p>
+			<p class="font-serif text-5xl leading-none tracking-tight text-ink tabular-nums sm:text-6xl">
+				{formatCurrency(totalCurrentValue)}
+			</p>
 			{#if totalCostBasis > 0}
-				<div
-					class="flex flex-col items-end rounded-[2rem] border border-gray-100 bg-white px-7 py-5 shadow-sm"
-				>
-					<span class="mb-1 text-[10px] font-black tracking-[0.2em] text-gray-400 uppercase"
-						>Modal Awal</span
-					>
-					<span class="text-xl font-black tabular-nums text-[#0a2e31]"
-						>{formatCurrency(totalCostBasis)}</span
-					>
-				</div>
+				<p class="mt-3 text-sm text-ink/60">
+					Modal {formatCurrency(totalCostBasis)} ·
+					<span class="{totalGainLoss >= 0 ? 'text-teal' : 'text-clay'} font-semibold">
+						{totalGainLoss >= 0 ? 'untung' : 'rugi'}
+						{totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)} ({formatPct(
+							totalGainLossPct
+						)})
+					</span>
+				</p>
 			{/if}
 		</div>
-	</div>
-
-	<!-- Action Bar -->
-	<div class="flex justify-end">
 		<button
 			onclick={openAddModal}
-			class="inline-flex items-center gap-2 rounded-2xl bg-[#217b84] px-6 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-[#1a5f66] active:scale-95"
+			class="shrink-0 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
-				><path d="M12 4v16m8-8H4" /></svg
-			>
-			Tambah Instrumen
+			+ Tambah instrumen
 		</button>
 	</div>
 
-	<!-- Assets Grid -->
-	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-		{#if loading}
+	<!-- Assets -->
+	{#if loading}
+		<div class="space-y-3 pt-6">
 			{#each [0, 1, 2] as i (i)}
-				<div class="h-56 animate-pulse rounded-[2.5rem] border border-gray-100 bg-white"></div>
+				<div class="h-12 animate-pulse rounded bg-ink/5"></div>
 			{/each}
-		{:else if assets.length === 0}
+		</div>
+	{:else if assets.length === 0}
+		<div class="flex flex-col items-center gap-3 py-20 text-center">
+			<p class="font-serif text-2xl text-ink">Belum ada instrumen investasi</p>
+			<p class="text-sm text-ink/45">Klik "+ Tambah instrumen" untuk mulai mencatat aset Anda.</p>
+		</div>
+	{:else}
+		<!-- Desktop: editorial table -->
+		<div class="hidden pt-4 lg:block">
 			<div
-				class="col-span-full space-y-4 rounded-[2.5rem] border border-dashed border-gray-200 bg-white py-20 text-center"
+				class="grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_1.1fr_auto] gap-4 border-b border-ink/25 py-3 text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 			>
-				<div
-					class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-gray-300"
-				>
-					<svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-						/></svg
-					>
-				</div>
-				<div class="space-y-1">
-					<p class="font-bold text-[#0a2e31]">Belum ada instrumen investasi</p>
-					<p class="text-xs text-gray-400">Klik tombol di atas untuk mulai mencatat aset Anda.</p>
-				</div>
+				<span>Aset</span>
+				<span>Kepemilikan</span>
+				<span class="text-right">Modal</span>
+				<span class="text-right">Harga live</span>
+				<span class="text-right">Nilai sekarang</span>
+				<span class="text-right">Untung / rugi</span>
+				<span></span>
 			</div>
-		{:else}
 			{#each assets as asset (asset.id)}
 				{@const livePrice = priceCache[asset.id]}
 				{@const currentValue = livePrice !== undefined ? livePrice * asset.units : null}
@@ -371,126 +353,130 @@
 				{@const gainLoss = currentValue !== null ? currentValue - costBasis : null}
 				{@const gainLossPct =
 					gainLoss !== null && costBasis > 0 ? (gainLoss / costBasis) * 100 : null}
+				{@const unitLabel = asset.asset_type === 'GOLD' ? 'gram' : 'unit'}
 
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<div
-					class="group relative overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+					class="group grid grid-cols-[1.4fr_0.8fr_1fr_1fr_1fr_1.1fr_auto] items-baseline gap-4 border-b border-ink/8 py-5 text-[13.5px]"
+					onclick={() => openHistoryModal(asset)}
+					role="button"
+					tabindex="0"
 				>
-					<div
-						class="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-teal-50/50 transition-transform duration-700 group-hover:scale-125"
-					></div>
-
-					<div class="relative z-10 flex h-full flex-col gap-5">
-						<!-- Asset Header -->
-						<div class="flex items-start justify-between">
-							<div>
-								<span
-									class="mb-2 inline-block rounded-full bg-teal-50 px-3 py-1 text-[10px] font-black tracking-widest text-teal-600 uppercase"
-								>
-									{asset.asset_type}
-								</span>
-								<h3 class="text-xl font-black text-[#0a2e31]">{asset.name}</h3>
-								<p class="text-xs font-bold text-gray-400">{asset.symbol ?? '—'}</p>
-							</div>
-							<button
-								aria-label="Edit {asset.name}"
-								onclick={() => openEditModal(asset)}
-								class="p-2 text-gray-300 transition-colors hover:text-[#0a2e31]"
-							>
-								<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-									><path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-									/></svg
-								>
-							</button>
-						</div>
-
-						<!-- Live Price Block -->
+					<span class="cursor-pointer">
+						<span class="font-serif text-[19px] text-ink">{asset.name}</span>
+						<span class="text-[11px] text-ink/45">· {asset.symbol ?? '—'} · {asset.asset_type}</span
+						>
+					</span>
+					<span class="text-ink tabular-nums">{formatNumber(asset.units)} {unitLabel}</span>
+					<span class="text-right text-ink/60 tabular-nums">{formatNumber(costBasis, 0)}</span>
+					<span class="text-right tabular-nums">
 						{#if priceLoading[asset.id]}
-							<div class="h-16 animate-pulse rounded-2xl bg-gray-50"></div>
+							<span class="text-ink/35">…</span>
 						{:else if livePrice !== undefined}
-							<div
-								class="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-emerald-50 p-4"
+							{formatNumber(livePrice, 0)}
+							<span
+								class="text-[10px] {priceFresh[asset.id] ? 'text-teal' : 'text-gold'}"
+								title={priceFresh[asset.id] ? 'Data segar' : 'Data dari cache'}>●</span
 							>
-								<div class="mb-1 flex items-center justify-between">
-									<span class="text-[10px] font-black tracking-widest text-teal-600 uppercase"
-										>Harga Live</span
-									>
-									<span
-										class="flex items-center gap-1 text-[10px] font-bold text-teal-500"
-										title={priceFresh[asset.id] ? 'Data segar' : 'Data dari cache'}
-									>
-										<span
-											class="inline-block h-1.5 w-1.5 rounded-full {priceFresh[asset.id]
-												? 'bg-green-400'
-												: 'bg-yellow-400'}"
-										></span>
-										{priceFresh[asset.id] ? 'Segar' : 'Cache'}
-									</span>
-								</div>
-								<p class="text-lg font-black text-[#0a2e31]">{formatCurrency(livePrice)}</p>
-							</div>
+						{:else}
+							<span class="text-ink/35">—</span>
 						{/if}
-
-						<!-- Stats Row -->
-						<div class="grid grid-cols-2 gap-3">
-							<div class="space-y-0.5">
-								<p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-									Kepemilikan
-								</p>
-								<p class="text-base font-black text-[#0a2e31]">
-									{formatNumber(asset.units)}
-									<span class="ml-0.5 text-xs font-bold text-gray-400">{asset.asset_type === 'GOLD' ? 'gram' : 'Unit'}</span>
-								</p>
-							</div>
-
-							{#if currentValue !== null}
-								<div class="space-y-0.5 text-right">
-									<p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-										Nilai Sekarang
-									</p>
-									<p class="text-base font-black text-[#0a2e31]">{formatCurrency(currentValue)}</p>
-								</div>
-							{:else}
-								<div class="space-y-0.5 text-right">
-									<p class="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-										Avg Beli
-									</p>
-									<p class="text-sm font-bold text-[#0a2e31]">
-										{formatCurrency(asset.avg_buy_price_idr)}
-									</p>
-								</div>
-							{/if}
-						</div>
-
-						<!-- Gain/Loss Badge -->
+					</span>
+					<span class="text-right font-semibold text-ink tabular-nums">
+						{currentValue !== null ? formatNumber(currentValue, 0) : '—'}
+					</span>
+					<span
+						class="text-right tabular-nums {gainLoss !== null && gainLoss >= 0
+							? 'font-semibold text-teal'
+							: gainLoss !== null
+								? 'font-semibold text-clay'
+								: 'text-ink/35'}"
+					>
 						{#if gainLoss !== null && gainLossPct !== null && costBasis > 0}
-							<div
-								class="flex items-center justify-between rounded-xl px-3 py-2 {gainLoss >= 0
-									? 'bg-green-50 text-green-700'
-									: 'bg-red-50 text-red-600'}"
-							>
-								<span class="text-[10px] font-black tracking-widest uppercase">
-									{gainLoss >= 0 ? 'Untung' : 'Rugi'}
-								</span>
-								<div class="text-right">
-									<span class="text-sm font-black">{formatPct(gainLossPct)}</span>
-									<span class="ml-2 text-xs font-bold opacity-70"
-										>{gainLoss >= 0 ? '+' : ''}{formatCurrency(gainLoss)}</span
-									>
-								</div>
-							</div>
+							{formatPct(gainLossPct)} · {gainLoss >= 0 ? '+' : ''}{formatNumber(gainLoss, 0)}
+						{:else}
+							—
 						{/if}
+					</span>
+					<span
+						class="flex justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+					>
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								fetchPrice(asset);
+							}}
+							disabled={priceLoading[asset.id] || !asset.symbol}
+							class="p-1 text-ink/30 transition-colors hover:text-teal disabled:opacity-40"
+							title="Perbarui harga"
+							aria-label="Perbarui harga {asset.name}"
+						>
+							<svg
+								class="h-4 w-4 {priceLoading[asset.id] ? 'animate-spin' : ''}"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+								/>
+							</svg>
+						</button>
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								openEditModal(asset);
+							}}
+							class="p-1 text-ink/30 transition-colors hover:text-ink"
+							aria-label="Edit {asset.name}"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+								/>
+							</svg>
+						</button>
+					</span>
+				</div>
+			{/each}
+			<p class="mt-3.5 text-[11.5px] text-ink/45">
+				<span class="text-teal">●</span> harga segar · <span class="text-gold">●</span> dari cache — klik
+				baris untuk riwayat beli/jual
+			</p>
+		</div>
 
-						<!-- Actions -->
-						<div class="mt-auto flex gap-2">
+		<!-- Mobile: editorial list -->
+		<div class="pt-4 lg:hidden">
+			{#each assets as asset (asset.id)}
+				{@const livePrice = priceCache[asset.id]}
+				{@const currentValue = livePrice !== undefined ? livePrice * asset.units : null}
+				{@const costBasis = asset.avg_buy_price_idr * asset.units}
+				{@const gainLoss = currentValue !== null ? currentValue - costBasis : null}
+				{@const gainLossPct =
+					gainLoss !== null && costBasis > 0 ? (gainLoss / costBasis) * 100 : null}
+				{@const unitLabel = asset.asset_type === 'GOLD' ? 'gram' : 'unit'}
+
+				<div class="border-b border-ink/8 py-4">
+					<div class="flex items-baseline justify-between gap-3">
+						<button class="min-w-0 text-left" onclick={() => openHistoryModal(asset)}>
+							<span class="font-serif text-[19px] text-ink">{asset.name}</span>
+							<p class="text-[11px] text-ink/45">
+								{asset.symbol ?? '—'} · {asset.asset_type} · {formatNumber(asset.units)}
+								{unitLabel}
+							</p>
+						</button>
+						<div class="flex shrink-0 items-center gap-1">
 							<button
 								onclick={() => fetchPrice(asset)}
 								disabled={priceLoading[asset.id] || !asset.symbol}
-								class="rounded-xl bg-gray-50 p-3 text-[#0a2e31] transition-all hover:bg-gray-100 disabled:opacity-40"
-								title="Perbarui Harga"
+								class="p-1 text-ink/30 transition-colors hover:text-teal disabled:opacity-40"
+								title="Perbarui harga"
 								aria-label="Perbarui harga {asset.name}"
 							>
 								<svg
@@ -498,7 +484,7 @@
 									fill="none"
 									viewBox="0 0 24 24"
 									stroke="currentColor"
-									stroke-width="3"
+									stroke-width="2"
 								>
 									<path
 										stroke-linecap="round"
@@ -508,56 +494,90 @@
 								</svg>
 							</button>
 							<button
-								onclick={() => openHistoryModal(asset)}
-								class="flex-1 rounded-xl bg-gray-50 py-3 text-[11px] font-black tracking-[0.1em] text-[#0a2e31] uppercase transition-all hover:bg-teal-50 hover:text-teal-700"
+								onclick={() => openEditModal(asset)}
+								class="p-1 text-ink/30 transition-colors hover:text-ink"
+								aria-label="Edit {asset.name}"
 							>
-								Riwayat & Transaksi
+								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+									/>
+								</svg>
 							</button>
 						</div>
 					</div>
+					<div class="mt-2 flex items-baseline justify-between text-[13px]">
+						<span class="text-ink/60">
+							{#if livePrice !== undefined}
+								{formatCurrency(currentValue ?? 0)}
+								<span
+									class="text-[10px] {priceFresh[asset.id] ? 'text-teal' : 'text-gold'}"
+									title={priceFresh[asset.id] ? 'Data segar' : 'Data dari cache'}>●</span
+								>
+							{:else}
+								Modal {formatCurrency(costBasis)}
+							{/if}
+						</span>
+						{#if gainLoss !== null && gainLossPct !== null && costBasis > 0}
+							<span
+								class="tabular-nums {gainLoss >= 0
+									? 'font-semibold text-teal'
+									: 'font-semibold text-clay'}"
+							>
+								{formatPct(gainLossPct)} · {gainLoss >= 0 ? '+' : ''}{formatNumber(gainLoss, 0)}
+							</span>
+						{/if}
+					</div>
 				</div>
 			{/each}
-		{/if}
-	</div>
+			<p class="mt-3.5 text-[11.5px] text-ink/45">
+				<span class="text-teal">●</span> harga segar · <span class="text-gold">●</span> dari cache — ketuk
+				aset untuk riwayat.
+			</p>
+		</div>
+	{/if}
 </div>
 
 <!-- Modal Tambah / Edit Instrumen -->
 {#if showAssetModal}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2e31]/40 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
-			class="w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
+			class="w-full max-w-lg overflow-hidden rounded-2xl border border-ink/10 bg-card shadow-xl"
 			in:fly={{ y: 20, duration: 400 }}
 		>
-			<div class="space-y-8 p-10">
+			<div class="space-y-6 p-8 sm:p-10">
 				<div class="flex items-center justify-between">
-					<h2 class="text-2xl font-black text-[#0a2e31]">
-						{assetForm.id ? 'Edit Instrumen' : 'Tambah Instrumen'}
+					<h2 class="font-serif text-2xl text-ink">
+						{assetForm.id ? 'Edit instrumen' : 'Tambah instrumen'}
 					</h2>
 					<button
 						aria-label="Tutup modal"
 						onclick={() => (showAssetModal = false)}
-						class="text-gray-300 transition-colors hover:text-gray-500"
+						class="rounded-full p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 					>
 						<svg
-							class="h-6 w-6"
+							class="h-5 w-5"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
-							stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg
+							stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg
 						>
 					</button>
 				</div>
 
 				<form onsubmit={handleSaveAsset} class="space-y-5">
 					<!-- Nama -->
-					<div class="space-y-2">
+					<div>
 						<label
 							for="name"
-							class="block px-1 text-[11px] font-black tracking-widest text-gray-400 uppercase"
-							>Nama Aset</label
+							class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+							>Nama aset</label
 						>
 						<input
 							id="name"
@@ -565,22 +585,22 @@
 							required
 							bind:value={assetForm.name}
 							placeholder="Contoh: Bitcoin, BBCA, Emas"
-							class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-bold text-[#0a2e31] outline-none transition-all focus:ring-4 focus:ring-teal-50"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 						/>
 					</div>
 
 					<div class="grid grid-cols-2 gap-4">
 						<!-- Tipe -->
-						<div class="space-y-2">
+						<div>
 							<label
 								for="type"
-								class="block px-1 text-[11px] font-black tracking-widest text-gray-400 uppercase"
-								>Tipe Aset</label
+								class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+								>Tipe aset</label
 							>
 							<select
 								id="type"
 								bind:value={assetForm.asset_type}
-								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-bold text-[#0a2e31] outline-none transition-all focus:ring-4 focus:ring-teal-50"
+								class="w-full cursor-pointer appearance-none rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 							>
 								{#each assetTypes as type (type.value)}
 									<option value={type.value}>{type.label}</option>
@@ -589,10 +609,10 @@
 						</div>
 
 						<!-- Simbol -->
-						<div class="space-y-2">
+						<div>
 							<label
 								for="symbol"
-								class="block px-1 text-[11px] font-black tracking-widest text-gray-400 uppercase"
+								class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Simbol</label
 							>
 							<input
@@ -604,30 +624,30 @@
 									: assetForm.asset_type === 'GOLD'
 										? 'tether-gold'
 										: 'BBCA'}
-								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-bold text-[#0a2e31] outline-none transition-all focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 							/>
 						</div>
 					</div>
 
 					{#if selectedAssetTypeHint}
-						<p class="px-1 text-[11px] font-medium text-teal-600">
-							💡 {selectedAssetTypeHint}
+						<p class="text-[12px] text-teal">
+							{selectedAssetTypeHint}
 						</p>
 					{/if}
 
 					<!-- Pembelian awal (hanya saat tambah) -->
 					{#if !assetForm.id}
-						<div class="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-5">
-							<p class="text-[11px] font-black tracking-widest text-gray-400 uppercase">
-								Pembelian Awal
+						<div class="space-y-4 rounded-[10px] border border-ink/10 bg-field p-5">
+							<p class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+								Pembelian awal
 							</p>
 
 							<div class="grid grid-cols-2 gap-4">
-								<div class="space-y-2">
+								<div>
 									<label
 										for="qty"
-										class="block text-[11px] font-black tracking-widest text-gray-400 uppercase"
-										>{assetForm.asset_type === 'GOLD' ? 'Jumlah (gram)' : 'Jumlah Unit'}</label
+										class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+										>{assetForm.asset_type === 'GOLD' ? 'Jumlah (gram)' : 'Jumlah unit'}</label
 									>
 									<input
 										id="qty"
@@ -636,15 +656,15 @@
 										min="0"
 										bind:value={assetForm.units}
 										placeholder={assetForm.asset_type === 'GOLD' ? '10' : '0.00004408'}
-										class="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+										class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink tabular-nums outline-none focus:border-teal"
 									/>
 								</div>
 
-								<div class="space-y-2">
+								<div>
 									<label
 										for="nilai"
-										class="block text-[11px] font-black tracking-widest text-gray-400 uppercase"
-										>Nilai Pembelian (Rp)</label
+										class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+										>Nilai pembelian (Rp)</label
 									>
 									<input
 										id="nilai"
@@ -653,39 +673,39 @@
 										min="0"
 										bind:value={assetForm.nilai_pembelian}
 										placeholder="49998"
-										class="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+										class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink tabular-nums outline-none focus:border-teal"
 									/>
 								</div>
 							</div>
 
 							{#if previewAvgPrice > 0}
-								<div class="flex items-center justify-between rounded-xl bg-teal-50 px-4 py-3">
-									<span class="text-[10px] font-black tracking-widest text-teal-600 uppercase"
-										>Harga Rata-Rata</span
+								<div class="flex items-center justify-between border-t border-ink/10 pt-3">
+									<span class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+										>Harga rata-rata</span
 									>
-									<span class="text-sm font-black text-teal-800"
-										>{formatCurrency(previewAvgPrice)}/Unit</span
+									<span class="text-sm font-semibold text-teal tabular-nums"
+										>{formatCurrency(previewAvgPrice)}/unit</span
 									>
 								</div>
 							{/if}
 						</div>
 					{/if}
 
-					<div class="flex gap-4 pt-2">
+					<div class="flex gap-3 pt-1">
 						{#if assetForm.id}
 							<button
 								type="button"
 								onclick={() => handleDeleteAsset(assetForm.id)}
-								class="rounded-2xl border-2 border-red-50 px-6 py-4 text-xs font-black tracking-widest text-red-500 uppercase transition-all hover:bg-red-50"
+								class="rounded-full border border-ink/15 px-5 py-3 text-[13px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5"
 							>
 								Hapus
 							</button>
 						{/if}
 						<button
 							type="submit"
-							class="flex-1 rounded-2xl bg-[#0a2e31] py-4 text-xs font-black tracking-widest text-white uppercase shadow-xl transition-all hover:bg-black active:scale-[0.98]"
+							class="flex-1 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
 						>
-							{assetForm.id ? 'Simpan Perubahan' : 'Tambah Aset'}
+							{assetForm.id ? 'Simpan perubahan' : 'Tambah aset'}
 						</button>
 					</div>
 				</form>
@@ -697,74 +717,71 @@
 <!-- Modal Riwayat & Transaksi -->
 {#if showHistoryModal && selectedAsset}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2e31]/40 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
-			class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[3rem] bg-gray-50 shadow-2xl"
+			class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-ink/10 bg-card shadow-xl"
 			in:fly={{ y: 20, duration: 400 }}
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-gray-100 bg-white p-8">
+			<div class="flex items-center justify-between border-b border-ink/10 px-8 py-6">
 				<div>
-					<h2 class="text-2xl font-black text-[#0a2e31]">{selectedAsset.name}</h2>
-					<p class="text-xs font-bold text-gray-400">
+					<h2 class="font-serif text-2xl text-ink">{selectedAsset.name}</h2>
+					<p class="mt-0.5 text-[12px] text-ink/50">
 						{selectedAsset.symbol ?? '—'} &middot; {selectedAsset.asset_type} &middot;
-						{formatNumber(selectedAsset.units)} Unit
+						{formatNumber(selectedAsset.units)}
+						{selectedAsset.asset_type === 'GOLD' ? 'gram' : 'unit'}
 					</p>
 				</div>
 				<button
 					aria-label="Tutup riwayat"
 					onclick={() => (showHistoryModal = false)}
-					class="p-2 text-gray-300 hover:text-gray-500"
+					class="rounded-full p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 				>
 					<svg
-						class="h-6 w-6"
+						class="h-5 w-5"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
-						stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg
+						stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg
 					>
 				</button>
 			</div>
 
 			<div class="grid flex-1 grid-cols-1 gap-8 overflow-y-auto p-8 lg:grid-cols-5">
 				<!-- History List -->
-				<div class="space-y-4 lg:col-span-3">
-					<h3 class="text-sm font-black tracking-widest text-[#0a2e31] uppercase">
-						Riwayat Transaksi
+				<div class="lg:col-span-3">
+					<h3 class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Riwayat transaksi
 					</h3>
 
 					{#if historyLoading}
-						<div class="space-y-3">
+						<div class="space-y-3 pt-4">
 							{#each [0, 1, 2] as i (i)}
-								<div class="h-20 animate-pulse rounded-2xl bg-white"></div>
+								<div class="h-10 animate-pulse rounded bg-ink/5"></div>
 							{/each}
 						</div>
 					{:else if history.length === 0}
-						<div class="rounded-3xl border border-gray-100 bg-white p-12 text-center">
-							<p class="text-sm font-bold text-gray-400">Belum ada riwayat transaksi.</p>
-						</div>
+						<p class="pt-6 text-sm text-ink/45">Belum ada riwayat transaksi.</p>
 					{:else}
-						<div class="space-y-3">
+						<div class="pt-2">
 							{#each history as entry (entry.id)}
-								<div
-									class="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-5 transition-colors hover:border-teal-100"
-								>
-									<div class="flex items-center gap-4">
-										<div
-											class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[10px] font-black {entry.transaction_type ===
+								<div class="flex items-baseline justify-between gap-3 border-b border-ink/8 py-4">
+									<div class="flex items-baseline gap-3">
+										<span
+											class="shrink-0 rounded-full border px-2 py-px text-[11px] font-semibold {entry.transaction_type ===
 											'BUY'
-												? 'bg-green-50 text-green-600'
-												: 'bg-red-50 text-red-500'}"
+												? 'border-teal/30 text-teal'
+												: 'border-clay/30 text-clay'}"
 										>
-											{entry.transaction_type}
-										</div>
+											{entry.transaction_type === 'BUY' ? 'Beli' : 'Jual'}
+										</span>
 										<div>
-											<p class="text-sm font-black text-[#0a2e31]">
-												{formatNumber(entry.quantity_change)} Unit
+											<p class="text-sm font-medium text-ink tabular-nums">
+												{formatNumber(entry.quantity_change)} unit
 											</p>
-											<p class="text-[10px] font-bold text-gray-400">
+											<p class="mt-0.5 text-[11px] text-ink/45">
 												{new Date(entry.transaction_date).toLocaleDateString('id-ID', {
 													day: 'numeric',
 													month: 'short',
@@ -774,10 +791,10 @@
 										</div>
 									</div>
 									<div class="text-right">
-										<p class="text-sm font-black text-[#0a2e31]">
+										<p class="text-sm font-medium text-ink tabular-nums">
 											{formatCurrency(entry.total_value)}
 										</p>
-										<p class="text-[10px] font-bold text-gray-400">
+										<p class="mt-0.5 text-[11px] text-ink/45 tabular-nums">
 											@{formatCurrency(entry.price_per_unit)}/unit
 										</p>
 									</div>
@@ -789,44 +806,42 @@
 
 				<!-- Form Catat Transaksi -->
 				<div class="lg:col-span-2">
-					<div
-						class="sticky top-0 space-y-5 rounded-3xl border border-gray-100 bg-white p-7 shadow-sm"
-					>
-						<h3 class="text-sm font-black tracking-widest text-[#0a2e31] uppercase">
-							Catat Transaksi
+					<div class="sticky top-0 rounded-[10px] border border-ink/10 bg-field p-6">
+						<h3 class="mb-4 text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+							Catat transaksi
 						</h3>
 
 						<form onsubmit={handleRecordHistory} class="space-y-4">
 							<!-- BUY / SELL Toggle -->
-							<div class="flex rounded-xl bg-gray-50 p-1">
+							<div class="flex rounded-full border border-ink/20 p-1 text-[13px] font-semibold">
 								<button
 									type="button"
 									onclick={() => (historyForm.transaction_type = 'BUY')}
-									class="flex-1 rounded-lg py-2.5 text-[10px] font-black tracking-widest uppercase transition-all {historyForm.transaction_type ===
+									class="flex-1 rounded-full py-2 transition-colors {historyForm.transaction_type ===
 									'BUY'
-										? 'bg-white text-green-600 shadow-sm'
-										: 'text-gray-400'}"
+										? 'bg-ink text-card'
+										: 'text-ink/60'}"
 								>
 									Beli
 								</button>
 								<button
 									type="button"
 									onclick={() => (historyForm.transaction_type = 'SELL')}
-									class="flex-1 rounded-lg py-2.5 text-[10px] font-black tracking-widest uppercase transition-all {historyForm.transaction_type ===
+									class="flex-1 rounded-full py-2 transition-colors {historyForm.transaction_type ===
 									'SELL'
-										? 'bg-white text-red-500 shadow-sm'
-										: 'text-gray-400'}"
+										? 'bg-ink text-card'
+										: 'text-ink/60'}"
 								>
 									Jual
 								</button>
 							</div>
 
 							<!-- Jumlah Unit -->
-							<div class="space-y-1.5">
+							<div>
 								<label
 									for="h-qty"
-									class="px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
-									>Jumlah Unit</label
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+									>Jumlah unit</label
 								>
 								<input
 									id="h-qty"
@@ -836,18 +851,16 @@
 									required
 									bind:value={historyForm.quantity_change}
 									placeholder="0.00004408"
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+									class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink tabular-nums outline-none focus:border-teal"
 								/>
 							</div>
 
 							<!-- Nilai Total Transaksi -->
-							<div class="space-y-1.5">
+							<div>
 								<label
 									for="h-nilai"
-									class="px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
-									>Nilai {historyForm.transaction_type === 'BUY'
-										? 'Pembelian'
-										: 'Penjualan'} (Rp)</label
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+									>Nilai {historyForm.transaction_type === 'BUY' ? 'pembelian' : 'penjualan'} (Rp)</label
 								>
 								<input
 									id="h-nilai"
@@ -857,27 +870,27 @@
 									required
 									bind:value={historyForm.nilai_total}
 									placeholder="49998"
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+									class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink tabular-nums outline-none focus:border-teal"
 								/>
 							</div>
 
 							<!-- Preview harga per unit -->
 							{#if previewPricePerUnit > 0}
-								<div class="flex items-center justify-between rounded-xl bg-teal-50 px-4 py-2.5">
-									<span class="text-[10px] font-black tracking-widest text-teal-600 uppercase"
-										>Harga/Unit</span
+								<div class="flex items-center justify-between border-t border-ink/10 pt-3">
+									<span class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+										>Harga/unit</span
 									>
-									<span class="text-sm font-black text-teal-800"
+									<span class="text-sm font-semibold text-teal tabular-nums"
 										>{formatCurrency(previewPricePerUnit)}</span
 									>
 								</div>
 							{/if}
 
 							<!-- Tanggal -->
-							<div class="space-y-1.5">
+							<div>
 								<label
 									for="h-date"
-									class="px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 									>Tanggal</label
 								>
 								<input
@@ -885,15 +898,15 @@
 									type="date"
 									required
 									bind:value={historyForm.transaction_date}
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+									class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 								/>
 							</div>
 
 							<!-- Catatan -->
-							<div class="space-y-1.5">
+							<div>
 								<label
 									for="h-notes"
-									class="px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 									>Catatan (opsional)</label
 								>
 								<input
@@ -901,15 +914,15 @@
 									type="text"
 									bind:value={historyForm.notes}
 									placeholder="No. Order 78313339"
-									class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] outline-none transition-all focus:ring-2 focus:ring-teal-400"
+									class="w-full rounded-[10px] border border-ink/25 bg-card px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 								/>
 							</div>
 
 							<button
 								type="submit"
-								class="w-full rounded-xl bg-[#0a2e31] py-3.5 text-[10px] font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98]"
+								class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
 							>
-								Simpan Transaksi
+								Simpan transaksi
 							</button>
 						</form>
 					</div>
@@ -927,10 +940,10 @@
 		background: transparent;
 	}
 	::-webkit-scrollbar-thumb {
-		background: #e5e7eb;
+		background: rgba(18, 49, 46, 0.15);
 		border-radius: 10px;
 	}
 	::-webkit-scrollbar-thumb:hover {
-		background: #d1d5db;
+		background: rgba(18, 49, 46, 0.3);
 	}
 </style>

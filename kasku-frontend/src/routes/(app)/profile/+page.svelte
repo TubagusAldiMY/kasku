@@ -3,6 +3,7 @@
 	import { fly } from 'svelte/transition';
 	import { apiFetch } from '$lib/api/client';
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 
 	let loading = $state(false);
 	let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -116,9 +117,9 @@
 
 	const tierBadgeClass = $derived(() => {
 		const name = subscriptionPlanName.toLowerCase();
-		if (name.includes('ultimate')) return 'bg-amber-500';
-		if (name.includes('pro') || name.includes('premium')) return 'bg-indigo-600';
-		return 'bg-teal-600';
+		if (name.includes('ultimate')) return 'border-gold/30 text-gold';
+		if (name.includes('pro') || name.includes('premium')) return 'border-teal/30 text-teal';
+		return 'border-ink/15 text-ink/60';
 	});
 
 	async function updatePreferences() {
@@ -228,97 +229,99 @@
 	}
 </script>
 
-<div class="animate-in fade-in mx-auto max-w-4xl space-y-10 pb-20 duration-700">
-	<div class="space-y-1">
-		<h1 class="text-3xl font-black text-[#0a2e31]">Pengaturan Profil</h1>
-		<p class="font-medium text-gray-500">Kelola informasi akun dan keamanan Anda.</p>
+<div class="animate-in fade-in mx-auto max-w-4xl pb-4 duration-700">
+	<div class="border-b border-ink/10 pb-8">
+		<h1 class="font-serif text-4xl tracking-tight text-ink">Pengaturan Profil</h1>
+		<p class="mt-2 text-sm text-ink/60">Kelola informasi akun dan keamanan Anda.</p>
 	</div>
 
 	{#if message}
 		<div
 			in:fly={{ y: -10, duration: 400 }}
-			class="flex items-center gap-3 rounded-2xl border p-4 {message.type === 'success'
-				? 'border-green-100 bg-green-50 text-green-800'
-				: 'border-red-100 bg-red-50 text-red-800'}"
+			class="mt-6 flex items-center gap-3 rounded-xl border px-4 py-3 {message.type === 'success'
+				? 'border-teal/25 bg-teal/5 text-teal'
+				: 'border-clay/25 bg-clay/5 text-clay'}"
 		>
-			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				{#if message.type === 'success'}
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="2.5"
+						stroke-width="2"
 						d="M5 13l4 4L19 7"
 					/>
 				{:else}
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="2.5"
+						stroke-width="2"
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				{/if}
 			</svg>
-			<span class="text-sm font-bold">{message.text}</span>
+			<span class="text-sm font-medium">{message.text}</span>
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-10 lg:grid-cols-3">
+	<div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
 		<!-- Sidebar Info -->
 		<div class="space-y-6">
-			<div class="rounded-[2.5rem] border border-gray-100 bg-white p-8 text-center shadow-sm">
+			<div class="rounded-2xl border border-ink/10 bg-card p-8 text-center">
 				<div
-					class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-teal-500/10 text-4xl font-black text-teal-600 shadow-xl"
+					class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border border-teal/25 bg-teal/5 font-serif text-4xl text-teal"
 				>
 					{auth.user?.username?.charAt(0).toUpperCase()}
 				</div>
-				<h2 class="text-xl font-black text-[#0a2e31]">{auth.user?.username}</h2>
-				<p class="mt-1 text-xs font-bold tracking-widest text-gray-400 uppercase">
+				<h2 class="font-serif text-2xl text-ink">{auth.user?.username}</h2>
+				<p class="mt-1 text-xs text-ink/45">
 					{auth.user?.email}
 				</p>
 
-				<div class="mt-8 flex flex-col gap-2 border-t border-gray-50 pt-6">
-					<div class="flex items-center justify-between px-2 text-xs">
-						<span class="font-bold text-gray-400 uppercase">Paket</span>
+				<div class="mt-8 flex flex-col gap-3 border-t border-ink/10 pt-6 text-left">
+					<div class="flex items-center justify-between text-sm">
+						<span class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+							>Paket</span
+						>
 						{#if subscriptionLoading}
-							<span class="h-5 w-16 animate-pulse rounded-full bg-gray-100"></span>
+							<span class="h-5 w-16 animate-pulse rounded-full bg-ink/10"></span>
 						{:else}
-							<span class="rounded-full px-3 py-1 font-black text-white {tierBadgeClass()}">
+							<span
+								class="rounded-full border px-2 py-px text-[12px] font-semibold {tierBadgeClass()}"
+							>
 								{subscriptionPlanName}
 							</span>
 						{/if}
 					</div>
 					{#if subscriptionStatus && subscriptionStatus !== 'FREE'}
-						<div class="flex items-center justify-between px-2 text-xs">
-							<span class="font-bold text-gray-400 uppercase">Status</span>
+						<div class="flex items-center justify-between text-sm">
+							<span class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+								>Status</span
+							>
 							<span
-								class="font-bold {subscriptionStatus === 'ACTIVE'
-									? 'text-green-600'
-									: 'text-yellow-600'}"
+								class="font-semibold {subscriptionStatus === 'ACTIVE' ? 'text-teal' : 'text-gold'}"
 							>
 								{subscriptionStatus === 'ACTIVE' ? 'Aktif' : subscriptionStatus}
 							</span>
 						</div>
 					{/if}
-					<div class="flex items-center justify-between px-2 text-xs">
-						<span class="font-bold text-gray-400 uppercase">Bergabung</span>
-						<span class="font-bold text-[#0a2e31]">{formatJoinDate(profile.createdAt)}</span>
+					<div class="flex items-center justify-between text-sm">
+						<span class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+							>Bergabung</span
+						>
+						<span class="font-medium text-ink">{formatJoinDate(profile.createdAt)}</span>
 					</div>
 				</div>
 			</div>
 
-			<div
-				class="group relative overflow-hidden rounded-[2.5rem] bg-[#0a2e31] p-8 text-white shadow-xl"
-			>
-				<div
-					class="absolute -right-4 -bottom-4 h-24 w-24 rounded-full bg-white/5 transition-transform duration-700 group-hover:scale-150"
-				></div>
-				<h3 class="relative z-10 mb-2 text-lg font-bold">Upgrade ke Pro</h3>
-				<p class="relative z-10 mb-6 text-xs text-white/60">
+			<div class="rounded-2xl bg-ink p-8 text-card">
+				<h3 class="font-serif text-2xl">Upgrade ke Pro</h3>
+				<p class="mt-2 mb-6 text-sm text-mint/80">
 					Dapatkan kuota transaksi tak terbatas dan laporan PDF premium.
 				</p>
-				<button
-					class="relative z-10 w-full rounded-xl bg-[#217b84] py-3 text-xs font-black tracking-widest uppercase transition-all hover:bg-[#1a5f66]"
-					>Lihat Paket</button
+				<a
+					href={resolve('/billing')}
+					class="block w-full rounded-full bg-teal py-3 text-center text-[13px] font-semibold text-card transition-colors hover:bg-mint hover:text-ink"
+					>Lihat Paket</a
 				>
 			</div>
 		</div>
@@ -326,44 +329,44 @@
 		<!-- Forms -->
 		<div class="space-y-8 lg:col-span-2">
 			<!-- Account Form -->
-			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
-				<h3 class="text-xl font-black text-[#0a2e31]">Informasi Akun</h3>
+			<div class="space-y-6 rounded-2xl border border-ink/10 bg-card p-8 sm:p-10">
+				<h3 class="font-serif text-2xl text-ink">Informasi Akun</h3>
 
 				<form onsubmit={updateProfile} class="space-y-6">
 					<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div class="space-y-2">
 							<label
 								for="username"
-								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Username</label
 							>
 							<input
 								id="username"
 								type="text"
 								bind:value={profile.username}
-								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-medium text-[#0a2e31] transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-ink transition-colors outline-none focus:border-teal"
 							/>
 						</div>
 						<div class="space-y-2">
 							<label
 								for="email"
-								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Email</label
 							>
 							<input
 								id="email"
 								type="email"
 								bind:value={profile.email}
-								class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-5 py-3.5 font-medium text-[#0a2e31] transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-ink transition-colors outline-none focus:border-teal"
 							/>
 						</div>
 					</div>
 
-					<div class="pt-4">
+					<div class="pt-2">
 						<button
 							type="submit"
 							disabled={loading}
-							class="rounded-2xl bg-[#0a2e31] px-8 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50"
+							class="rounded-full bg-teal px-6 py-3 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-50"
 						>
 							{loading ? 'Menyimpan...' : 'Simpan Perubahan'}
 						</button>
@@ -372,21 +375,21 @@
 			</div>
 
 			<!-- Password Form -->
-			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
-				<h3 class="text-xl font-black text-[#0a2e31]">Keamanan</h3>
+			<div class="space-y-6 rounded-2xl border border-ink/10 bg-card p-8 sm:p-10">
+				<h3 class="font-serif text-2xl text-ink">Keamanan</h3>
 
 				<form onsubmit={changePassword} class="space-y-6">
 					<div class="space-y-2">
 						<label
 							for="current-pass"
-							class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>Katasandi Saat Ini</label
 						>
 						<input
 							id="current-pass"
 							type="password"
 							bind:value={passwordData.current}
-							class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-ink transition-colors outline-none focus:border-teal"
 							placeholder="••••••••"
 						/>
 					</div>
@@ -395,38 +398,38 @@
 						<div class="space-y-2">
 							<label
 								for="new-pass"
-								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Katasandi Baru</label
 							>
 							<input
 								id="new-pass"
 								type="password"
 								bind:value={passwordData.new}
-								class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-ink transition-colors outline-none focus:border-teal"
 								placeholder="••••••••"
 							/>
 						</div>
 						<div class="space-y-2">
 							<label
 								for="confirm-pass"
-								class="block px-1 text-[11px] font-bold tracking-widest text-gray-400 uppercase"
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Konfirmasi Baru</label
 							>
 							<input
 								id="confirm-pass"
 								type="password"
 								bind:value={passwordData.confirm}
-								class="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-3.5 transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-ink transition-colors outline-none focus:border-teal"
 								placeholder="••••••••"
 							/>
 						</div>
 					</div>
 
-					<div class="pt-4 text-right">
+					<div class="pt-2 text-right">
 						<button
 							type="submit"
 							disabled={loading || !passwordData.new}
-							class="rounded-2xl border-2 border-gray-100 bg-white px-8 py-3.5 text-xs font-black tracking-widest text-[#0a2e31] uppercase transition-all hover:border-teal-500 hover:text-teal-600 active:scale-[0.98] disabled:opacity-50"
+							class="rounded-full border border-ink/15 px-6 py-3 text-[13px] font-semibold text-ink transition-colors hover:border-teal/40 hover:text-teal disabled:opacity-50"
 						>
 							Ganti Katasandi
 						</button>
@@ -435,30 +438,28 @@
 			</div>
 
 			<!-- Notification Preferences Form -->
-			<div class="space-y-8 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-sm">
+			<div class="space-y-6 rounded-2xl border border-ink/10 bg-card p-8 sm:p-10">
 				<div class="flex items-center justify-between">
-					<h3 class="text-xl font-black text-[#0a2e31]">Pengaturan Notifikasi</h3>
+					<h3 class="font-serif text-2xl text-ink">Pengaturan Notifikasi</h3>
 					<div
-						class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-600"
+						class="flex h-10 w-10 items-center justify-center rounded-full border border-teal/25 text-teal"
 					>
-						<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								stroke-width="2"
+								stroke-width="1.8"
 								d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
 							/>
 						</svg>
 					</div>
 				</div>
 
-				<div class="space-y-6">
-					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+				<div>
+					<div class="flex items-center justify-between border-t border-ink/8 py-4">
 						<div class="space-y-0.5">
-							<p class="text-sm font-black text-[#0a2e31]">Notifikasi Email</p>
-							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
-								Kirim ringkasan dan berita ke email Anda
-							</p>
+							<p class="text-sm font-medium text-ink">Notifikasi Email</p>
+							<p class="text-[12px] text-ink/50">Kirim ringkasan dan berita ke email Anda</p>
 						</div>
 						<label class="relative inline-flex cursor-pointer items-center">
 							<input
@@ -467,17 +468,15 @@
 								class="peer sr-only"
 							/>
 							<div
-								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+								class="peer h-6 w-11 rounded-full bg-ink/15 peer-checked:bg-teal peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full"
 							></div>
 						</label>
 					</div>
 
-					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+					<div class="flex items-center justify-between border-t border-ink/8 py-4">
 						<div class="space-y-0.5">
-							<p class="text-sm font-black text-[#0a2e31]">Peringatan Pembayaran</p>
-							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
-								Beritahu saat tagihan paket berhasil dibayar
-							</p>
+							<p class="text-sm font-medium text-ink">Peringatan Pembayaran</p>
+							<p class="text-[12px] text-ink/50">Beritahu saat tagihan paket berhasil dibayar</p>
 						</div>
 						<label class="relative inline-flex cursor-pointer items-center">
 							<input
@@ -486,17 +485,15 @@
 								class="peer sr-only"
 							/>
 							<div
-								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+								class="peer h-6 w-11 rounded-full bg-ink/15 peer-checked:bg-teal peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full"
 							></div>
 						</label>
 					</div>
 
-					<div class="flex items-center justify-between rounded-2xl bg-gray-50 p-4">
+					<div class="flex items-center justify-between border-t border-b border-ink/8 py-4">
 						<div class="space-y-0.5">
-							<p class="text-sm font-black text-[#0a2e31]">Peringatan Kedaluwarsa</p>
-							<p class="text-[11px] font-bold tracking-tight text-gray-400 uppercase">
-								Ingatkan sebelum paket langganan habis
-							</p>
+							<p class="text-sm font-medium text-ink">Peringatan Kedaluwarsa</p>
+							<p class="text-[12px] text-ink/50">Ingatkan sebelum paket langganan habis</p>
 						</div>
 						<label class="relative inline-flex cursor-pointer items-center">
 							<input
@@ -505,16 +502,16 @@
 								class="peer sr-only"
 							/>
 							<div
-								class="peer h-6 w-11 rounded-full bg-gray-200 peer-checked:bg-teal-600 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"
+								class="peer h-6 w-11 rounded-full bg-ink/15 peer-checked:bg-teal peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:after:translate-x-full"
 							></div>
 						</label>
 					</div>
 
-					<div class="pt-4">
+					<div class="pt-6">
 						<button
 							onclick={updatePreferences}
 							disabled={prefLoading}
-							class="rounded-2xl bg-[#0a2e31] px-8 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50"
+							class="rounded-full bg-teal px-6 py-3 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-50"
 						>
 							{prefLoading ? 'Menyimpan...' : 'Simpan Preferensi'}
 						</button>

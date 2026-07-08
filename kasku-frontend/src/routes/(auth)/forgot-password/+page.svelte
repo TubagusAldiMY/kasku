@@ -45,99 +45,79 @@
 	}
 </script>
 
-<div class="animate-in fade-in slide-in-from-bottom-4 space-y-10 duration-700">
-	<div class="space-y-3 text-center">
-		<h2 class="text-3xl font-bold tracking-tight text-[#0a2e31]">Lupa Kata Sandi?</h2>
-		<p class="mx-auto max-w-[320px] text-[15px] leading-relaxed text-gray-500">
-			Masukkan email Anda untuk menerima tautan pemulihan kata sandi.
+<div class="space-y-8">
+	<div>
+		<h1 class="font-serif text-[34px] leading-tight tracking-tight text-ink">Lupa kata sandi?</h1>
+		<p class="mt-2.5 text-sm text-ink/60">
+			Masukkan emailmu untuk menerima tautan pemulihan kata sandi.
 		</p>
 	</div>
 
 	{#if message}
 		<div
 			in:fly={{ y: -10, duration: 400 }}
-			class="flex items-center gap-3 rounded-2xl border p-4 {message.type === 'success'
-				? 'border-green-100 bg-green-50 text-green-800'
-				: 'border-red-100 bg-red-50 text-red-800'}"
+			class="flex items-start gap-2.5 rounded-xl border p-4 {message.type === 'success'
+				? 'border-teal/25 bg-teal/5'
+				: 'border-clay/25 bg-clay/5'}"
 		>
-			<svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+			<svg
+				class="mt-px h-4 w-4 shrink-0 {message.type === 'success' ? 'text-teal' : 'text-clay'}"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
 				{#if message.type === 'success'}
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2.5"
-						d="M5 13l4 4L19 7"
-					/>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 				{:else}
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
-						stroke-width="2.5"
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				{/if}
 			</svg>
-			<span class="text-xs leading-tight font-bold">{message.text}</span>
+			<span
+				class="text-[13px] font-medium {message.type === 'success' ? 'text-teal' : 'text-clay'}"
+			>
+				{message.text}
+			</span>
 		</div>
 	{/if}
 
-	<form class="space-y-6" onsubmit={handleForgotPassword}>
+	<form class="space-y-5" onsubmit={handleForgotPassword}>
 		<div>
-			<label for="email" class="mb-2 block px-1 text-[13px] font-bold text-[#0a2e31]">
-				Alamat Email <span class="text-teal-600">*</span>
+			<label
+				for="email"
+				class="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+			>
+				Email
 			</label>
-			<div class="group relative">
-				<div
-					class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-300 transition-colors group-focus-within:text-[#217b84]"
-				>
-					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-						/>
-					</svg>
-				</div>
-				<input
-					id="email"
-					type="email"
-					required
-					bind:value={email}
-					class="block w-full rounded-2xl border border-gray-200 bg-gray-50/30 py-3.5 pr-4 pl-11 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-[#217b84] focus:bg-white focus:ring-4 focus:ring-teal-50/50"
-					placeholder="contoh@email.com"
-				/>
-			</div>
+			<input
+				id="email"
+				type="email"
+				required
+				bind:value={email}
+				placeholder="contoh@email.com"
+				class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+			/>
 		</div>
 
 		<button
 			type="submit"
 			disabled={loading}
-			class="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#217b84] py-4 text-[15px] font-bold text-white shadow-xl shadow-teal-900/10 transition-all hover:bg-[#1a5f66] active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
+			class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:opacity-70"
 		>
 			{#if loading}
-				<div
-					class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"
-				></div>
+				<span class="h-4 w-4 animate-spin rounded-full border-2 border-card/40 border-t-card"
+				></span>
 			{/if}
-			{loading ? 'Memproses...' : 'Kirim Tautan Pemulihan'}
+			{loading ? 'Memproses…' : 'Kirim tautan pemulihan'}
 		</button>
 	</form>
 
-	<div class="text-center">
-		<a
-			href={resolve('/login')}
-			class="inline-flex items-center gap-2 text-sm font-bold text-[#0a2e31] transition-colors hover:text-[#217b84]"
-		>
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2.5"
-					d="M10 19l-7-7m0 0l7-7m-7 7h18"
-				/>
-			</svg>
-			Kembali ke Login
-		</a>
-	</div>
+	<p class="text-center text-[13px] text-ink/55">
+		Ingat kata sandimu?
+		<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink">Kembali ke masuk</a>
+	</p>
 </div>

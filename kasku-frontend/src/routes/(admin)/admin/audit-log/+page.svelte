@@ -49,12 +49,13 @@
 	}
 
 	function actionBadge(action: string) {
-		if (action.startsWith('SUSPEND') || action.includes('DELETE')) return 'bg-red-50 text-red-700';
+		if (action.startsWith('SUSPEND') || action.includes('DELETE'))
+			return 'border-clay/30 text-clay';
 		if (action.startsWith('LOGIN') || action.startsWith('LOGOUT'))
-			return 'bg-gray-50 text-gray-700';
-		if (action.startsWith('OVERRIDE')) return 'bg-amber-50 text-amber-700';
-		if (action.startsWith('ACTIVATE')) return 'bg-green-50 text-green-700';
-		return 'bg-teal-50 text-teal-700';
+			return 'border-ink/15 text-ink/55';
+		if (action.startsWith('OVERRIDE')) return 'border-gold/30 text-gold';
+		if (action.startsWith('ACTIVATE')) return 'border-teal/30 text-teal';
+		return 'border-teal/30 text-teal';
 	}
 
 	async function loadEntries() {
@@ -104,9 +105,9 @@
 
 <div class="space-y-8">
 	<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Audit Log</h1>
-			<p class="font-medium text-gray-500">
+		<div>
+			<h1 class="font-serif text-3xl leading-tight tracking-tight text-ink">Audit log</h1>
+			<p class="mt-1.5 text-sm text-ink/55">
 				Jejak semua aksi administratif. Disimpan permanen untuk kepatuhan audit.
 			</p>
 		</div>
@@ -115,11 +116,11 @@
 				type="text"
 				bind:value={actionFilter}
 				placeholder="Filter action (e.g. SUSPEND_USER)…"
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
+				class="rounded-[10px] border border-ink/25 bg-field px-4 py-2.5 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
 			/>
 			<button
 				type="submit"
-				class="rounded-full bg-[#0a2e31] px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-[#143f43]"
+				class="rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 			>
 				Filter
 			</button>
@@ -127,69 +128,64 @@
 	</div>
 
 	{#if error}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-xs font-bold text-red-700"
-		>
-			{error}
+		<div class="flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+			<svg
+				class="mt-px h-4 w-4 shrink-0 text-clay"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
+			</svg>
+			<p class="text-[13px] font-medium text-clay">{error}</p>
 		</div>
 	{/if}
 
-	<div class="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm">
-		<table class="w-full text-left text-sm">
-			<thead class="border-b border-gray-100 bg-gray-50/60">
-				<tr class="text-[10px] font-black tracking-widest text-gray-500 uppercase">
-					<th class="px-6 py-4">Waktu</th>
-					<th class="px-6 py-4">Admin</th>
-					<th class="px-6 py-4">Aksi</th>
-					<th class="px-6 py-4">Target</th>
-					<th class="px-6 py-4">IP</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-50">
-				{#if loading && entries.length === 0}
-					{#each [0, 1, 2, 3, 4, 5] as i (i)}
-						<tr><td colspan="5" class="h-12 animate-pulse bg-gray-50/50"></td></tr>
-					{/each}
-				{:else if entries.length === 0}
-					<tr>
-						<td colspan="5" class="px-6 py-10 text-center text-xs font-bold text-gray-400">
-							Tidak ada entri audit.
-						</td>
-					</tr>
-				{:else}
-					{#each entries as e, i (e.id)}
-						<tr
-							in:fly={{ y: 8, delay: i * 10, duration: 180 }}
-							class="transition-colors hover:bg-gray-50/60"
-						>
-							<td class="px-6 py-3 font-mono text-xs text-gray-600">{formatDate(e.created_at)}</td>
-							<td class="px-6 py-3 text-xs font-bold text-[#0a2e31]">{e.admin_email}</td>
-							<td class="px-6 py-3">
-								<span
-									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {actionBadge(
-										e.action
-									)}"
+	<div class="border-t border-ink/25">
+		{#if loading && entries.length === 0}
+			<div class="space-y-3 pt-4">
+				{#each [0, 1, 2, 3, 4, 5] as i (i)}
+					<div class="h-8 animate-pulse rounded bg-ink/5"></div>
+				{/each}
+			</div>
+		{:else if entries.length === 0}
+			<p class="py-8 text-center text-sm text-ink/45">Tidak ada entri audit.</p>
+		{:else}
+			{#each entries as e, i (e.id)}
+				<div
+					in:fly={{ y: 8, delay: i * 10, duration: 180 }}
+					class="flex items-start justify-between gap-4 border-b border-ink/8 py-4"
+				>
+					<div class="min-w-0">
+						<p class="text-[13px] text-ink">
+							<span class="font-semibold text-ink">{e.admin_email}</span>
+							<span class="ml-2 rounded-full border px-2 py-px text-[11px] {actionBadge(e.action)}"
+								>{e.action}</span
+							>
+							{#if e.target_id}
+								<span class="ml-2 font-mono text-xs text-ink/60"
+									>{e.target_type}/{e.target_id.slice(0, 8)}…</span
 								>
-									{e.action}
-								</span>
-							</td>
-							<td class="px-6 py-3 text-xs text-gray-600">
-								{#if e.target_id}
-									<span class="font-mono">{e.target_type}/{e.target_id.slice(0, 8)}…</span>
-								{:else}
-									<span class="font-mono">{e.target_type}</span>
-								{/if}
-							</td>
-							<td class="px-6 py-3 font-mono text-xs text-gray-500">{e.ip_address}</td>
-						</tr>
-					{/each}
-				{/if}
-			</tbody>
-		</table>
+							{:else}
+								<span class="ml-2 font-mono text-xs text-ink/60">{e.target_type}</span>
+							{/if}
+						</p>
+						<p class="mt-1 text-[11.5px] text-ink/45">
+							{formatDate(e.created_at)} · <span class="font-mono">{e.ip_address}</span>
+						</p>
+					</div>
+				</div>
+			{/each}
+		{/if}
 	</div>
 
 	{#if meta && meta.total > 0}
-		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
+		<div class="flex items-center justify-between text-[13px] text-ink/55">
 			<span>
 				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
 					meta.page * meta.page_size,
@@ -201,16 +197,16 @@
 					type="button"
 					onclick={() => changePage(-1)}
 					disabled={page === 1 || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					← Sebelumnya
 				</button>
-				<span class="text-[#0a2e31]">Halaman {page} / {totalPages}</span>
+				<span class="font-semibold text-ink">Halaman {page} / {totalPages}</span>
 				<button
 					type="button"
 					onclick={() => changePage(1)}
 					disabled={page >= totalPages || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					Berikutnya →
 				</button>

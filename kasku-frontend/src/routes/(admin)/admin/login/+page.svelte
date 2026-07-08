@@ -52,81 +52,91 @@
 	<title>Login Admin · KasKu</title>
 </svelte:head>
 
-<div class="flex min-h-screen items-center justify-center bg-[#0a2e31] px-6">
-	<div class="w-full max-w-sm space-y-8 rounded-3xl bg-white p-10 shadow-2xl">
-		<div class="space-y-2 text-center">
-			<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500">
-				<svg
-					class="h-6 w-6 text-white"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
+<div class="flex min-h-screen items-center justify-center bg-ink px-6 py-16">
+	<div class="w-full max-w-sm">
+		<div class="mb-9 text-center">
+			<span class="inline-flex items-baseline gap-2.5">
+				<span class="font-serif text-[30px] leading-none tracking-tight text-card"
+					>Kas<em class="text-mint">Ku</em></span
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-					/>
-				</svg>
-			</div>
-			<h1 class="text-xl font-black text-[#0a2e31]">Administrator Panel</h1>
-			<p class="text-xs font-medium text-gray-500">
+				<span
+					class="rounded-full bg-mint/15 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-mint uppercase"
+				>
+					Admin
+				</span>
+			</span>
+			<p class="mt-4 text-[13px] text-card/55">
 				Akses dibatasi — semua aksi tercatat di audit log.
 			</p>
 		</div>
 
-		{#if error}
-			<div
-				class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-700"
-			>
-				{error}
-			</div>
-		{/if}
+		<div class="rounded-[18px] bg-card p-8">
+			{#if error}
+				<div class="mb-5 flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+					<svg
+						class="mt-px h-4 w-4 shrink-0 text-clay"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					<p class="text-[13px] font-medium text-clay">{error}</p>
+				</div>
+			{/if}
 
-		<form onsubmit={handleSubmit} class="space-y-5">
-			<div class="space-y-2">
-				<label
-					for="admin-username"
-					class="block text-[11px] font-black tracking-widest text-gray-400 uppercase"
+			<form onsubmit={handleSubmit} class="space-y-5">
+				<div>
+					<label
+						for="admin-username"
+						class="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+					>
+						Username
+					</label>
+					<input
+						id="admin-username"
+						type="text"
+						required
+						autocomplete="username"
+						bind:value={username}
+						class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					/>
+				</div>
+
+				<div>
+					<label
+						for="admin-password"
+						class="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+					>
+						Password
+					</label>
+					<input
+						id="admin-password"
+						type="password"
+						required
+						autocomplete="current-password"
+						bind:value={password}
+						class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					/>
+				</div>
+
+				<button
+					type="submit"
+					disabled={loading}
+					class="flex w-full items-center justify-center gap-2.5 rounded-full bg-ink py-3.5 text-sm font-semibold text-card transition-colors hover:bg-teal disabled:opacity-70"
 				>
-					Username
-				</label>
-				<input
-					id="admin-username"
-					type="text"
-					required
-					autocomplete="username"
-					bind:value={username}
-					class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-sm font-bold text-[#0a2e31] outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
-				/>
-			</div>
-
-			<div class="space-y-2">
-				<label
-					for="admin-password"
-					class="block text-[11px] font-black tracking-widest text-gray-400 uppercase"
-				>
-					Password
-				</label>
-				<input
-					id="admin-password"
-					type="password"
-					required
-					autocomplete="current-password"
-					bind:value={password}
-					class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-sm font-bold text-[#0a2e31] outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
-				/>
-			</div>
-
-			<button
-				type="submit"
-				disabled={loading}
-				class="w-full rounded-2xl bg-red-500 py-3.5 text-xs font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-red-600 active:scale-[0.98] disabled:opacity-60"
-			>
-				{loading ? 'Memproses…' : 'Masuk Panel Admin'}
-			</button>
-		</form>
+					{#if loading}
+						<span class="h-4 w-4 animate-spin rounded-full border-2 border-card/40 border-t-card"
+						></span>
+					{/if}
+					{loading ? 'Memproses…' : 'Masuk Panel Admin'}
+				</button>
+			</form>
+		</div>
 	</div>
 </div>

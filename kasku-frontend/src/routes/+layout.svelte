@@ -1,5 +1,8 @@
 <script lang="ts">
 	import './layout.css';
+	import '@fontsource/instrument-serif/400.css';
+	import '@fontsource/instrument-serif/400-italic.css';
+	import '@fontsource-variable/instrument-sans/wght.css';
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { apiFetch } from '$lib/api/client';
@@ -61,16 +64,16 @@
 
 {#if updateAvailable}
 	<div
-		class="fixed top-3 left-1/2 z-[100] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-2 text-xs font-bold text-[#0a2e31] shadow-lg"
+		class="fixed top-3 left-1/2 z-[100] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-full border border-ink/15 bg-card px-4 py-2 text-xs font-semibold text-ink shadow-lg"
 		role="status"
 	>
-		<span class="whitespace-nowrap">Update tersedia</span>
+		<span class="whitespace-nowrap">Pembaruan tersedia</span>
 		<button
 			type="button"
 			onclick={reloadForUpdate}
-			class="whitespace-nowrap rounded-full bg-[#217b84] px-3 py-1 text-[11px] font-bold text-white transition-colors hover:bg-[#1a5f66]"
+			class="rounded-full bg-teal px-3.5 py-1 text-[11px] font-semibold whitespace-nowrap text-card transition-colors hover:bg-ink"
 		>
-			Muat Ulang
+			Muat ulang
 		</button>
 	</div>
 {/if}

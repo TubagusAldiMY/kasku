@@ -270,172 +270,99 @@
 		void triggerManualSync();
 	});
 
-	function formatCurrency(val: number) {
-		const absVal = Math.abs(val);
-		const formatted = new Intl.NumberFormat('id-ID', {
-			style: 'currency',
-			currency: 'IDR',
-			minimumFractionDigits: 0
-		}).format(absVal);
-		return val < 0 ? `- ${formatted}` : `+ ${formatted}`;
+	// ── Editorial presentation helpers (additive, no logic change) ──
+	// Dense signed money for the table: "−45.000" / "+12.500.000" (no "Rp").
+	function fmtSigned(amount: number) {
+		const sign = amount < 0 ? '−' : '+';
+		return sign + new Intl.NumberFormat('id-ID').format(Math.abs(amount));
 	}
 
-	function formatDateShort(dateStr: string) {
-		const d = new Date(dateStr);
-		return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+	function fmtDayShort(dateStr: string) {
+		return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 	}
 </script>
 
-<div class="animate-in fade-in space-y-6 duration-500">
-	<!-- Header -->
-	<div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+<div class="pb-4">
+	<!-- ═══════════ Header ═══════════ -->
+	<div
+		class="flex flex-col justify-between gap-5 border-b border-ink/10 pb-8 sm:flex-row sm:items-end"
+	>
 		<div>
-			<h1 class="text-xl font-bold text-[#0a2e31] sm:text-2xl">Riwayat Transaksi</h1>
-			<p class="text-sm text-gray-500">Pantau arus kas masuk dan keluar Anda.</p>
+			<h1 class="font-serif text-4xl tracking-tight text-ink">Riwayat transaksi</h1>
+			<p class="mt-2.5 text-sm text-ink/60">
+				{transactions.length} transaksi tercatat.
+			</p>
 		</div>
 		<button
 			onclick={() => {
 				resetForm();
 				showAddModal = true;
 			}}
-			class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#217b84] px-5 py-3 font-bold text-white shadow-lg transition-all hover:bg-[#1a5f66] active:scale-95"
+			class="shrink-0 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 		>
-			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2.5"
-					d="M12 4v16m8-8H4"
-				/>
-			</svg>
-			Catat Transaksi
+			+ Catat
 		</button>
 	</div>
 
 	<!-- List Transaksi -->
 	{#if loading}
-		<div class="space-y-3">
+		<div class="space-y-3 pt-6">
 			{#each [0, 1, 2, 3] as i (i)}
-				<div class="h-20 animate-pulse rounded-2xl bg-white"></div>
+				<div class="h-10 animate-pulse rounded bg-ink/5"></div>
 			{/each}
 		</div>
 	{:else if transactions.length === 0}
-		<div
-			class="flex flex-col items-center gap-4 rounded-[2rem] bg-white py-16 text-center shadow-sm"
-		>
-			<div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-gray-300">
-				<svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-					/>
-				</svg>
-			</div>
-			<p class="font-bold text-[#0a2e31]">Belum ada transaksi</p>
-			<p class="text-sm text-gray-400">Tekan "Catat Transaksi" untuk mulai mencatat.</p>
+		<div class="flex flex-col items-center gap-3 py-20 text-center">
+			<p class="font-serif text-2xl text-ink">Belum ada transaksi</p>
+			<p class="text-sm text-ink/45">Tekan "+ Catat" untuk mulai mencatat.</p>
 		</div>
 	{:else}
-		<!-- Mobile: Card List -->
-		<div class="space-y-3 lg:hidden">
+		<!-- Mobile: editorial list -->
+		<div class="pt-4 lg:hidden">
 			{#each transactions as tx (tx.id)}
 				<div
-					class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm"
+					class="group flex items-baseline justify-between gap-3 border-b border-ink/8 py-4"
 					in:fly={{ y: 8, duration: 200 }}
 				>
-					<!-- Indikator tipe -->
-					<div
-						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full {tx.type ===
-						'INCOME'
-							? 'bg-green-50'
-							: tx.type === 'TRANSFER'
-								? 'bg-blue-50'
-								: 'bg-red-50'}"
-					>
-						{#if tx.type === 'INCOME'}
-							<svg
-								class="h-5 w-5 text-green-500"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M5 10l7-7m0 0l7 7m-7-7v18"
-								/>
-							</svg>
-						{:else if tx.type === 'TRANSFER'}
-							<svg
-								class="h-5 w-5 text-blue-500"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-								/>
-							</svg>
-						{:else}
-							<svg
-								class="h-5 w-5 text-red-400"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								stroke-width="2.5"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M19 14l-7 7m0 0l-7-7m7 7V3"
-								/>
-							</svg>
-						{/if}
-					</div>
-
-					<!-- Info -->
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm font-bold text-[#0a2e31]">{tx.title}</p>
-						<div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+						<div class="flex items-baseline gap-2.5">
+							<span class="truncate text-sm font-medium text-ink">{tx.title}</span>
+							<span class="shrink-0 text-xs text-ink/40">{fmtDayShort(tx.date)}</span>
+						</div>
+						<div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
 							<span
-								class="rounded-full px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase {tx.type ===
-								'TRANSFER'
-									? 'bg-blue-50 text-blue-600'
-									: 'bg-teal-50 text-teal-700'}">{tx.category}</span
+								class="rounded-full border px-2 py-px text-[11px] {tx.type === 'TRANSFER'
+									? 'border-steel/30 text-steel'
+									: 'border-ink/15 text-ink/55'}"
 							>
-							<span class="text-[11px] text-gray-400">
+								{tx.category}
+							</span>
+							<span class="text-[11px] text-ink/45">
 								{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'}
-									→ {tx.toAccount}{/if}
+									<span class="text-steel"> → {tx.toAccount}</span>{/if}
 							</span>
 							{#if tx.budget}
-								<span
-									class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold tracking-tight text-amber-700 uppercase"
-								>
+								<span class="rounded-full border border-gold/30 px-2 py-px text-[11px] text-gold">
 									{tx.budget}
 								</span>
 							{/if}
 						</div>
-						<p class="mt-0.5 text-[11px] text-gray-400">{formatDateShort(tx.date)}</p>
 					</div>
 
-					<!-- Nominal + aksi -->
-					<div class="flex shrink-0 flex-col items-end gap-2">
+					<div class="flex shrink-0 flex-col items-end gap-1.5">
 						<span
-							class="text-sm font-black {tx.type === 'INCOME'
-								? 'text-green-600'
+							class="text-sm tabular-nums {tx.type === 'INCOME'
+								? 'font-semibold text-teal'
 								: tx.type === 'TRANSFER'
-									? 'text-blue-500'
-									: 'text-red-500'}">{formatCurrency(tx.amount)}</span
+									? 'text-steel'
+									: 'text-ink'}"
 						>
+							{fmtSigned(tx.amount)}
+						</span>
 						<div class="flex items-center gap-1">
 							<button
 								onclick={() => openEditTransaction(tx.id)}
-								class="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-teal-50 hover:text-[#217b84] active:bg-teal-100"
+								class="rounded-md p-1 text-ink/30 transition-colors hover:text-teal"
 								aria-label="Edit transaksi"
 							>
 								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -449,7 +376,7 @@
 							</button>
 							<button
 								onclick={() => handleDeleteTransaction(tx.id)}
-								class="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 active:bg-red-100"
+								class="rounded-md p-1 text-ink/30 transition-colors hover:text-clay"
 								aria-label="Hapus transaksi"
 							>
 								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -467,117 +394,91 @@
 			{/each}
 		</div>
 
-		<!-- Desktop: Table -->
-		<div
-			class="hidden overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white text-sm shadow-sm lg:block"
-		>
-			<div class="overflow-x-auto">
-				<table class="w-full border-collapse text-left">
-					<thead>
-						<tr class="bg-gray-50/50">
-							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Tanggal</th
-							>
-							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Keterangan</th
-							>
-							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Kategori</th
-							>
-							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Anggaran</th
-							>
-							<th class="px-8 py-5 text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Akun</th
-							>
-							<th
-								class="px-8 py-5 text-right text-[10px] font-bold tracking-widest text-[#0a2e31] uppercase"
-								>Nominal</th
-							>
-							<th class="px-8 py-5"></th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-gray-50">
-						{#each transactions as tx (tx.id)}
-							<tr class="group transition-colors hover:bg-gray-50/80">
-								<td class="px-8 py-5 whitespace-nowrap text-gray-500">{tx.date}</td>
-								<td class="px-8 py-5 font-bold text-[#0a2e31]">{tx.title}</td>
-								<td class="px-8 py-5">
-									<span
-										class="rounded-full px-3 py-1 text-[11px] font-bold tracking-tight uppercase {tx.type ===
-										'TRANSFER'
-											? 'bg-blue-50 text-blue-600'
-											: 'bg-teal-50 text-teal-700'}"
-									>
-										{tx.category}
-									</span>
-								</td>
-								<td class="px-8 py-5">
-									{#if tx.budget}
-										<span
-											class="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold tracking-tight text-amber-700 uppercase"
-										>
-											{tx.budget}
-										</span>
-									{:else}
-										<span class="text-xs font-medium text-gray-300">Tanpa anggaran</span>
-									{/if}
-								</td>
-								<td class="px-8 py-5 font-medium text-gray-500">
-									{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'}<span
-											class="text-blue-500"
-										>
-											→ {tx.toAccount}</span
-										>{/if}
-								</td>
-								<td
-									class="px-8 py-5 text-right font-black tracking-tight {tx.type === 'INCOME'
-										? 'text-green-600'
-										: tx.type === 'TRANSFER'
-											? 'text-blue-500'
-											: 'text-red-500'}"
-								>
-									{formatCurrency(tx.amount)}
-								</td>
-								<td class="px-8 py-5 text-right">
-									<div
-										class="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100"
-									>
-										<button
-											onclick={() => openEditTransaction(tx.id)}
-											class="p-2 text-gray-300 transition-colors hover:text-[#217b84]"
-											aria-label="Edit transaksi"
-										>
-											<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-												/>
-											</svg>
-										</button>
-										<button
-											onclick={() => handleDeleteTransaction(tx.id)}
-											class="p-2 text-gray-300 transition-colors hover:text-red-500"
-											aria-label="Hapus transaksi"
-										>
-											<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-												/>
-											</svg>
-										</button>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+		<!-- Desktop: editorial table (CSS grid) -->
+		<div class="hidden pt-4 lg:block">
+			<div
+				class="grid grid-cols-[90px_1.6fr_1fr_1fr_1fr_150px_40px] gap-4 border-b border-ink/25 py-3 text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+			>
+				<span>Tanggal</span>
+				<span>Keterangan</span>
+				<span>Kategori</span>
+				<span>Anggaran</span>
+				<span>Akun</span>
+				<span class="text-right">Nominal</span>
+				<span></span>
 			</div>
+			{#each transactions as tx (tx.id)}
+				<div
+					class="group grid grid-cols-[90px_1.6fr_1fr_1fr_1fr_150px_40px] items-baseline gap-4 border-b border-ink/8 py-4 text-[13.5px]"
+				>
+					<span class="text-[12.5px] text-ink/45">{fmtDayShort(tx.date)}</span>
+					<span class="truncate font-medium text-ink">{tx.title}</span>
+					<span>
+						<span
+							class="rounded-full border px-2 py-px text-[11px] {tx.type === 'TRANSFER'
+								? 'border-steel/30 text-steel'
+								: 'border-ink/15 text-ink/70'}"
+						>
+							{tx.category}
+						</span>
+					</span>
+					<span>
+						{#if tx.budget}
+							<span class="rounded-full border border-gold/30 px-2 py-px text-[11px] text-gold">
+								{tx.budget}
+							</span>
+						{:else}
+							<span class="text-xs text-ink/35">Tanpa anggaran</span>
+						{/if}
+					</span>
+					<span class="truncate text-ink/60">
+						{tx.account}{#if tx.toAccount && tx.type === 'TRANSFER'}<span class="text-steel">
+								→ {tx.toAccount}</span
+							>{/if}
+					</span>
+					<span
+						class="text-right tabular-nums {tx.type === 'INCOME'
+							? 'font-semibold text-teal'
+							: tx.type === 'TRANSFER'
+								? 'text-steel'
+								: 'text-ink'}"
+					>
+						{fmtSigned(tx.amount)}
+					</span>
+					<span
+						class="flex justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+					>
+						<button
+							onclick={() => openEditTransaction(tx.id)}
+							class="p-1 text-ink/30 transition-colors hover:text-teal"
+							aria-label="Edit transaksi"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+								/>
+							</svg>
+						</button>
+						<button
+							onclick={() => handleDeleteTransaction(tx.id)}
+							class="p-1 text-ink/30 transition-colors hover:text-clay"
+							aria-label="Hapus transaksi"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+								/>
+							</svg>
+						</button>
+					</span>
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>
@@ -585,29 +486,29 @@
 <!-- Modal Tambah Transaksi -->
 {#if showAddModal}
 	<div
-		class="fixed inset-0 z-50 flex items-end justify-center bg-[#0a2e31]/40 backdrop-blur-sm sm:items-center sm:p-4"
+		class="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 backdrop-blur-sm sm:items-center sm:p-4"
 		in:fade={{ duration: 200 }}
 	>
 		<div
-			class="max-h-[92dvh] w-full overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl sm:max-w-lg sm:rounded-[2.5rem]"
+			class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-ink/10 bg-card shadow-xl sm:max-w-lg sm:rounded-2xl"
 			in:fly={{ y: 40, duration: 350 }}
 		>
 			<!-- Handle bar mobile -->
 			<div class="flex justify-center pt-3 pb-1 sm:hidden">
-				<div class="h-1 w-10 rounded-full bg-gray-200"></div>
+				<div class="h-1 w-10 rounded-full bg-ink/15"></div>
 			</div>
 
 			<div class="space-y-5 p-5 sm:p-8">
 				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-bold text-[#0a2e31] sm:text-2xl">
-						{editingId ? 'Edit Transaksi' : 'Catat Transaksi'}
+					<h2 class="font-serif text-2xl text-ink">
+						{editingId ? 'Edit transaksi' : 'Catat transaksi'}
 					</h2>
 					<button
 						onclick={() => {
 							showAddModal = false;
 							resetForm();
 						}}
-						class="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+						class="rounded-full p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 						aria-label="Tutup modal"
 					>
 						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -623,17 +524,16 @@
 
 				<form onsubmit={handleSaveTransaction} class="space-y-4">
 					<!-- Toggle Tipe -->
-					<div class="flex rounded-2xl border border-gray-100 bg-gray-50 p-1.5">
+					<div class="flex rounded-full border border-ink/20 p-1 text-[13px] font-semibold">
 						<button
 							type="button"
 							onclick={() => {
 								newTx.type = 'EXPENSE';
 								newTx.category_id = firstCategoryId('EXPENSE');
 							}}
-							class="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all {newTx.type ===
-							'EXPENSE'
-								? 'bg-white text-red-500 shadow-sm'
-								: 'text-gray-400'}">Pengeluaran</button
+							class="flex-1 rounded-full py-2 transition-colors {newTx.type === 'EXPENSE'
+								? 'bg-ink text-card'
+								: 'text-ink/60'}">Pengeluaran</button
 						>
 						<button
 							type="button"
@@ -641,10 +541,9 @@
 								newTx.type = 'INCOME';
 								newTx.category_id = firstCategoryId('INCOME');
 							}}
-							class="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all {newTx.type ===
-							'INCOME'
-								? 'bg-white text-green-600 shadow-sm'
-								: 'text-gray-400'}">Pemasukan</button
+							class="flex-1 rounded-full py-2 transition-colors {newTx.type === 'INCOME'
+								? 'bg-ink text-card'
+								: 'text-ink/60'}">Pemasukan</button
 						>
 						<button
 							type="button"
@@ -654,10 +553,9 @@
 								const second = myAccounts.find((a) => a.id !== newTx.account_id);
 								newTx.to_account_id = second ? second.id : '';
 							}}
-							class="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all {newTx.type ===
-							'TRANSFER'
-								? 'bg-white text-blue-500 shadow-sm'
-								: 'text-gray-400'}">Transfer</button
+							class="flex-1 rounded-full py-2 transition-colors {newTx.type === 'TRANSFER'
+								? 'bg-ink text-card'
+								: 'text-ink/60'}">Transfer</button
 						>
 					</div>
 
@@ -665,7 +563,7 @@
 					<div>
 						<label
 							for="title"
-							class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+							class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>Keterangan</label
 						>
 						<input
@@ -674,7 +572,7 @@
 							required
 							bind:value={newTx.title}
 							placeholder="Beli apa hari ini?"
-							class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 						/>
 					</div>
 
@@ -682,13 +580,11 @@
 					<div>
 						<label
 							for="amount"
-							class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+							class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>Nominal</label
 						>
 						<div class="relative">
-							<span
-								class="absolute inset-y-0 left-4 flex items-center text-sm font-bold text-gray-400"
-								>Rp</span
+							<span class="absolute inset-y-0 left-4 flex items-center text-sm text-ink/45">Rp</span
 							>
 							<input
 								id="amount"
@@ -696,7 +592,7 @@
 								min="1"
 								required
 								bind:value={newTx.amount}
-								class="w-full rounded-2xl border border-gray-100 bg-gray-50 py-3 pr-4 pl-11 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full rounded-[10px] border border-ink/25 bg-field py-3 pr-4 pl-11 text-sm text-ink tabular-nums outline-none focus:border-teal"
 							/>
 						</div>
 					</div>
@@ -706,14 +602,14 @@
 						<div>
 							<label
 								for="account"
-								class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+								class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>
-								{newTx.type === 'TRANSFER' ? 'Rekening Asal' : 'Rekening'}
+								{newTx.type === 'TRANSFER' ? 'Rekening asal' : 'Rekening'}
 							</label>
 							<select
 								id="account"
 								bind:value={newTx.account_id}
-								class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full cursor-pointer appearance-none rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 							>
 								{#each myAccounts as acc (acc.id)}
 									<option value={acc.id}>{acc.name}</option>
@@ -725,14 +621,14 @@
 							<div>
 								<label
 									for="to_account"
-									class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
-									>Rekening Tujuan</label
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+									>Rekening tujuan</label
 								>
 								<select
 									id="to_account"
 									bind:value={newTx.to_account_id}
 									required
-									class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+									class="w-full cursor-pointer appearance-none rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 								>
 									{#each myAccounts.filter((a) => a.id !== newTx.account_id) as acc (acc.id)}
 										<option value={acc.id}>{acc.name}</option>
@@ -743,13 +639,13 @@
 							<div>
 								<label
 									for="category"
-									class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+									class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 									>Kategori</label
 								>
 								<select
 									id="category"
 									bind:value={newTx.category_id}
-									class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+									class="w-full cursor-pointer appearance-none rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 								>
 									{#each filteredCategories as cat (cat.id)}
 										<option value={cat.id}>{cat.name}</option>
@@ -763,13 +659,13 @@
 						<div>
 							<label
 								for="budget"
-								class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+								class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Anggaran</label
 							>
 							<select
 								id="budget"
 								bind:value={newTx.budget_id}
-								class="w-full cursor-pointer appearance-none rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+								class="w-full cursor-pointer appearance-none rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 							>
 								<option value="">Tanpa anggaran</option>
 								{#each budgets as budget (budget.id)}
@@ -783,7 +679,7 @@
 					<div>
 						<label
 							for="date"
-							class="mb-1.5 block px-1 text-xs font-bold tracking-wider text-[#0a2e31] uppercase"
+							class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>Tanggal</label
 						>
 						<input
@@ -791,21 +687,21 @@
 							type="date"
 							required
 							bind:value={newTx.date}
-							class="w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm transition-all outline-none focus:border-[#217b84] focus:ring-4 focus:ring-teal-50"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink outline-none focus:border-teal"
 						/>
 					</div>
 
 					{#if transferError}
-						<p class="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+						<p class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
 							{transferError}
 						</p>
 					{/if}
 
 					<button
 						type="submit"
-						class="w-full rounded-2xl bg-[#0a2e31] py-4 font-bold text-white shadow-xl transition-all hover:bg-black active:scale-[0.98]"
+						class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
 					>
-						{editingId ? 'Update Transaksi' : 'Simpan Transaksi'}
+						{editingId ? 'Perbarui transaksi' : 'Simpan transaksi'}
 					</button>
 				</form>
 			</div>

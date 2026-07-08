@@ -16,9 +16,10 @@
 
 		if (oauthError) {
 			status = 'error';
-			errorMsg = oauthError === 'access_denied'
-				? 'Akses ditolak. Anda membatalkan login Google.'
-				: `Google error: ${oauthError}`;
+			errorMsg =
+				oauthError === 'access_denied'
+					? 'Akses ditolak. Anda membatalkan login Google.'
+					: `Google error: ${oauthError}`;
 			return;
 		}
 
@@ -64,33 +65,49 @@
 	});
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f0fafa] to-[#e6f7f8]">
-	<div class="w-full max-w-sm rounded-3xl bg-white p-10 shadow-xl shadow-teal-900/5 text-center space-y-6">
+<div class="flex min-h-screen items-center justify-center bg-paper px-6">
+	<div class="w-full max-w-[380px] space-y-8 text-center">
+		<span class="font-serif text-[26px] leading-none tracking-tight text-ink"
+			>Kas<em class="text-teal">Ku</em></span
+		>
+
 		{#if status === 'loading'}
-			<div class="flex flex-col items-center gap-4">
-				<div class="h-12 w-12 animate-spin rounded-full border-4 border-teal-100 border-t-[#217b84]"></div>
-				<div class="space-y-1">
-					<p class="text-[15px] font-bold text-[#0a2e31]">Memproses login Google...</p>
-					<p class="text-[13px] text-gray-400">Mohon tunggu sebentar</p>
+			<div class="flex flex-col items-center gap-5">
+				<span class="h-10 w-10 animate-spin rounded-full border-2 border-teal/25 border-t-teal"
+				></span>
+				<div class="space-y-1.5">
+					<p class="text-sm font-semibold text-ink">Memproses login Google…</p>
+					<p class="text-[13px] text-ink/50">Mohon tunggu sebentar</p>
 				</div>
 			</div>
 		{:else}
-			<div class="flex flex-col items-center gap-4">
-				<div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-					<svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+			<div class="flex flex-col items-center gap-6">
+				<div
+					class="flex h-16 w-16 items-center justify-center rounded-full border border-clay/25 bg-clay/5"
+				>
+					<svg
+						class="h-8 w-8 text-clay"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="1.8"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
 					</svg>
 				</div>
-				<div class="space-y-1">
-					<p class="text-[15px] font-bold text-[#0a2e31]">Login Gagal</p>
-					<p class="text-[13px] text-gray-500">{errorMsg}</p>
+				<div class="space-y-1.5">
+					<p class="font-serif text-[22px] leading-tight tracking-tight text-ink">Login gagal</p>
+					<p class="text-[13px] text-ink/55">{errorMsg}</p>
 				</div>
 				<a
 					href={resolve('/login')}
-					class="rounded-2xl bg-[#217b84] px-6 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-[#1a5f66]"
+					class="flex items-center justify-center gap-2.5 rounded-full bg-teal px-6 py-3 text-sm font-semibold text-card transition-colors hover:bg-ink"
 				>
-					Kembali ke Login
+					Kembali ke masuk
 				</a>
 			</div>
 		{/if}

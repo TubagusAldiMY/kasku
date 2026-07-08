@@ -47,7 +47,7 @@
 			QRCode.toDataURL(qrModal.qr_string, {
 				width: 240,
 				margin: 2,
-				color: { dark: '#0a2e31', light: '#ffffff' }
+				color: { dark: '#12312e', light: '#ffffff' }
 			}).then((url) => {
 				qrDataURL = url;
 			});
@@ -305,21 +305,23 @@
 
 		<!-- Modal Card -->
 		<div
-			class="relative z-10 w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+			class="relative z-10 w-full max-w-sm rounded-2xl border border-ink/10 bg-card p-6 shadow-2xl sm:p-8"
 			transition:fly={{ y: 20, duration: 250 }}
 		>
 			<!-- Header -->
 			<div class="mb-5 flex items-start justify-between">
 				<div>
-					<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+					<p class="text-[11px] font-semibold tracking-[0.12em] text-teal uppercase">
 						Bayar dengan QRIS
 					</p>
-					<p class="mt-0.5 text-xl font-black text-[#0a2e31]">{formatPrice(qrModal.amount_idr)}</p>
+					<p class="mt-1 font-serif text-2xl text-ink tabular-nums">
+						{formatPrice(qrModal.amount_idr)}
+					</p>
 				</div>
 				<button
 					type="button"
 					onclick={() => (qrModal = null)}
-					class="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+					class="rounded-full p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 					aria-label="Tutup"
 				>
 					<svg
@@ -337,15 +339,15 @@
 			<!-- QR Code -->
 			<div class="mb-5 flex justify-center">
 				{#if qrDataURL}
-					<div class="rounded-2xl border border-gray-100 bg-white p-3 shadow-inner">
+					<div class="rounded-2xl border border-ink/10 bg-field p-3">
 						<img src={qrDataURL} alt="QR Code QRIS" class="h-52 w-52 rounded-xl" />
 					</div>
 				{:else}
 					<div
-						class="flex h-52 w-52 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50"
+						class="flex h-52 w-52 items-center justify-center rounded-2xl border border-ink/10 bg-field"
 					>
 						<div
-							class="h-8 w-8 animate-spin rounded-full border-2 border-teal-600 border-t-transparent"
+							class="h-8 w-8 animate-spin rounded-full border-2 border-teal border-t-transparent"
 						></div>
 					</div>
 				{/if}
@@ -354,25 +356,23 @@
 			<!-- Countdown -->
 			<div class="mb-5 text-center">
 				{#if qrSecondsLeft > 0}
-					<p class="text-xs font-medium text-gray-500">Bayar sebelum</p>
+					<p class="text-xs text-ink/55">Bayar sebelum</p>
 					<p
-						class="text-2xl font-black tabular-nums {qrSecondsLeft < 60
-							? 'text-red-600'
-							: 'text-[#0a2e31]'}"
+						class="font-serif text-3xl tabular-nums {qrSecondsLeft < 60 ? 'text-clay' : 'text-ink'}"
 					>
 						{formatCountdown(qrSecondsLeft)}
 					</p>
 				{:else if qrModal.expires_at}
-					<p class="text-sm font-bold text-red-600">QR Code kedaluwarsa</p>
+					<p class="text-sm font-semibold text-clay">QR Code kedaluwarsa</p>
 				{/if}
 			</div>
 
 			<!-- Instruksi -->
-			<ol class="mb-5 space-y-1.5 text-left">
+			<ol class="mb-5 space-y-2 text-left">
 				{#each ['Buka aplikasi mobile banking / e-wallet Anda', 'Pilih menu Scan QR / QRIS', 'Arahkan kamera ke QR di atas', 'Konfirmasi pembayaran'] as step, i (step)}
-					<li class="flex items-center gap-2.5 text-xs font-medium text-gray-600">
+					<li class="flex items-center gap-2.5 text-xs text-ink/60">
 						<span
-							class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-teal-50 text-[9px] font-black text-teal-700"
+							class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-teal/30 text-[10px] font-semibold text-teal"
 							>{i + 1}</span
 						>
 						{step}
@@ -381,20 +381,20 @@
 			</ol>
 
 			<!-- Status hint -->
-			<p class="text-center text-[10px] font-medium text-gray-400">
+			<p class="text-center text-[11px] text-ink/40">
 				Halaman akan otomatis diperbarui setelah pembayaran berhasil
 			</p>
 		</div>
 	</div>
 {/if}
 
-<div class="animate-in fade-in space-y-8 px-1 pb-20 duration-700 md:space-y-12">
+<div class="animate-in fade-in pb-4 duration-700">
 	<!-- Header -->
-	<div class="mx-auto max-w-2xl space-y-4 px-2 text-center">
-		<h1 class="text-2xl leading-tight font-black tracking-tight text-[#0a2e31] sm:text-4xl">
+	<div class="mx-auto max-w-2xl space-y-4 text-center">
+		<h1 class="font-serif text-4xl tracking-tight text-ink sm:text-5xl">
 			Pilih Paket Finansial Anda
 		</h1>
-		<p class="text-sm leading-relaxed font-medium text-gray-500 sm:text-lg">
+		<p class="text-sm leading-relaxed text-ink/60 sm:text-base">
 			Tingkatkan pengalaman mengelola aset dengan fitur premium KasKu.
 		</p>
 
@@ -402,20 +402,20 @@
 			{@const tone = message.tone}
 			<div
 				in:fly={{ y: -10 }}
-				class="rounded-2xl border p-4 text-left text-sm font-bold
+				class="rounded-xl border px-4 py-3 text-left text-sm
 				{tone === 'error'
-					? 'border-red-100 bg-red-50 text-red-700'
+					? 'border-clay/25 bg-clay/5 text-clay'
 					: tone === 'success'
-						? 'border-green-100 bg-green-50 text-green-700'
-						: 'border-amber-100 bg-amber-50 text-amber-800'}"
+						? 'border-teal/25 bg-teal/5 text-teal'
+						: 'border-gold/30 bg-gold/5 text-gold'}"
 			>
 				<div class="flex items-center justify-between gap-3">
-					<span>{message.text}</span>
+					<span class="font-medium">{message.text}</span>
 					{#if tone === 'error' && !plansLoaded}
 						<button
 							type="button"
 							onclick={fetchBillingData}
-							class="shrink-0 rounded-lg bg-red-100 px-3 py-1 text-xs font-black text-red-700 transition hover:bg-red-200"
+							class="shrink-0 rounded-full border border-clay/30 px-3 py-1 text-xs font-semibold text-clay transition-colors hover:bg-clay/10"
 						>
 							Coba Lagi
 						</button>
@@ -426,21 +426,19 @@
 
 		{#if currentSub && currentSub.status === 'ACTIVE'}
 			{@const activePlan = plans.find((p) => p.id === currentSub!.plan_id)}
-			<div
-				class="rounded-2xl border border-teal-100 bg-teal-50 p-4 text-left text-xs font-bold text-teal-800"
-			>
+			<div class="rounded-xl border border-teal/25 bg-teal/5 px-5 py-4 text-left">
 				<div class="flex items-center justify-between gap-3">
-					<div class="space-y-1">
-						<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+					<div>
+						<p class="text-[11px] font-semibold tracking-[0.12em] text-teal uppercase">
 							Langganan Aktif
 						</p>
-						<p class="text-sm font-black text-teal-900">{activePlan?.name ?? currentSub.plan_id}</p>
+						<p class="mt-1 font-serif text-xl text-ink">{activePlan?.name ?? currentSub.plan_id}</p>
 					</div>
-					<div class="space-y-1 text-right">
-						<p class="text-[10px] font-black tracking-widest text-teal-600 uppercase">
+					<div class="text-right">
+						<p class="text-[11px] font-semibold tracking-[0.12em] text-teal uppercase">
 							Aktif Hingga
 						</p>
-						<p class="text-sm font-bold text-teal-900">
+						<p class="mt-1 text-sm font-medium text-ink">
 							{formatDate(currentSub.current_period_end)}
 						</p>
 					</div>
@@ -448,21 +446,21 @@
 			</div>
 		{/if}
 
-		<!-- Toggle Billing Cycle (Fixed & Responsive) -->
-		<div class="flex flex-wrap items-center justify-center gap-3 pt-6">
+		<!-- Toggle Billing Cycle -->
+		<div class="flex flex-wrap items-center justify-center gap-3 pt-4">
 			<span
-				class="text-[12px] font-bold sm:text-sm {billingCycle === 'monthly'
-					? 'text-[#0a2e31]'
-					: 'text-gray-400'} transition-colors">Bulanan</span
+				class="text-[13px] font-semibold {billingCycle === 'monthly'
+					? 'text-ink'
+					: 'text-ink/45'} transition-colors">Bulanan</span
 			>
 			<button
 				type="button"
 				onclick={() => (billingCycle = billingCycle === 'monthly' ? 'yearly' : 'monthly')}
-				class="relative h-6 w-12 rounded-full border border-gray-200 bg-gray-100 p-1 transition-all focus:outline-none sm:h-7 sm:w-14"
+				class="relative h-6 w-12 rounded-full border border-ink/20 bg-field p-1 transition-all focus:outline-none sm:h-7 sm:w-14"
 				aria-label="Toggle billing cycle"
 			>
 				<div
-					class="h-4 w-4 rounded-full bg-[#217b84] shadow-md transition-transform duration-300 sm:h-5 sm:w-5 {billingCycle ===
+					class="h-4 w-4 rounded-full bg-teal transition-transform duration-300 sm:h-5 sm:w-5 {billingCycle ===
 					'yearly'
 						? 'translate-x-6 sm:translate-x-7'
 						: 'translate-x-0'}"
@@ -470,12 +468,12 @@
 			</button>
 			<div class="flex items-center gap-2">
 				<span
-					class="text-[12px] font-bold sm:text-sm {billingCycle === 'yearly'
-						? 'text-[#0a2e31]'
-						: 'text-gray-400'} transition-colors">Tahunan</span
+					class="text-[13px] font-semibold {billingCycle === 'yearly'
+						? 'text-ink'
+						: 'text-ink/45'} transition-colors">Tahunan</span
 				>
 				<span
-					class="rounded-full bg-green-100 px-2 py-0.5 text-[9px] font-black tracking-tighter text-green-700 uppercase sm:text-[10px]"
+					class="rounded-full border border-teal/30 px-2 py-px text-[11px] font-semibold text-teal uppercase"
 					>Hemat 15%</span
 				>
 			</div>
@@ -483,78 +481,70 @@
 	</div>
 
 	<!-- Pricing Cards (Grid Responsive) -->
-	<div class="mx-auto grid max-w-6xl grid-cols-1 items-end gap-6 md:grid-cols-3 lg:gap-8">
+	<div class="mx-auto mt-12 grid max-w-6xl grid-cols-1 items-stretch gap-6 md:grid-cols-3 lg:gap-8">
 		{#each plans as plan (plan.id)}
 			{@const isCurrent =
 				// Bandingkan UUID-to-UUID setelah fetchBillingData mengisi plan.id dari backend.
 				// Sebelum fetch selesai currentSub masih null, sehingga ekspresi ini aman.
 				currentSub !== null && currentSub.plan_id === plan.id}
 			<div
-				class="relative flex flex-col rounded-[2rem] border bg-white transition-all duration-500 hover:shadow-2xl sm:rounded-[2.5rem] {plan.isPopular
-					? 'z-10 border-[#217b84] p-6 shadow-xl shadow-teal-900/5 sm:p-10 lg:scale-105'
-					: 'border-gray-100 p-6 shadow-sm sm:p-8'}"
+				class="relative flex flex-col rounded-2xl border bg-card p-6 transition-colors sm:p-8 {plan.isPopular
+					? 'z-10 border-teal'
+					: 'border-ink/10'}"
 			>
 				{#if plan.isPopular}
 					<div
-						class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-[#217b84] px-5 py-2 text-[9px] font-black tracking-[0.2em] whitespace-nowrap text-white uppercase shadow-lg sm:text-[10px]"
+						class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-teal/30 bg-card px-4 py-1 text-[11px] font-semibold tracking-[0.12em] whitespace-nowrap text-teal uppercase"
 					>
 						Paling Populer
 					</div>
 				{/if}
 
-				<div class="mb-6 space-y-2 sm:mb-8">
+				<div class="mb-6 sm:mb-8">
 					<div class="flex items-center justify-between">
-						<h3 class="text-lg font-black text-[#0a2e31] sm:text-xl">{plan.name}</h3>
+						<h3 class="font-serif text-2xl text-ink">{plan.name}</h3>
 						{#if isCurrent}
 							<span
-								class="rounded-lg border border-green-100 bg-green-50 px-2 py-1 text-[9px] font-black tracking-widest text-green-600 uppercase"
+								class="rounded-full border border-teal/30 px-2 py-px text-[11px] font-semibold tracking-[0.12em] text-teal uppercase"
 								>Aktif</span
 							>
 						{/if}
 					</div>
-					<p class="text-[11px] leading-relaxed font-medium text-gray-500 sm:text-xs">
+					<p class="mt-2 text-[13px] leading-relaxed text-ink/55">
 						{plan.desc}
 					</p>
 				</div>
 
 				<div class="mb-8 sm:mb-10">
 					{#if plan.id === 'ULTIMATE'}
-						<div class="space-y-1">
-							<p class="text-2xl font-black text-[#0a2e31] sm:text-3xl">Harga Khusus</p>
-							<p class="text-[11px] font-medium text-gray-400 sm:text-xs">
-								Sesuai kebutuhan tim Anda
-							</p>
+						<div>
+							<p class="font-serif text-3xl text-ink">Harga Khusus</p>
+							<p class="mt-1 text-[12px] text-ink/45">Sesuai kebutuhan tim Anda</p>
 						</div>
 					{:else}
-						<div class="flex flex-wrap items-baseline gap-1">
-							<span class="text-2xl font-black text-[#0a2e31] sm:text-4xl">
+						<div class="flex flex-wrap items-baseline gap-1.5">
+							<span class="font-serif text-4xl text-ink tabular-nums">
 								{formatPrice(billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly)}
 							</span>
-							<span class="text-xs font-bold text-gray-400 sm:text-sm"
-								>/{billingCycle === 'monthly' ? 'bln' : 'thn'}</span
-							>
+							<span class="text-sm text-ink/45">/{billingCycle === 'monthly' ? 'bln' : 'thn'}</span>
 						</div>
 					{/if}
 				</div>
 
-				<div class="mb-8 flex-1 space-y-3 sm:mb-10 sm:space-y-4">
+				<div class="mb-8 flex-1 sm:mb-10">
 					{#each plan.features as feature (feature)}
-						<div class="flex items-start gap-3">
-							<div
-								class="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600 sm:h-5 sm:w-5"
+						<div
+							class="flex items-start gap-3 border-t border-ink/8 py-3 first:border-t-0 first:pt-0"
+						>
+							<svg
+								class="mt-0.5 h-4 w-4 flex-shrink-0 text-teal"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2.5"
+								><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg
 							>
-								<svg
-									class="h-2.5 w-2.5 sm:h-3 sm:w-3"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="4"
-									><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg
-								>
-							</div>
-							<span class="text-[12px] leading-tight font-medium text-gray-600 sm:text-sm"
-								>{feature}</span
-							>
+							<span class="text-[13px] leading-tight text-ink/70">{feature}</span>
 						</div>
 					{/each}
 				</div>
@@ -562,14 +552,9 @@
 				{#if plan.id === 'ULTIMATE'}
 					<a
 						href="mailto:admin@tubsamy.tech?subject=Pertanyaan%20Paket%20Enterprise%20KasKu"
-						class="flex w-full items-center justify-center gap-2 rounded-xl border border-[#0a2e31] bg-[#0a2e31] py-3.5 text-[11px] font-black tracking-widest text-white uppercase transition-all hover:bg-[#0d3b3f] active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm"
+						class="flex w-full items-center justify-center gap-2 rounded-full bg-ink py-3 text-[13px] font-semibold text-card transition-colors hover:bg-teal"
 					>
-						<svg
-							class="h-3.5 w-3.5 sm:h-4 sm:w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
+						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -582,14 +567,10 @@
 				{:else}
 					<button
 						onclick={() => handleSubscribe(plan.id)}
-						disabled={loading ||
-							!plansLoaded ||
-							isCurrent ||
-							plan.disabled ||
-							subscribing !== null}
-						class="w-full rounded-xl py-3.5 text-[11px] font-black tracking-widest uppercase transition-all active:scale-[0.98] sm:rounded-2xl sm:py-4 sm:text-sm {plan.isPopular
-							? 'bg-[#217b84] text-white shadow-xl shadow-teal-900/20 hover:bg-[#1a5f66]'
-							: 'border border-gray-100 bg-gray-50 text-[#0a2e31] hover:bg-gray-100'} disabled:cursor-default disabled:opacity-50"
+						disabled={loading || !plansLoaded || isCurrent || plan.disabled || subscribing !== null}
+						class="w-full rounded-full py-3 text-[13px] font-semibold transition-colors {plan.isPopular
+							? 'bg-teal text-card hover:bg-ink'
+							: 'border border-ink/15 text-ink hover:bg-ink/5'} disabled:cursor-default disabled:opacity-50"
 					>
 						{#if subscribing === plan.id}
 							Menyiapkan…
@@ -605,21 +586,17 @@
 	</div>
 
 	<!-- FAQ Subtle Section -->
-	<div class="mt-12 border-t border-gray-100 pt-12 sm:mt-20 sm:pt-20">
-		<div class="mx-auto grid max-w-4xl grid-cols-1 gap-8 px-4 sm:gap-12 md:grid-cols-2">
+	<div class="mt-12 border-t border-ink/10 pt-12 sm:mt-20 sm:pt-16">
+		<div class="mx-auto grid max-w-4xl grid-cols-1 gap-8 sm:gap-12 md:grid-cols-2">
 			<div class="space-y-2">
-				<h4 class="text-sm font-bold text-[#0a2e31] sm:text-base">
-					Dapatkah saya membatalkan kapan saja?
-				</h4>
-				<p class="text-xs leading-relaxed font-medium text-gray-500 sm:text-sm">
+				<h4 class="font-serif text-xl text-ink">Dapatkah saya membatalkan kapan saja?</h4>
+				<p class="text-sm leading-relaxed text-ink/60">
 					Ya, Anda dapat membatalkan langganan kapan pun Anda mau tanpa biaya tambahan.
 				</p>
 			</div>
 			<div class="space-y-2">
-				<h4 class="text-sm font-bold text-[#0a2e31] sm:text-base">
-					Bagaimana dengan keamanan data saya?
-				</h4>
-				<p class="text-xs leading-relaxed font-medium text-gray-500 sm:text-sm">
+				<h4 class="font-serif text-xl text-ink">Bagaimana dengan keamanan data saya?</h4>
+				<p class="text-sm leading-relaxed text-ink/60">
 					Kami menggunakan enkripsi tingkat bank untuk memastikan data Anda terisolasi secara aman.
 				</p>
 			</div>

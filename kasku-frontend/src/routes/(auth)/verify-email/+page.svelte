@@ -69,95 +69,100 @@
 	});
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-	<div class="w-full max-w-md space-y-8 text-center">
-		<div>
-			<h2 class="mt-6 text-3xl font-extrabold text-gray-900">Verifikasi Email</h2>
-		</div>
-
-		<div class="mt-8">
-			{#if status === 'loading'}
-				<div class="flex flex-col items-center">
-					<div
-						class="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-indigo-600"
-					></div>
-					<p class="mt-4 text-gray-600">{message}</p>
-				</div>
-			{:else if status === 'success'}
-				<div class="rounded-md bg-green-50 p-4">
-					<div class="flex flex-col items-center">
-						<svg class="h-12 w-12 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						<p class="mt-4 text-sm font-medium text-green-800">{message}</p>
-						<div class="mt-6">
-							<a
-								href={resolve('/login')}
-								class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-							>
-								Lanjut ke Login
-							</a>
-						</div>
-					</div>
-				</div>
-			{:else}
-				<div class="rounded-md bg-red-50 p-4">
-					<div class="flex flex-col items-center gap-4">
-						<svg class="h-12 w-12 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								fill-rule="evenodd"
-								d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						<p class="text-sm font-medium text-red-800">{message}</p>
-
-						<div class="w-full space-y-3 border-t border-red-100 pt-4">
-							<p class="text-xs font-bold tracking-wider text-[#0a2e31] uppercase">
-								Kirim ulang tautan?
-							</p>
-							<input
-								type="email"
-								bind:value={email}
-								placeholder="Masukkan email Anda"
-								class="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-							/>
-							<button
-								onclick={handleResendVerification}
-								disabled={resendLoading}
-								class="w-full rounded-xl bg-indigo-600 py-2 text-sm font-bold text-white transition-all hover:bg-indigo-700 disabled:opacity-50"
-							>
-								{resendLoading ? 'Mengirim...' : 'Kirim Ulang Verifikasi'}
-							</button>
-							{#if resendMessage}
-								<p
-									class="text-[11px] font-bold {resendMessage.includes('berhasil')
-										? 'text-green-600'
-										: 'text-red-600'}"
-								>
-									{resendMessage}
-								</p>
-							{/if}
-						</div>
-
-						<div class="mt-2 flex gap-4">
-							<a href={resolve('/login')} class="text-sm font-bold text-indigo-600 hover:underline">
-								Ke Halaman Login
-							</a>
-							<a
-								href={resolve('/register')}
-								class="text-sm font-bold text-indigo-600 hover:underline"
-							>
-								Kembali ke Daftar
-							</a>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
+<div class="space-y-8">
+	<div>
+		<h1 class="font-serif text-[34px] leading-tight tracking-tight text-ink">Verifikasi email</h1>
 	</div>
+
+	{#if status === 'loading'}
+		<div class="flex flex-col items-center gap-4 py-6 text-center">
+			<span class="h-10 w-10 animate-spin rounded-full border-2 border-teal/25 border-t-teal"
+			></span>
+			<p class="text-sm text-ink/60">{message}</p>
+		</div>
+	{:else if status === 'success'}
+		<div class="space-y-6 text-center">
+			<div
+				class="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-teal/25 bg-teal/5"
+			>
+				<svg
+					class="h-8 w-8 text-teal"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+				</svg>
+			</div>
+			<p class="text-sm text-ink/60">{message}</p>
+			<a
+				href={resolve('/login')}
+				class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
+			>
+				Lanjut ke masuk
+			</a>
+		</div>
+	{:else}
+		<div class="space-y-6">
+			<div class="flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+				<svg
+					class="mt-px h-4 w-4 shrink-0 text-clay"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+				<p class="text-[13px] font-medium text-clay">{message}</p>
+			</div>
+
+			<div class="space-y-4 border-t border-ink/10 pt-6">
+				<p class="text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase">
+					Kirim ulang tautan?
+				</p>
+				<input
+					type="email"
+					bind:value={email}
+					placeholder="Masukkan email Anda"
+					class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+				/>
+				<button
+					onclick={handleResendVerification}
+					disabled={resendLoading}
+					class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:opacity-70"
+				>
+					{#if resendLoading}
+						<span class="h-4 w-4 animate-spin rounded-full border-2 border-card/40 border-t-card"
+						></span>
+					{/if}
+					{resendLoading ? 'Mengirim…' : 'Kirim ulang verifikasi'}
+				</button>
+				{#if resendMessage}
+					<p
+						class="text-center text-[12px] font-medium {resendMessage.includes('berhasil')
+							? 'text-teal'
+							: 'text-clay'}"
+					>
+						{resendMessage}
+					</p>
+				{/if}
+			</div>
+
+			<p class="text-center text-[13px] text-ink/55">
+				<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink"
+					>Ke halaman masuk</a
+				>
+				<span class="mx-2 text-ink/25">·</span>
+				<a href={resolve('/register')} class="font-semibold text-teal hover:text-ink"
+					>Kembali ke daftar</a
+				>
+			</p>
+		</div>
+	{/if}
 </div>

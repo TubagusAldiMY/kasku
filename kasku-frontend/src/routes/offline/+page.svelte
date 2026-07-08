@@ -10,42 +10,31 @@
 	<title>Mode Offline · KasKu</title>
 </svelte:head>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-	<div class="max-w-md space-y-6 text-center">
-		<div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-50">
-			<svg
-				class="h-8 w-8 text-teal-700"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="2"
-				aria-hidden="true"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					d="M18.364 5.636l-12.728 12.728m0-12.728l12.728 12.728"
-				/>
-			</svg>
-		</div>
-		<div class="space-y-2">
-			<h1 class="text-2xl font-black text-[#0a2e31]">Tidak Ada Koneksi</h1>
-			<p class="text-sm leading-relaxed font-medium text-gray-500">
-				Anda sedang offline. Data terakhir tetap tersimpan di perangkat — perubahan akan
-				disinkronkan otomatis saat koneksi pulih.
+<div class="flex min-h-screen items-center justify-center bg-paper px-6">
+	<div class="max-w-md space-y-8 text-center">
+		<a href={resolve('/')} class="font-serif text-[26px] leading-none tracking-tight text-ink">
+			Kas<em class="text-teal">Ku</em>
+		</a>
+
+		<div class="space-y-3">
+			<h1 class="font-serif text-3xl leading-tight text-ink">Kamu sedang offline</h1>
+			<p class="text-[15px] leading-relaxed text-ink/60">
+				Data terakhir tetap tersimpan di perangkat — perubahan akan disinkronkan otomatis saat
+				koneksi pulih.
 			</p>
 		</div>
+
 		<div class="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center">
 			<button
 				type="button"
 				onclick={retry}
-				class="rounded-2xl bg-[#217b84] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#1a5f66] active:scale-95"
+				class="rounded-full bg-teal px-6 py-3 text-[15px] font-semibold text-card transition-colors hover:bg-ink"
 			>
 				Coba Sambungkan Ulang
 			</button>
 			<a
 				href={resolve('/dashboard')}
-				class="rounded-2xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-[#0a2e31] transition-colors hover:bg-gray-50"
+				class="rounded-full border border-ink/25 px-6 py-3 text-[15px] font-semibold text-ink transition-colors hover:border-ink/40"
 			>
 				Buka Dashboard Tersimpan
 			</a>

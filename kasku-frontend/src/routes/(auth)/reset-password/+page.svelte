@@ -64,169 +64,160 @@
 	}
 </script>
 
-<div class="animate-in fade-in slide-in-from-bottom-4 space-y-10 duration-700">
-	<div class="space-y-3 text-center">
-		<h2 class="text-3xl font-bold tracking-tight text-[#0a2e31]">Atur Ulang Sandi</h2>
-		<p class="mx-auto max-w-[320px] text-[15px] leading-relaxed text-gray-500">
-			Silakan masukkan kata sandi baru untuk akun Anda.
-		</p>
+<div class="space-y-8">
+	<div>
+		<h1 class="font-serif text-[34px] leading-tight tracking-tight text-ink">Atur ulang sandi</h1>
+		<p class="mt-2.5 text-sm text-ink/60">Silakan masukkan kata sandi baru untuk akunmu.</p>
 	</div>
 
 	{#if !token}
-		<div class="space-y-4 rounded-[2rem] border border-red-100 bg-red-50 p-6 text-center">
+		<div class="space-y-4 rounded-xl border border-clay/25 bg-clay/5 p-6 text-center">
 			<svg
-				class="mx-auto h-12 w-12 text-red-400"
+				class="mx-auto h-10 w-10 text-clay"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
+				stroke-width="1.8"
 			>
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
-					stroke-width="2"
 					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 				/>
 			</svg>
-			<p class="text-sm font-bold text-red-800">Tautan tidak valid atau sudah kadaluarsa.</p>
+			<p class="text-[13px] font-medium text-clay">Tautan tidak valid atau sudah kadaluarsa.</p>
 			<a
 				href={resolve('/forgot-password')}
-				class="inline-block text-xs font-black tracking-widest text-[#217b84] uppercase hover:underline"
+				class="inline-block text-[12px] font-semibold tracking-[0.12em] text-teal uppercase hover:text-ink"
 			>
-				Minta Tautan Baru
+				Minta tautan baru
 			</a>
 		</div>
 	{:else}
 		{#if message}
 			<div
 				in:fly={{ y: -10, duration: 400 }}
-				class="flex items-center gap-3 rounded-2xl border p-4 {message.type === 'success'
-					? 'border-green-100 bg-green-50 text-green-800'
-					: 'border-red-100 bg-red-50 text-red-800'}"
+				class="flex items-start gap-2.5 rounded-xl border p-4 {message.type === 'success'
+					? 'border-teal/25 bg-teal/5'
+					: 'border-clay/25 bg-clay/5'}"
 			>
-				<svg class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<svg
+					class="mt-px h-4 w-4 shrink-0 {message.type === 'success' ? 'text-teal' : 'text-clay'}"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					{#if message.type === 'success'}
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2.5"
-							d="M5 13l4 4L19 7"
-						/>
+						<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 					{:else}
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="2.5"
 							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					{/if}
 				</svg>
-				<span class="text-xs leading-tight font-bold">{message.text}</span>
+				<span
+					class="text-[13px] font-medium {message.type === 'success' ? 'text-teal' : 'text-clay'}"
+				>
+					{message.text}
+				</span>
 			</div>
 		{/if}
 
-		<form class="space-y-6" onsubmit={handleResetPassword}>
-			<div class="space-y-5">
-				<div>
-					<label for="new-password" class="mb-2 block px-1 text-[13px] font-bold text-[#0a2e31]">
-						Kata Sandi Baru <span class="text-teal-600">*</span>
-					</label>
-					<div class="group relative">
-						<div
-							class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-300 transition-colors group-focus-within:text-[#217b84]"
-						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path
+		<form class="space-y-5" onsubmit={handleResetPassword}>
+			<div>
+				<label
+					for="new-password"
+					class="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+				>
+					Kata sandi baru
+				</label>
+				<div class="relative">
+					<input
+						id="new-password"
+						type={showPassword ? 'text' : 'password'}
+						required
+						bind:value={newPassword}
+						placeholder="Masukkan sandi baru"
+						class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 pr-11 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					/>
+					<button
+						type="button"
+						aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+						onclick={() => (showPassword = !showPassword)}
+						class="absolute inset-y-0 right-0 flex items-center pr-4 text-ink/35 hover:text-ink"
+					>
+						{#if showPassword}
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="1.8"
+								><path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-								/>
-							</svg>
-						</div>
-						<input
-							id="new-password"
-							type={showPassword ? 'text' : 'password'}
-							required
-							bind:value={newPassword}
-							class="block w-full rounded-2xl border border-gray-200 bg-gray-50/30 py-3.5 pr-11 pl-11 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-[#217b84] focus:bg-white focus:ring-4 focus:ring-teal-50/50"
-							placeholder="Masukkan sandi baru"
-						/>
-						<button
-							type="button"
-							aria-label="Tampilkan/sembunyikan sandi"
-							onclick={() => (showPassword = !showPassword)}
-							class="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-300 hover:text-gray-500"
-						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path
+									d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+								/></svg
+							>
+						{:else}
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="1.8"
+								><path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
 									d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 								/><path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									stroke-width="2"
 									d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-								/>
-							</svg>
-						</button>
-					</div>
+								/></svg
+							>
+						{/if}
+					</button>
 				</div>
+			</div>
 
-				<div>
-					<label
-						for="confirm-password"
-						class="mb-2 block px-1 text-[13px] font-bold text-[#0a2e31]"
-					>
-						Konfirmasi Kata Sandi <span class="text-teal-600">*</span>
-					</label>
-					<div class="group relative">
-						<div
-							class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-300 transition-colors group-focus-within:text-[#217b84]"
-						>
-							<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-								/>
-							</svg>
-						</div>
-						<input
-							id="confirm-password"
-							type={showPassword ? 'text' : 'password'}
-							required
-							bind:value={confirmPassword}
-							class="block w-full rounded-2xl border border-gray-200 bg-gray-50/30 py-3.5 pr-11 pl-11 text-sm transition-all outline-none placeholder:text-gray-400 focus:border-[#217b84] focus:bg-white focus:ring-4 focus:ring-teal-50/50"
-							placeholder="Ulangi sandi baru"
-						/>
-					</div>
+			<div>
+				<label
+					for="confirm-password"
+					class="mb-2 block text-[11px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+				>
+					Konfirmasi kata sandi
+				</label>
+				<div class="relative">
+					<input
+						id="confirm-password"
+						type={showPassword ? 'text' : 'password'}
+						required
+						bind:value={confirmPassword}
+						placeholder="Ulangi sandi baru"
+						class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					/>
 				</div>
 			</div>
 
 			<button
 				type="submit"
 				disabled={loading}
-				class="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#217b84] py-4 text-[15px] font-bold text-white shadow-xl shadow-teal-900/10 transition-all hover:bg-[#1a5f66] active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
+				class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:opacity-70"
 			>
 				{#if loading}
-					<div
-						class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"
-					></div>
+					<span class="h-4 w-4 animate-spin rounded-full border-2 border-card/40 border-t-card"
+					></span>
 				{/if}
-				{loading ? 'Memproses...' : 'Simpan Kata Sandi Baru'}
+				{loading ? 'Memproses…' : 'Simpan kata sandi baru'}
 			</button>
 		</form>
 	{/if}
 
-	<div class="text-center">
-		<a
-			href={resolve('/login')}
-			class="text-sm font-bold text-[#0a2e31] transition-colors hover:text-[#217b84]"
-		>
-			Kembali ke Login
-		</a>
-	</div>
+	<p class="text-center text-[13px] text-ink/55">
+		<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink">Kembali ke masuk</a>
+	</p>
 </div>

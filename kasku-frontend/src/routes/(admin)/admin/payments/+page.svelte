@@ -57,13 +57,13 @@
 	function statusBadge(status: string) {
 		switch (status) {
 			case 'SUCCESS':
-				return 'bg-green-50 text-green-700';
+				return 'border-teal/30 text-teal';
 			case 'FAILED':
-				return 'bg-red-50 text-red-700';
+				return 'border-clay/30 text-clay';
 			case 'PENDING':
-				return 'bg-amber-50 text-amber-700';
+				return 'border-gold/30 text-gold';
 			default:
-				return 'bg-gray-50 text-gray-700';
+				return 'border-ink/15 text-ink/55';
 		}
 	}
 
@@ -113,15 +113,15 @@
 
 <div class="space-y-8">
 	<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Pembayaran</h1>
-			<p class="font-medium text-gray-500">Riwayat transaksi pelanggan via Midtrans.</p>
+		<div>
+			<h1 class="font-serif text-3xl leading-tight tracking-tight text-ink">Pembayaran</h1>
+			<p class="mt-1.5 text-sm text-ink/55">Riwayat transaksi pelanggan via Midtrans.</p>
 		</div>
 		<div class="flex items-center gap-2">
 			<select
 				bind:value={statusFilter}
 				onchange={applyFilter}
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
+				class="rounded-[10px] border border-ink/25 bg-field px-4 py-2.5 text-sm text-ink transition-colors outline-none focus:border-teal"
 			>
 				<option value="all">Semua status</option>
 				<option value="SUCCESS">Sukses</option>
@@ -132,77 +132,74 @@
 				type="button"
 				onclick={loadPayments}
 				disabled={loading}
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[11px] font-bold text-[#0a2e31] hover:bg-gray-50 disabled:opacity-60"
+				class="rounded-full border border-ink/20 px-4 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-60"
 			>
-				{loading ? 'Memuat…' : 'Muat Ulang'}
+				{loading ? 'Memuat…' : 'Muat ulang'}
 			</button>
 		</div>
 	</div>
 
 	{#if error}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-xs font-bold text-red-700"
-		>
-			{error}
+		<div class="flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+			<svg
+				class="mt-px h-4 w-4 shrink-0 text-clay"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
+			</svg>
+			<p class="text-[13px] font-medium text-clay">{error}</p>
 		</div>
 	{/if}
 
-	<div class="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm">
-		<table class="w-full text-left text-sm">
-			<thead class="border-b border-gray-100 bg-gray-50/60">
-				<tr class="text-[10px] font-black tracking-widest text-gray-500 uppercase">
-					<th class="px-6 py-4">Order ID</th>
-					<th class="px-6 py-4">Pengguna</th>
-					<th class="px-6 py-4">Paket</th>
-					<th class="px-6 py-4 text-right">Nominal</th>
-					<th class="px-6 py-4">Status</th>
-					<th class="px-6 py-4">Dibayar</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-50">
-				{#if loading && payments.length === 0}
-					{#each [0, 1, 2, 3, 4] as i (i)}
-						<tr><td colspan="6" class="h-12 animate-pulse bg-gray-50/50"></td></tr>
-					{/each}
-				{:else if payments.length === 0}
-					<tr>
-						<td colspan="6" class="px-6 py-10 text-center text-xs font-bold text-gray-400">
-							Tidak ada transaksi.
-						</td>
-					</tr>
-				{:else}
-					{#each payments as p, i (p.id)}
-						<tr
-							in:fly={{ y: 8, delay: i * 20, duration: 200 }}
-							class="transition-colors hover:bg-gray-50/60"
-						>
-							<td class="px-6 py-4 font-mono text-xs text-[#0a2e31]">{p.order_id}</td>
-							<td class="px-6 py-4 text-sm font-bold text-[#0a2e31]">{p.user_email}</td>
-							<td class="px-6 py-4 text-xs font-bold tracking-widest text-teal-700 uppercase">
-								{p.plan_name}
-							</td>
-							<td class="px-6 py-4 text-right text-sm font-black text-[#0a2e31] tabular-nums">
-								{formatCurrency(p.amount_idr)}
-							</td>
-							<td class="px-6 py-4">
-								<span
-									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase {statusBadge(
-										p.status
-									)}"
-								>
-									{p.status}
-								</span>
-							</td>
-							<td class="px-6 py-4 text-xs font-medium text-gray-500">{formatDate(p.paid_at)}</td>
-						</tr>
-					{/each}
-				{/if}
-			</tbody>
-		</table>
+	<div>
+		<div
+			class="grid grid-cols-[1fr_1.4fr_0.7fr_0.9fr_0.7fr_1fr] gap-4 border-b border-ink/25 py-3 text-[10.5px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+		>
+			<span>Order ID</span><span>Pengguna</span><span>Paket</span><span class="text-right"
+				>Nominal</span
+			><span>Status</span><span>Dibayar</span>
+		</div>
+
+		{#if loading && payments.length === 0}
+			<div class="space-y-3 pt-4">
+				{#each [0, 1, 2, 3, 4] as i (i)}
+					<div class="h-6 animate-pulse rounded bg-ink/5"></div>
+				{/each}
+			</div>
+		{:else if payments.length === 0}
+			<p class="py-8 text-center text-sm text-ink/45">Tidak ada transaksi.</p>
+		{:else}
+			{#each payments as p, i (p.id)}
+				<div
+					in:fly={{ y: 8, delay: i * 20, duration: 200 }}
+					class="grid grid-cols-[1fr_1.4fr_0.7fr_0.9fr_0.7fr_1fr] items-baseline gap-4 border-b border-ink/8 py-4 text-[13px]"
+				>
+					<span class="truncate font-mono text-xs text-ink">{p.order_id}</span>
+					<span class="truncate font-medium text-ink">{p.user_email}</span>
+					<span class="truncate text-teal">{p.plan_name}</span>
+					<span class="text-right font-semibold text-ink tabular-nums"
+						>{formatCurrency(p.amount_idr)}</span
+					>
+					<span>
+						<span class="rounded-full border px-2 py-px text-[11px] {statusBadge(p.status)}">
+							{p.status}
+						</span>
+					</span>
+					<span class="text-ink/50">{formatDate(p.paid_at)}</span>
+				</div>
+			{/each}
+		{/if}
 	</div>
 
 	{#if meta && meta.total > 0}
-		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
+		<div class="flex items-center justify-between text-[13px] text-ink/55">
 			<span>
 				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
 					meta.page * meta.page_size,
@@ -214,16 +211,16 @@
 					type="button"
 					onclick={() => changePage(-1)}
 					disabled={page === 1 || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					← Sebelumnya
 				</button>
-				<span class="text-[#0a2e31]">Halaman {page} / {totalPages}</span>
+				<span class="font-semibold text-ink">Halaman {page} / {totalPages}</span>
 				<button
 					type="button"
 					onclick={() => changePage(1)}
 					disabled={page >= totalPages || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					Berikutnya →
 				</button>

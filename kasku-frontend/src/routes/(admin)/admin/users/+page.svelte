@@ -91,20 +91,20 @@
 
 <div class="space-y-8">
 	<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-		<div class="space-y-1">
-			<h1 class="text-3xl font-black text-[#0a2e31]">Pengguna</h1>
-			<p class="font-medium text-gray-500">Kelola seluruh akun pelanggan KasKu.</p>
+		<div>
+			<h1 class="font-serif text-3xl leading-tight tracking-tight text-ink">Pengguna</h1>
+			<p class="mt-1.5 text-sm text-ink/55">Kelola seluruh akun pelanggan KasKu.</p>
 		</div>
 		<form onsubmit={applySearch} class="flex items-center gap-2">
 			<input
 				type="search"
 				bind:value={search}
 				placeholder="Cari email / username…"
-				class="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
+				class="rounded-[10px] border border-ink/25 bg-field px-4 py-2.5 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
 			/>
 			<button
 				type="submit"
-				class="rounded-full bg-[#0a2e31] px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase transition-colors hover:bg-[#143f43]"
+				class="rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 			>
 				Cari
 			</button>
@@ -112,76 +112,82 @@
 	</div>
 
 	{#if error}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-xs font-bold text-red-700"
-		>
-			{error}
+		<div class="flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+			<svg
+				class="mt-px h-4 w-4 shrink-0 text-clay"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
+			</svg>
+			<p class="text-[13px] font-medium text-clay">{error}</p>
 		</div>
 	{/if}
 
-	<div class="overflow-hidden rounded-[2rem] border border-gray-100 bg-white shadow-sm">
-		<table class="w-full text-left text-sm">
-			<thead class="border-b border-gray-100 bg-gray-50/60">
-				<tr class="text-[10px] font-black tracking-widest text-gray-500 uppercase">
-					<th class="px-6 py-4">Email</th>
-					<th class="px-6 py-4">Username</th>
-					<th class="px-6 py-4">Status</th>
-					<th class="px-6 py-4">Tier</th>
-					<th class="px-6 py-4">Terdaftar</th>
-					<th class="px-6 py-4"></th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-50">
-				{#if loading && users.length === 0}
-					{#each [0, 1, 2, 3, 4] as i (i)}
-						<tr><td colspan="6" class="h-12 animate-pulse bg-gray-50/50"></td></tr>
-					{/each}
-				{:else if users.length === 0}
-					<tr>
-						<td colspan="6" class="px-6 py-10 text-center text-xs font-bold text-gray-400">
-							Tidak ada pengguna ditemukan.
-						</td>
-					</tr>
-				{:else}
-					{#each users as u, i (u.id)}
-						<tr
-							in:fly={{ y: 8, delay: i * 20, duration: 200 }}
-							class="transition-colors hover:bg-gray-50/60"
+	<div>
+		<div
+			class="grid grid-cols-[1.5fr_1fr_0.8fr_0.6fr_0.7fr_0.5fr] gap-4 border-b border-ink/25 py-3 text-[10.5px] font-semibold tracking-[0.12em] text-ink/50 uppercase"
+		>
+			<span>Email</span><span>Username</span><span>Status</span><span>Tier</span><span
+				>Terdaftar</span
+			><span></span>
+		</div>
+
+		{#if loading && users.length === 0}
+			<div class="space-y-3 pt-4">
+				{#each [0, 1, 2, 3, 4] as i (i)}
+					<div class="h-6 animate-pulse rounded bg-ink/5"></div>
+				{/each}
+			</div>
+		{:else if users.length === 0}
+			<p class="py-8 text-center text-sm text-ink/45">Tidak ada pengguna ditemukan.</p>
+		{:else}
+			{#each users as u, i (u.id)}
+				{@const isPro = u.subscription_tier?.toUpperCase() === 'PRO'}
+				<div
+					in:fly={{ y: 8, delay: i * 20, duration: 200 }}
+					class="grid grid-cols-[1.5fr_1fr_0.8fr_0.6fr_0.7fr_0.5fr] items-baseline gap-4 border-b border-ink/8 py-4 text-[13px]"
+				>
+					<span class="truncate font-medium text-ink">{u.email}</span>
+					<span class="truncate text-ink/60">{u.username}</span>
+					<span>
+						<span
+							class="rounded-full border px-2 py-px text-[11px] {u.is_active
+								? 'border-teal/30 text-teal'
+								: 'border-clay/30 text-clay'}"
 						>
-							<td class="px-6 py-4 text-sm font-bold text-[#0a2e31]">{u.email}</td>
-							<td class="px-6 py-4 text-xs font-medium text-gray-600">{u.username}</td>
-							<td class="px-6 py-4">
-								<span
-									class="rounded-full px-2 py-0.5 text-[9px] font-black tracking-widest uppercase
-									{u.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}"
-								>
-									{u.is_active ? 'Aktif' : 'Suspended'}
-								</span>
-							</td>
-							<td class="px-6 py-4">
-								<span class="text-[10px] font-black tracking-widest text-teal-700 uppercase">
-									{u.subscription_tier}
-								</span>
-							</td>
-							<td class="px-6 py-4 text-xs font-medium text-gray-500">{formatDate(u.created_at)}</td
-							>
-							<td class="px-6 py-4 text-right">
-								<a
-									href={resolve(`/admin/users/${u.id}`)}
-									class="text-xs font-black text-[#217b84] hover:underline"
-								>
-									Detail →
-								</a>
-							</td>
-						</tr>
-					{/each}
-				{/if}
-			</tbody>
-		</table>
+							{u.is_active ? 'Aktif' : 'Suspended'}
+						</span>
+					</span>
+					<span>
+						<span
+							class="rounded-full border px-2 py-px text-[11px] {isPro
+								? 'border-teal/30 text-teal'
+								: 'border-ink/15 text-ink/55'}"
+						>
+							{isPro ? 'Pro' : u.subscription_tier}
+						</span>
+					</span>
+					<span class="text-ink/50">{formatDate(u.created_at)}</span>
+					<a
+						href={resolve(`/admin/users/${u.id}`)}
+						class="justify-self-end font-semibold text-teal transition-colors hover:text-ink"
+					>
+						Detail →
+					</a>
+				</div>
+			{/each}
+		{/if}
 	</div>
 
 	{#if meta && meta.total > 0}
-		<div class="flex items-center justify-between text-xs font-bold text-gray-500">
+		<div class="flex items-center justify-between text-[13px] text-ink/55">
 			<span>
 				Menampilkan {(meta.page - 1) * meta.page_size + 1}–{Math.min(
 					meta.page * meta.page_size,
@@ -193,16 +199,16 @@
 					type="button"
 					onclick={() => changePage(-1)}
 					disabled={page === 1 || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					← Sebelumnya
 				</button>
-				<span class="text-[#0a2e31]">Halaman {page} / {totalPages}</span>
+				<span class="font-semibold text-ink">Halaman {page} / {totalPages}</span>
 				<button
 					type="button"
 					onclick={() => changePage(1)}
 					disabled={page >= totalPages || loading}
-					class="rounded-full border border-gray-200 px-3 py-1 transition-colors hover:bg-gray-50 disabled:opacity-40"
+					class="rounded-full border border-ink/20 px-3.5 py-1.5 font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-40"
 				>
 					Berikutnya →
 				</button>

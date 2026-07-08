@@ -140,7 +140,7 @@
 		<button
 			type="button"
 			onclick={() => goto(resolve('/admin/users'))}
-			class="text-xs font-black text-gray-500 hover:text-[#0a2e31]"
+			class="text-[13px] font-semibold text-ink/55 transition-colors hover:text-ink"
 		>
 			← Kembali ke daftar
 		</button>
@@ -148,146 +148,169 @@
 			type="button"
 			onclick={loadUser}
 			disabled={loading}
-			class="rounded-full border border-gray-200 bg-white px-4 py-2 text-[11px] font-bold text-[#0a2e31] hover:bg-gray-50 disabled:opacity-60"
+			class="rounded-full border border-ink/20 px-4 py-2 text-[13px] font-semibold text-ink transition-colors hover:border-ink/40 disabled:opacity-60"
 		>
-			{loading ? 'Memuat…' : 'Muat Ulang'}
+			{loading ? 'Memuat…' : 'Muat ulang'}
 		</button>
 	</div>
 
 	{#if error}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-xs font-bold text-red-700"
-		>
-			{error}
+		<div class="flex items-start gap-2.5 rounded-xl border border-clay/25 bg-clay/5 p-4">
+			<svg
+				class="mt-px h-4 w-4 shrink-0 text-clay"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+				/>
+			</svg>
+			<p class="text-[13px] font-medium text-clay">{error}</p>
 		</div>
 	{/if}
 
 	{#if loading && !user}
-		<div class="h-48 animate-pulse rounded-[2rem] bg-gray-50"></div>
+		<div class="h-48 animate-pulse rounded-2xl bg-ink/5"></div>
 	{:else if user}
-		<div class="space-y-6 rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-sm">
-			<div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-				<div class="space-y-1">
-					<h1 class="text-3xl font-black text-[#0a2e31]">{user.username}</h1>
-					<p class="text-sm font-medium text-gray-500">{user.email}</p>
+		<div class="border-b border-ink/10 pb-8">
+			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+				<div>
+					<h1 class="font-serif text-3xl leading-tight tracking-tight text-ink">{user.username}</h1>
+					<p class="mt-1.5 text-sm text-ink/55">{user.email}</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<span
-						class="rounded-full px-3 py-1 text-[10px] font-black tracking-widest uppercase
-						{user.is_active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}"
+						class="rounded-full border px-2.5 py-0.5 text-[11px] {user.is_active
+							? 'border-teal/30 text-teal'
+							: 'border-clay/30 text-clay'}"
 					>
 						{user.is_active ? 'Aktif' : 'Suspended'}
 					</span>
 					<span
-						class="rounded-full px-3 py-1 text-[10px] font-black tracking-widest uppercase
-						{user.email_verified ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}"
+						class="rounded-full border px-2.5 py-0.5 text-[11px] {user.email_verified
+							? 'border-teal/30 text-teal'
+							: 'border-gold/30 text-gold'}"
 					>
-						{user.email_verified ? 'Terverifikasi' : 'Belum Verifikasi'}
+						{user.email_verified ? 'Terverifikasi' : 'Belum verifikasi'}
 					</span>
 				</div>
 			</div>
 
-			<div class="grid grid-cols-2 gap-6 md:grid-cols-4">
-				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">Tier</p>
-					<p class="text-sm font-bold text-[#0a2e31]">{user.subscription_tier}</p>
+			<div class="mt-7 grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+				<div>
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">Tier</p>
+					<p class="mt-1 text-sm font-medium text-ink">{user.subscription_tier}</p>
 				</div>
-				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">
-						Status Subscription
+				<div>
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Status subscription
 					</p>
-					<p class="text-sm font-bold text-[#0a2e31]">{user.subscription_status}</p>
+					<p class="mt-1 text-sm font-medium text-ink">{user.subscription_status}</p>
 				</div>
-				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">Aktif Hingga</p>
-					<p class="text-sm font-bold text-[#0a2e31]">{formatDate(user.subscription_expires_at)}</p>
-				</div>
-				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">Terdaftar</p>
-					<p class="text-sm font-bold text-[#0a2e31]">{formatDate(user.created_at)}</p>
-				</div>
-				<div class="space-y-1">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">
-						Login Terakhir
+				<div>
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Aktif hingga
 					</p>
-					<p class="text-sm font-bold text-[#0a2e31]">{formatDate(user.last_login_at)}</p>
+					<p class="mt-1 text-sm font-medium text-ink">
+						{formatDate(user.subscription_expires_at)}
+					</p>
 				</div>
-				<div class="space-y-1 md:col-span-2">
-					<p class="text-[10px] font-black tracking-widest text-gray-400 uppercase">User ID</p>
-					<p class="font-mono text-xs text-[#0a2e31]">{user.id}</p>
+				<div>
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Terdaftar
+					</p>
+					<p class="mt-1 text-sm font-medium text-ink">{formatDate(user.created_at)}</p>
+				</div>
+				<div>
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Login terakhir
+					</p>
+					<p class="mt-1 text-sm font-medium text-ink">{formatDate(user.last_login_at)}</p>
+				</div>
+				<div class="md:col-span-2">
+					<p class="text-[10.5px] font-semibold tracking-[0.12em] text-ink/45 uppercase">User ID</p>
+					<p class="mt-1 font-mono text-xs text-ink/70">{user.id}</p>
 				</div>
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-			<div class="space-y-4 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
-				<h3 class="text-sm font-black text-[#0a2e31]">Status Akun</h3>
-				<p class="text-xs text-gray-500">
+		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+			<div class="rounded-2xl border border-ink/12 bg-card p-6">
+				<h3 class="text-[13px] font-semibold text-ink">Status akun</h3>
+				<p class="mt-1.5 text-[13px] text-ink/55">
 					Suspend mencegah login dan akses API; aktivasi mengembalikan akses penuh.
 				</p>
 				{#if user.is_active}
-					<label class="block space-y-1 text-xs font-bold text-gray-600">
+					<label
+						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+					>
 						Alasan suspend
 						<input
 							type="text"
 							bind:value={suspendReason}
 							placeholder="Contoh: Pelanggaran ToS pasal 3"
-							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-red-400/40 focus:outline-none"
+							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
 						/>
 					</label>
 					<button
 						type="button"
 						onclick={suspend}
 						disabled={actionBusy || suspendReason.trim().length < 3}
-						class="rounded-full bg-red-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-red-700 disabled:opacity-40"
+						class="mt-4 rounded-full border border-clay/25 px-5 py-2.5 text-[13px] font-semibold text-clay transition-colors hover:bg-clay/5 disabled:opacity-40"
 					>
 						Suspend
 					</button>
 				{:else}
-					<label class="block space-y-1 text-xs font-bold text-gray-600">
+					<label
+						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+					>
 						Alasan aktivasi
 						<input
 							type="text"
 							bind:value={activateReason}
 							placeholder="Contoh: Masalah sudah diselesaikan"
-							class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-green-400/40 focus:outline-none"
+							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
 						/>
 					</label>
 					<button
 						type="button"
 						onclick={activate}
 						disabled={actionBusy || activateReason.trim().length < 3}
-						class="rounded-full bg-green-600 px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-green-700 disabled:opacity-40"
+						class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
 					>
 						Aktifkan
 					</button>
 				{/if}
 			</div>
 
-			<div class="space-y-4 rounded-[2rem] border border-gray-100 bg-white p-6 shadow-sm">
-				<h3 class="text-sm font-black text-[#0a2e31]">Override Subscription</h3>
-				<p class="text-xs text-gray-500">
+			<div class="rounded-2xl border border-ink/12 bg-card p-6">
+				<h3 class="text-[13px] font-semibold text-ink">Override subscription</h3>
+				<p class="mt-1.5 text-[13px] text-ink/55">
 					Ubah tier secara manual; berguna untuk kompensasi atau promo. Tercatat di audit log.
 				</p>
-				<div class="grid grid-cols-1 gap-3">
-					<label class="space-y-1 text-xs font-bold text-gray-600">
+				<div class="mt-4 grid grid-cols-1 gap-3.5">
+					<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
 						Tier baru
 						<select
 							bind:value={overridePlanName}
-							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-[#0a2e31] focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
+							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none focus:border-teal"
 						>
 							{#each tierOptions as t (t)}
 								<option value={t}>{t}</option>
 							{/each}
 						</select>
 					</label>
-					<label class="space-y-1 text-xs font-bold text-gray-600">
+					<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
 						Alasan override
 						<input
 							type="text"
 							bind:value={overrideReason}
 							placeholder="Contoh: Kompensasi gangguan layanan"
-							class="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-[#0a2e31] placeholder:text-gray-400 focus:ring-2 focus:ring-teal-500/40 focus:outline-none"
+							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
 						/>
 					</label>
 				</div>
@@ -295,9 +318,9 @@
 					type="button"
 					onclick={override}
 					disabled={actionBusy || overrideReason.trim().length < 3}
-					class="rounded-full bg-[#0a2e31] px-4 py-2 text-[11px] font-black tracking-widest text-white uppercase hover:bg-[#143f43] disabled:opacity-40"
+					class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
 				>
-					Override Sekarang
+					Override sekarang
 				</button>
 			</div>
 		</div>

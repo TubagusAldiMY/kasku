@@ -188,117 +188,154 @@
 	);
 </script>
 
-<div class="animate-in fade-in space-y-8 pb-20 duration-500">
-	<div class="space-y-1">
-		<h1 class="text-3xl font-black text-[#0a2e31]">Kategori Transaksi</h1>
-		<p class="text-sm font-medium text-gray-500">
+<div>
+	<!-- ═══════════ Header ═══════════ -->
+	<div class="border-b border-ink/10 pb-8">
+		<h1 class="font-serif text-4xl tracking-tight text-ink">Kategori</h1>
+		<p class="mt-2.5 text-sm text-ink/60">
 			Kelola kategori untuk pencatatan keuangan yang lebih rapi.
 		</p>
 	</div>
 
 	{#if errorMessage && !showModal}
-		<div
-			class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600"
-		>
+		<div class="mt-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
 			{errorMessage}
 		</div>
 	{/if}
 
-	<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+	<div class="grid grid-cols-1 gap-12 pt-8 md:grid-cols-2 md:gap-16">
 		<!-- Expense Section -->
-		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h2
-					class="flex items-center gap-2 text-lg font-black tracking-widest text-red-500 uppercase"
-				>
-					<div class="h-2 w-2 rounded-full bg-red-500"></div>
-					Pengeluaran
-				</h2>
+		<div>
+			<div class="mb-1 flex items-center justify-between">
+				<div class="flex items-center gap-2.5">
+					<span class="h-1.5 w-1.5 rounded-full bg-clay"></span>
+					<p class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
+						Pengeluaran
+					</p>
+				</div>
 				<button
 					onclick={() => openAddModal('EXPENSE')}
-					class="rounded-full px-3 py-1.5 text-[10px] font-black tracking-widest text-[#217b84] uppercase transition-colors hover:bg-teal-50"
+					class="text-[12.5px] font-semibold text-teal transition-colors hover:text-ink"
 				>
-					+ Tambah Kategori
+					+ Tambah
 				</button>
 			</div>
 
-			<div
-				class="grid grid-cols-2 gap-3 rounded-[2.5rem] border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-3"
-			>
-				{#if loading}
-					{#each [0, 1, 2, 3, 4, 5] as i (i)}
-						<div class="h-24 animate-pulse rounded-3xl bg-gray-50"></div>
-					{/each}
-				{:else if expenseCategories.length === 0}
-					<div class="col-span-full py-10 text-center text-xs font-bold text-gray-400">
-						Belum ada kategori.
+			{#if loading}
+				{#each [0, 1, 2, 3] as i (i)}
+					<div class="border-t border-ink/10 py-4">
+						<div class="h-5 w-40 animate-pulse rounded bg-ink/5"></div>
 					</div>
-				{:else}
-					{#each expenseCategories as cat (cat.id)}
-						<button
-							onclick={() => openEditModal(cat)}
-							class="group flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-transparent p-4 text-center transition-colors hover:border-gray-100 hover:bg-gray-50"
+				{/each}
+			{:else if expenseCategories.length === 0}
+				<p class="border-t border-ink/10 py-8 text-sm text-ink/45">Belum ada kategori.</p>
+			{:else}
+				{#each expenseCategories as cat (cat.id)}
+					<button
+						onclick={() => openEditModal(cat)}
+						class="group flex w-full items-center gap-3.5 border-t border-ink/10 py-4 text-left transition-colors last:border-b hover:bg-ink/[0.02]"
+					>
+						<span
+							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base"
+							style="background-color: {cat.color}18; color: {cat.color}"
 						>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm transition-transform group-hover:scale-110"
-								style="background-color: {cat.color}15; color: {cat.color}"
+							{cat.icon}
+						</span>
+						<span class="flex-1 truncate font-serif text-lg text-ink">{cat.name}</span>
+						{#if cat.category_type === 'BOTH'}
+							<span
+								class="shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/55"
+								>Keduanya</span
 							>
-								{cat.icon}
-							</div>
-							<span class="px-1 text-[11px] leading-tight font-bold text-[#0a2e31]">{cat.name}</span
+						{/if}
+						{#if cat.is_default}
+							<span
+								class="shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/45"
+								>Bawaan</span
 							>
-						</button>
-					{/each}
-				{/if}
-			</div>
+						{/if}
+						<svg
+							class="h-4 w-4 shrink-0 text-ink/25 transition-colors group-hover:text-ink/50"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="1.8"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+							/>
+						</svg>
+					</button>
+				{/each}
+			{/if}
 		</div>
 
 		<!-- Income Section -->
-		<div class="space-y-6">
-			<div class="flex items-center justify-between">
-				<h2
-					class="flex items-center gap-2 text-lg font-black tracking-widest text-green-600 uppercase"
-				>
-					<div class="h-2 w-2 rounded-full bg-green-500"></div>
-					Pemasukan
-				</h2>
+		<div>
+			<div class="mb-1 flex items-center justify-between">
+				<div class="flex items-center gap-2.5">
+					<span class="h-1.5 w-1.5 rounded-full bg-teal"></span>
+					<p class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">Pemasukan</p>
+				</div>
 				<button
 					onclick={() => openAddModal('INCOME')}
-					class="rounded-full px-3 py-1.5 text-[10px] font-black tracking-widest text-[#217b84] uppercase transition-colors hover:bg-teal-50"
+					class="text-[12.5px] font-semibold text-teal transition-colors hover:text-ink"
 				>
-					+ Tambah Kategori
+					+ Tambah
 				</button>
 			</div>
 
-			<div
-				class="grid grid-cols-2 gap-3 rounded-[2.5rem] border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-3"
-			>
-				{#if loading}
-					{#each [0, 1, 2] as i (i)}
-						<div class="h-24 animate-pulse rounded-3xl bg-gray-50"></div>
-					{/each}
-				{:else if incomeCategories.length === 0}
-					<div class="col-span-full py-10 text-center text-xs font-bold text-gray-400">
-						Belum ada kategori.
+			{#if loading}
+				{#each [0, 1, 2] as i (i)}
+					<div class="border-t border-ink/10 py-4">
+						<div class="h-5 w-40 animate-pulse rounded bg-ink/5"></div>
 					</div>
-				{:else}
-					{#each incomeCategories as cat (cat.id)}
-						<button
-							onclick={() => openEditModal(cat)}
-							class="group flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-transparent p-4 text-center transition-colors hover:border-gray-100 hover:bg-gray-50"
+				{/each}
+			{:else if incomeCategories.length === 0}
+				<p class="border-t border-ink/10 py-8 text-sm text-ink/45">Belum ada kategori.</p>
+			{:else}
+				{#each incomeCategories as cat (cat.id)}
+					<button
+						onclick={() => openEditModal(cat)}
+						class="group flex w-full items-center gap-3.5 border-t border-ink/10 py-4 text-left transition-colors last:border-b hover:bg-ink/[0.02]"
+					>
+						<span
+							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base"
+							style="background-color: {cat.color}18; color: {cat.color}"
 						>
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-sm transition-transform group-hover:scale-110"
-								style="background-color: {cat.color}15; color: {cat.color}"
+							{cat.icon}
+						</span>
+						<span class="flex-1 truncate font-serif text-lg text-ink">{cat.name}</span>
+						{#if cat.category_type === 'BOTH'}
+							<span
+								class="shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/55"
+								>Keduanya</span
 							>
-								{cat.icon}
-							</div>
-							<span class="px-1 text-[11px] leading-tight font-bold text-[#0a2e31]">{cat.name}</span
+						{/if}
+						{#if cat.is_default}
+							<span
+								class="shrink-0 rounded-full border border-ink/15 px-2 py-px text-[11px] text-ink/45"
+								>Bawaan</span
 							>
-						</button>
-					{/each}
-				{/if}
-			</div>
+						{/if}
+						<svg
+							class="h-4 w-4 shrink-0 text-ink/25 transition-colors group-hover:text-ink/50"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="1.8"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+							/>
+						</svg>
+					</button>
+				{/each}
+			{/if}
 		</div>
 	</div>
 </div>
@@ -306,29 +343,29 @@
 <!-- Modal Kategori -->
 {#if showModal}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2e31]/40 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
-			class="w-full max-w-sm overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
+			class="w-full max-w-sm overflow-hidden rounded-2xl border border-ink/10 bg-card shadow-2xl"
 			in:fly={{ y: 20, duration: 400 }}
 		>
 			<div class="space-y-6 p-8">
 				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-black text-[#0a2e31]">
-						{form.id ? 'Edit Kategori' : 'Kategori Baru'}
+					<h2 class="font-serif text-2xl text-ink">
+						{form.id ? 'Edit kategori' : 'Kategori baru'}
 					</h2>
 					<button
 						aria-label="Tutup modal"
 						onclick={() => (showModal = false)}
-						class="text-gray-300 transition-colors hover:text-gray-500"
+						class="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 					>
 						<svg
-							class="h-6 w-6"
+							class="h-5 w-5"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
-							stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12" /></svg
+							stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg
 						>
 					</button>
 				</div>
@@ -337,8 +374,8 @@
 					<div class="space-y-1.5">
 						<label
 							for="name"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
-							>Nama Kategori</label
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+							>Nama kategori</label
 						>
 						<input
 							id="name"
@@ -346,20 +383,20 @@
 							required
 							bind:value={form.name}
 							placeholder="Misal: Belanja Bulanan"
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						/>
 					</div>
 
 					<div class="space-y-1.5">
 						<label
 							for="type"
-							class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+							class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 							>Tipe</label
 						>
 						<select
 							id="type"
 							bind:value={form.category_type}
-							class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm font-bold text-[#0a2e31] transition-all outline-none focus:ring-2 focus:ring-teal-500"
+							class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none focus:border-teal"
 						>
 							<option value="EXPENSE">Pengeluaran</option>
 							<option value="INCOME">Pemasukan</option>
@@ -371,8 +408,8 @@
 						<div class="space-y-1.5">
 							<label
 								for="icon"
-								class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
-								>Icon (Emoji)</label
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+								>Icon (emoji)</label
 							>
 							<input
 								id="icon"
@@ -380,14 +417,14 @@
 								required
 								bind:value={form.icon}
 								placeholder="🍔"
-								class="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-center text-xl transition-all outline-none focus:ring-2 focus:ring-teal-500"
+								class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-center text-xl transition-colors outline-none focus:border-teal"
 							/>
 						</div>
 
 						<div class="space-y-1.5">
 							<label
 								for="color"
-								class="block px-1 text-[10px] font-black tracking-widest text-gray-400 uppercase"
+								class="block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
 								>Warna</label
 							>
 							<input
@@ -395,20 +432,20 @@
 								type="color"
 								required
 								bind:value={form.color}
-								class="h-[52px] w-full cursor-pointer rounded-xl border border-gray-100 bg-gray-50 px-2 py-1"
+								class="h-[50px] w-full cursor-pointer rounded-[10px] border border-ink/25 bg-field px-2 py-1"
 							/>
 						</div>
 					</div>
 
 					<!-- Preset Colors -->
-					<div class="flex justify-between gap-1 pt-2">
+					<div class="flex justify-between gap-1 pt-1">
 						{#each predefinedColors as color (color)}
 							<button
 								type="button"
 								aria-label="Pilih warna {color}"
 								onclick={() => (form.color = color)}
 								class="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 active:scale-90"
-								class:border-gray-900={form.color === color}
+								class:border-ink={form.color === color}
 								class:border-transparent={form.color !== color}
 								style="background-color: {color}"
 							></button>
@@ -416,9 +453,7 @@
 					</div>
 
 					{#if errorMessage}
-						<div
-							class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-bold text-red-600"
-						>
+						<div class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-xs text-clay">
 							{errorMessage}
 						</div>
 					{/if}
@@ -429,7 +464,7 @@
 								type="button"
 								onclick={() => handleDeleteCategory(form.id)}
 								disabled={saving}
-								class="rounded-xl border border-red-100 px-5 py-3 text-[10px] font-black tracking-widest text-red-500 uppercase transition-all hover:bg-red-50"
+								class="rounded-full border border-ink/15 px-5 py-2.5 text-[13px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5 disabled:opacity-60"
 							>
 								Hapus
 							</button>
@@ -437,9 +472,9 @@
 						<button
 							type="submit"
 							disabled={saving}
-							class="flex-1 rounded-xl bg-[#0a2e31] py-3 text-[10px] font-black tracking-widest text-white uppercase shadow-lg transition-all hover:bg-black active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+							class="flex-1 rounded-full bg-teal py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
 						>
-							{saving ? 'Menyimpan...' : 'Simpan'}
+							{saving ? 'Menyimpan…' : 'Simpan'}
 						</button>
 					</div>
 				</form>

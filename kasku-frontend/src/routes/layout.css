@@ -1,1 +1,41 @@
 @import 'tailwindcss';
+
+/*
+ * KasKu editorial design system — tokens from the ReDesign handoff mockup.
+ * Fonts are imported in +layout.svelte (self-hosted via @fontsource, offline-first).
+ * Opacity idiom: the mockup's rgba(18,49,46,α) === ink/α (e.g. ink/10, ink/45, ink/60).
+ */
+@theme {
+	/* Surfaces */
+	--color-paper: #eceae4; /* app canvas / desk */
+	--color-card: #f7f6f2; /* cards, panels */
+	--color-field: #fdfcfa; /* inputs, bright insets */
+
+	/* Ink + accents */
+	--color-ink: #12312e; /* primary text, dark panels */
+	--color-teal: #1a5f66; /* primary action, links, positive */
+	--color-mint: #7fc7bd; /* light teal on dark backgrounds */
+	--color-clay: #a4502f; /* danger, over-budget, negative emphasis */
+	--color-gold: #8a6a1f; /* caution, budget/category tags */
+	--color-steel: #2f5583; /* transfer blue */
+
+	/* Type */
+	--font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
+	--font-serif: 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
+}
+
+@layer base {
+	html {
+		font-family: var(--font-sans);
+		-webkit-text-size-adjust: 100%;
+	}
+
+	body {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	/* Money & figures line up when using .tabular-nums / font-variant-numeric utilities. */
+}
