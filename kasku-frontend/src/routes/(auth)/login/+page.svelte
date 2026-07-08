@@ -174,7 +174,7 @@
 				required
 				bind:value={email}
 				placeholder="contoh@email.com"
-				class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+				class="w-full rounded-[10px] border border-ink/15 bg-field px-4 py-3 text-sm text-ink shadow-sm transition outline-none placeholder:text-ink/35 focus:border-teal focus:ring-2 focus:ring-teal/15"
 			/>
 		</div>
 
@@ -200,7 +200,7 @@
 					required
 					bind:value={password}
 					placeholder="Masukkan kata sandi"
-					class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 pr-11 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					class="w-full rounded-[10px] border border-ink/15 bg-field px-4 py-3 pr-11 text-sm text-ink shadow-sm transition outline-none placeholder:text-ink/35 focus:border-teal focus:ring-2 focus:ring-teal/15"
 				/>
 				<button
 					type="button"

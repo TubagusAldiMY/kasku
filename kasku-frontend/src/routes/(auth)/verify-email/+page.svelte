@@ -130,7 +130,7 @@
 					type="email"
 					bind:value={email}
 					placeholder="Masukkan email Anda"
-					class="w-full rounded-[10px] border border-ink/25 bg-field px-4 py-3 text-sm text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+					class="w-full rounded-[10px] border border-ink/15 bg-field px-4 py-3 text-sm text-ink shadow-sm transition outline-none placeholder:text-ink/35 focus:border-teal focus:ring-2 focus:ring-teal/15"
 				/>
 				<button
 					onclick={handleResendVerification}
