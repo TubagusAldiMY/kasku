@@ -1,4 +1,5 @@
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
+import { browser } from '$app/environment';
 import { auth } from '$lib/stores/auth.svelte';
 
 type FetchOptions = RequestInit & {
@@ -6,6 +7,11 @@ type FetchOptions = RequestInit & {
 };
 
 let refreshPromise: Promise<boolean> | null = null;
+
+/** Mode demo (tanpa akun) aktif — token mock tidak boleh dipakai memanggil backend. */
+function isMockMode(): boolean {
+	return browser && localStorage.getItem('kasku_mock_mode') === 'true';
+}
 
 /**
  * apiFetch adalah wrapper fetch yang secara otomatis menangani:
@@ -16,6 +22,17 @@ let refreshPromise: Promise<boolean> | null = null;
  */
 export async function apiFetch(path: string, options: FetchOptions = {}) {
 	const { skipAuth = false, ...requestOptions } = options;
+
+	// Mode demo: backend akan menolak token mock (401) → memicu silent-refresh →
+	// logout → user ketendang ke /login. Jadi jangan panggil backend sama sekali;
+	// balikan respons "tanpa data" agar UI menampilkan state kosong dengan anggun.
+	if (isMockMode() && !skipAuth) {
+		return new Response(JSON.stringify({ success: false, data: [] }), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+
 	const url = `${PUBLIC_API_BASE_URL}${path}`;
 	const headers = new Headers(requestOptions.headers);
 
