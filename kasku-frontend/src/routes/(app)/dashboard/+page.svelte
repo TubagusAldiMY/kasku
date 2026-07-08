@@ -366,11 +366,15 @@
 			<p class="mt-4 max-w-md text-sm leading-relaxed text-ink/60">
 				{#if loading}
 					Memuat ringkasan…
+				{:else if stats.monthlyIncome === 0 && stats.monthlyExpense === 0}
+					Belum ada aktivitas keuangan bulan ini. Ketuk “+ Catat” untuk memulai.
 				{:else if monthlySavings > 0}
 					Menyisihkan <span class="font-semibold text-teal">{fmtSigned(monthlySavings)}</span> bulan
 					ini — {stats.savingsRate}% dari pemasukan. Pertahankan.
-				{:else}
+				{:else if monthlySavings < 0}
 					Pengeluaran melebihi pemasukan bulan ini. Saatnya sedikit menahan laju.
+				{:else}
+					Pemasukan dan pengeluaran seimbang bulan ini.
 				{/if}
 			</p>
 		</div>
