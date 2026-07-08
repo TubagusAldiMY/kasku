@@ -56,6 +56,9 @@
 		contact?: boolean;
 	};
 
+	// Harga statis untuk landing publik. Sumber kebenaran = billing-service
+	// (migration 000002_create_subscription_plans). Endpoint /billing/plans butuh JWT
+	// sehingga halaman publik ini tidak bisa fetch harga live — jaga tetap sinkron manual.
 	const plans: Plan[] = [
 		{
 			name: 'Gratis',
@@ -72,7 +75,7 @@
 		},
 		{
 			name: 'Pro',
-			price: 29000,
+			price: 99000,
 			desc: 'Untuk pengelolaan aset yang lebih serius.',
 			features: [
 				'Transaksi tak terbatas',
