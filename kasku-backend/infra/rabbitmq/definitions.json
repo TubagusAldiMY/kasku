@@ -1,6 +1,24 @@
 {
+  "users": [
+    {
+      "name": "kasku_mq_user",
+      "password_hash": "fyJm4pRZrcmsJNUCgR2VY/wSjwk5D8Vq4zI1w/TqrODe0LAq",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator",
+      "limits": {}
+    }
+  ],
   "vhosts": [
     { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user":      "kasku_mq_user",
+      "vhost":     "/",
+      "configure": ".*",
+      "write":     ".*",
+      "read":      ".*"
+    }
   ],
   "exchanges": [
     {

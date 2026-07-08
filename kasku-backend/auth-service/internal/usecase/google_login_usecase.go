@@ -84,6 +84,7 @@ type googleLoginUseCase struct {
 	googleClientID     string // kosong = skip audience check (development mode)
 	googleClientSecret string // wajib untuk authorization code flow
 	httpClient         *http.Client
+	billingQuerier     SubscriptionQuerier
 }
 
 // NewGoogleLoginUseCase membuat instance GoogleLoginUseCase.
@@ -97,6 +98,7 @@ func NewGoogleLoginUseCase(
 	refreshTokenTTL time.Duration,
 	googleClientID string,
 	googleClientSecret string,
+	billingQuerier SubscriptionQuerier,
 ) GoogleLoginUseCase {
 	return &googleLoginUseCase{
 		pool:               pool,
@@ -109,6 +111,7 @@ func NewGoogleLoginUseCase(
 		googleClientID:     googleClientID,
 		googleClientSecret: googleClientSecret,
 		httpClient:         &http.Client{Timeout: 10 * time.Second},
+		billingQuerier:     billingQuerier,
 	}
 }
 
@@ -338,7 +341,8 @@ func (uc *googleLoginUseCase) generateTokenPair(ctx context.Context, user *entit
 		refreshTokenTTL:  uc.refreshTokenTTL,
 	}
 
-	accessToken, err := luc.generateAccessToken(user)
+	tier := uc.billingQuerier.GetTierName(ctx, user.ID.String())
+	accessToken, err := luc.generateAccessToken(user, tier)
 	if err != nil {
 		return nil, fmt.Errorf("gagal generate access token: %w", err)
 	}

@@ -27,6 +27,7 @@ type refreshTokenUseCase struct {
 	jwtPrivateKey    *rsa.PrivateKey
 	accessTokenTTL   time.Duration
 	refreshTokenTTL  time.Duration
+	billingQuerier   SubscriptionQuerier
 }
 
 // NewRefreshTokenUseCase membuat instance RefreshTokenUseCase.
@@ -36,6 +37,7 @@ func NewRefreshTokenUseCase(
 	jwtPrivateKey *rsa.PrivateKey,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
+	billingQuerier SubscriptionQuerier,
 ) RefreshTokenUseCase {
 	return &refreshTokenUseCase{
 		userRepo:         userRepo,
@@ -43,6 +45,7 @@ func NewRefreshTokenUseCase(
 		jwtPrivateKey:    jwtPrivateKey,
 		accessTokenTTL:   accessTokenTTL,
 		refreshTokenTTL:  refreshTokenTTL,
+		billingQuerier:   billingQuerier,
 	}
 }
 
@@ -100,8 +103,9 @@ func (uc *refreshTokenUseCase) Execute(ctx context.Context, input RefreshInput) 
 		return nil, domainerrors.ErrInvalidToken
 	}
 
-	// Issue access token baru
-	accessToken, err := GenerateAccessToken(user, uc.jwtPrivateKey, uc.accessTokenTTL)
+	// Issue access token baru — tier diambil dari billing-service (fallback "FREE")
+	tier := uc.billingQuerier.GetTierName(ctx, user.ID.String())
+	accessToken, err := GenerateAccessToken(user, uc.jwtPrivateKey, uc.accessTokenTTL, tier)
 	if err != nil {
 		return nil, fmt.Errorf("gagal generate access token baru: %w", err)
 	}

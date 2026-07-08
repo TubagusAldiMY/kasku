@@ -22,6 +22,7 @@ type Config struct {
 	RateLimit  RateLimitConfig
 	Cleanup    CleanupConfig
 	App        AppConfig
+	Billing    BillingConfig
 }
 
 type ServerConfig struct {
@@ -86,6 +87,10 @@ type AppConfig struct {
 	OTELEndpoint       string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
 	GoogleClientID     string // GOOGLE_CLIENT_ID — empty = audience check dinonaktifkan (dev only)
 	GoogleClientSecret string // GOOGLE_CLIENT_SECRET — wajib untuk authorization code flow
+}
+
+type BillingConfig struct {
+	GRPCAddr string // BILLING_SERVICE_GRPC_ADDR — billing-service gRPC endpoint
 }
 
 // Load membaca semua environment variables dan mengembalikan Config tervalidasi.
@@ -233,6 +238,9 @@ func Load() (*Config, error) {
 			OTELEndpoint:       os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 			GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 			GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		},
+		Billing: BillingConfig{
+			GRPCAddr: getEnvOrDefault("BILLING_SERVICE_GRPC_ADDR", "billing-service:9083"),
 		},
 	}, nil
 }

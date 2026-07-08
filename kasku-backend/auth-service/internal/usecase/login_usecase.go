@@ -21,6 +21,12 @@ const (
 	tokenTypeBearear     = "Bearer"
 )
 
+// SubscriptionQuerier mengambil tier subscription untuk satu user.
+// Implementasi boleh mengembalikan "FREE" saat error — auth tidak boleh gagal issue JWT.
+type SubscriptionQuerier interface {
+	GetTierName(ctx context.Context, userID string) string
+}
+
 // JWTClaims merupakan custom claims untuk JWT KasKu.
 // Memuat informasi tenant schema dan subscription tier untuk downstream services.
 type JWTClaims struct {
@@ -71,6 +77,7 @@ type loginUseCase struct {
 	argon2Config     Argon2Config
 	bruteForceMax    int16
 	lockoutDuration  time.Duration
+	billingQuerier   SubscriptionQuerier
 }
 
 // NewLoginUseCase membuat instance LoginUseCase.
@@ -83,6 +90,7 @@ func NewLoginUseCase(
 	argon2Cfg Argon2Config,
 	bruteForceMax int16,
 	lockoutDuration time.Duration,
+	billingQuerier SubscriptionQuerier,
 ) LoginUseCase {
 	return &loginUseCase{
 		userRepo:         userRepo,
@@ -93,6 +101,7 @@ func NewLoginUseCase(
 		argon2Config:     argon2Cfg,
 		bruteForceMax:    bruteForceMax,
 		lockoutDuration:  lockoutDuration,
+		billingQuerier:   billingQuerier,
 	}
 }
 
@@ -146,8 +155,9 @@ func (uc *loginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 		return nil, fmt.Errorf("gagal update login success: %w", err)
 	}
 
-	// Generate JWT access token
-	accessToken, err := uc.generateAccessToken(user)
+	// Generate JWT access token — tier diambil dari billing-service (fallback "FREE")
+	tier := uc.billingQuerier.GetTierName(ctx, user.ID.String())
+	accessToken, err := uc.generateAccessToken(user, tier)
 	if err != nil {
 		return nil, fmt.Errorf("gagal generate access token: %w", err)
 	}
@@ -197,7 +207,7 @@ func (uc *loginUseCase) Execute(ctx context.Context, input LoginInput) (*LoginOu
 }
 
 // generateAccessToken membuat JWT RS256 dengan custom claims KasKu.
-func (uc *loginUseCase) generateAccessToken(user *entity.User) (string, error) {
+func (uc *loginUseCase) generateAccessToken(user *entity.User, tier string) (string, error) {
 	now := time.Now().UTC()
 	jti := uuid.New().String()
 
@@ -213,7 +223,7 @@ func (uc *loginUseCase) generateAccessToken(user *entity.User) (string, error) {
 		},
 		Email:            user.Email,
 		TenantSchema:     tenantSchema,
-		SubscriptionTier: subscriptionTierFree,
+		SubscriptionTier: tier,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

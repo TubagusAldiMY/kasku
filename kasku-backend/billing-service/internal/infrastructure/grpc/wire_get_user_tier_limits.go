@@ -48,6 +48,7 @@ func decodeGetUserTierLimitsRequest(b []byte) (string, error) {
 //	field 4 (varint): history_retention_months (int32)
 //	field 5 (varint): email_notifications_enabled (bool)
 //	field 6 (varint): export_csv_enabled (bool)
+//	field 7 (bytes):  tier_name (string)
 //
 // Urutan field & nomor HARUS sinkron dengan decodeResponse di
 // api-gateway/proto/billing/v1/billing_grpc.go.
@@ -79,6 +80,11 @@ func encodeTierLimitsResponse(limits *entity.PlanLimits) []byte {
 	}
 	b = protowire.AppendTag(b, 6, protowire.VarintType)
 	b = protowire.AppendVarint(b, csvEnabled)
+
+	if limits.TierName != "" {
+		b = protowire.AppendTag(b, 7, protowire.BytesType)
+		b = protowire.AppendString(b, limits.TierName)
+	}
 
 	return b
 }

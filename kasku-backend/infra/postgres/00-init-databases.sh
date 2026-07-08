@@ -76,12 +76,15 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "kasku_finance" <<-
     GRANT CONNECT ON DATABASE kasku_finance TO kasku_sync_svc;
     GRANT CONNECT ON DATABASE kasku_finance TO kasku_user_svc;
 
-    GRANT USAGE ON SCHEMA public TO kasku_finance_svc;
+    GRANT USAGE  ON SCHEMA public TO kasku_finance_svc;
     GRANT CREATE ON SCHEMA public TO kasku_finance_svc;
-    GRANT USAGE ON SCHEMA public TO kasku_transaction_svc;
-    GRANT USAGE ON SCHEMA public TO kasku_investment_svc;
-    GRANT USAGE ON SCHEMA public TO kasku_sync_svc;
-    GRANT USAGE ON SCHEMA public TO kasku_user_svc;
+    GRANT USAGE  ON SCHEMA public TO kasku_transaction_svc;
+    GRANT CREATE ON SCHEMA public TO kasku_transaction_svc;
+    GRANT USAGE  ON SCHEMA public TO kasku_investment_svc;
+    GRANT CREATE ON SCHEMA public TO kasku_investment_svc;
+    GRANT USAGE  ON SCHEMA public TO kasku_sync_svc;
+    GRANT CREATE ON SCHEMA public TO kasku_sync_svc;
+    GRANT USAGE  ON SCHEMA public TO kasku_user_svc;
     -- EXECUTE on provision_tenant/deprovision_tenant granted by finance-service migration.
     -- Per-table grants on tenant schemas applied by provision_tenant function at runtime.
 SQL

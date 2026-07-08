@@ -13,7 +13,7 @@ import (
 
 // GenerateAccessToken membuat JWT RS256 dengan custom claims KasKu.
 // Ini adalah fungsi shared yang digunakan oleh LoginUseCase dan RefreshTokenUseCase.
-func GenerateAccessToken(user *entity.User, privateKey *rsa.PrivateKey, ttl time.Duration) (string, error) {
+func GenerateAccessToken(user *entity.User, privateKey *rsa.PrivateKey, ttl time.Duration, tier string) (string, error) {
 	now := time.Now().UTC()
 	jti := uuid.New().String()
 
@@ -29,7 +29,7 @@ func GenerateAccessToken(user *entity.User, privateKey *rsa.PrivateKey, ttl time
 		},
 		Email:            user.Email,
 		TenantSchema:     tenantSchema,
-		SubscriptionTier: subscriptionTierFree,
+		SubscriptionTier: tier,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

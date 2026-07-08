@@ -1,7 +1,7 @@
 # ==============================================================
-# KasKu SaaS — Docker Compose Override (Local Development)
-# Applied automatically by `docker compose up -d`.
-# NOT used in production (run with -f docker-compose.yml only).
+# KasKu SaaS — Podman Compose Override (Local Development)
+# Applied manually: podman-compose -f podman-compose.yml -f podman-compose.override.yml up -d
+# NOT used in production.
 #
 # Exposes infra ports on the reserved local-dev KasKu block.
 # Services (app + gRPC): 18xxx. Infra DB/cache: suffix = standard port (1{port}).
@@ -22,8 +22,6 @@ services:
       - "18672:5672"    # AMQP
       - "18673:15672"   # Management UI — http://localhost:18673
 
-  # Expose application services on reserved local-dev ports.
-  # HTTP uses 1808x; gRPC uses 1818x. Container-internal ports stay unchanged.
   api-gateway:
     ports:
       - "18080:8080"
@@ -72,7 +70,7 @@ services:
       - "18089:8089"
     environment:
       APP_ENV: production
-      APP_BASE_URL: https://kasku.tubsamy.dev
+      APP_BASE_URL: http://localhost:18173
 
   admin-service:
     ports:
@@ -82,10 +80,6 @@ services:
     build:
       args:
         PUBLIC_API_BASE_URL: http://localhost:18080/v1
+        PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
     ports:
       - "18300:3000"
-
-  # Disable Traefik in local dev (services expose ports directly via override)
-  traefik:
-    profiles:
-      - production

@@ -21,12 +21,13 @@ type GetUserTierLimitsRequest struct {
 
 // TierLimitsResponse adalah response message dari RPC GetUserTierLimits.
 type TierLimitsResponse struct {
-	MaxTransactionsPerMonth   int32 // field 1
-	MaxFinancialAccounts      int32 // field 2
-	MaxInvestmentInstruments  int32 // field 3
-	HistoryRetentionMonths    int32 // field 4
-	EmailNotificationsEnabled bool  // field 5
-	ExportCsvEnabled          bool  // field 6
+	MaxTransactionsPerMonth   int32  // field 1
+	MaxFinancialAccounts      int32  // field 2
+	MaxInvestmentInstruments  int32  // field 3
+	HistoryRetentionMonths    int32  // field 4
+	EmailNotificationsEnabled bool   // field 5
+	ExportCsvEnabled          bool   // field 6
+	TierName                  string // field 7
 }
 
 // ─── Wire encoding ────────────────────────────────────────────────────────────
@@ -50,8 +51,8 @@ func decodeResponse(b []byte) (*TierLimitsResponse, error) {
 		}
 		b = b[n:]
 
-		switch typ {
-		case protowire.VarintType:
+		switch {
+		case typ == protowire.VarintType:
 			v, n := protowire.ConsumeVarint(b)
 			if n < 0 {
 				return nil, protowire.ParseError(n)
@@ -71,6 +72,13 @@ func decodeResponse(b []byte) (*TierLimitsResponse, error) {
 			case 6:
 				resp.ExportCsvEnabled = v != 0
 			}
+		case num == 7 && typ == protowire.BytesType:
+			s, n := protowire.ConsumeString(b)
+			if n < 0 {
+				return nil, protowire.ParseError(n)
+			}
+			resp.TierName = s
+			b = b[n:]
 		default:
 			// skip unknown / future fields
 			n := protowire.ConsumeFieldValue(num, typ, b)

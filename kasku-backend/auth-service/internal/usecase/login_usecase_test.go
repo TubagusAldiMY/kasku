@@ -20,6 +20,11 @@ import (
 // Argon2Config dengan parameter ringan untuk test cepat.
 var testArgon2Cfg = usecase.Argon2Config{Time: 1, MemoryKB: 8 * 1024, Threads: 2, KeyLength: 32}
 
+// freeQuerier adalah stub SubscriptionQuerier untuk test — selalu kembalikan "FREE".
+type freeQuerier struct{}
+
+func (freeQuerier) GetTierName(_ context.Context, _ string) string { return "FREE" }
+
 func newTestLoginInput(email, pass string) usecase.LoginInput {
 	return usecase.LoginInput{
 		Email:     email,
@@ -53,7 +58,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		rr := mocks.NewMockRefreshTokenRepository(ctrl)
 		ur.EXPECT().FindByEmail(gomock.Any(), "ghost@example.com").Return(nil, nil)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 		_, err := uc.Execute(context.Background(), newTestLoginInput("ghost@example.com", wrongPass))
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidCredentials)
 	})
@@ -75,7 +80,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		}
 		ur.EXPECT().FindByEmail(gomock.Any(), "locked@example.com").Return(user, nil)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 		_, err := uc.Execute(context.Background(), newTestLoginInput("locked@example.com", correctPass))
 		assert.ErrorIs(t, err, domainerrors.ErrAccountLocked)
 	})
@@ -98,7 +103,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 			IncrementFailedLoginAndLockIfNeeded(gomock.Any(), userID, int16(5), gomock.Any()).
 			Return(nil)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 		_, err := uc.Execute(context.Background(), newTestLoginInput("u@example.com", wrongPass))
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidCredentials)
 	})
@@ -120,7 +125,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		// reset counter meski belum aktif
 		ur.EXPECT().UpdateLoginSuccess(gomock.Any(), userID).Return(nil)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 		_, err := uc.Execute(context.Background(), newTestLoginInput("u@example.com", correctPass))
 		assert.ErrorIs(t, err, domainerrors.ErrAccountNotVerified)
 	})
@@ -142,7 +147,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		ur.EXPECT().UpdateLoginSuccess(gomock.Any(), userID).Return(nil)
 		rr.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 		out, err := uc.Execute(context.Background(), newTestLoginInput("u@example.com", correctPass))
 		require.NoError(t, err)
 		require.NotNil(t, out)
@@ -178,7 +183,7 @@ func TestLoginUseCase_TimingAttack_ConstantTimeCheck(t *testing.T) {
 		rr := mocks.NewMockRefreshTokenRepository(ctrl)
 		setup(ur)
 
-		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute)
+		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 
 		total := time.Duration(0)
 		for range iterations {

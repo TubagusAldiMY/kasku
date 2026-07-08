@@ -26,11 +26,14 @@ TARGET  ?= test
 
 .PHONY: \
 	up up-obs down restart ps logs \
+	podman-up \
+	podman-up-prod podman-up-prod-1-infra podman-up-prod-2-go-core podman-up-prod-3-go-biz podman-up-prod-4-rust-fe \
+	podman-up-obs podman-down podman-restart podman-ps podman-logs podman-backup \
 	build test lint tidy svc \
 	fe-dev fe-build fe-test fe-lint fe-check fe-format \
 	mono-build mono-release mono-run mono-test mono-lint \
 	mono-migrate mono-migrate-revert \
-	smoke secrets backup reset-db \
+	smoke secrets backup reset-db fix-db-grants podman-fix-db-grants \
 	ci audit help
 
 # =============================================================================
@@ -53,6 +56,44 @@ ps: ## Status semua container
 
 logs: ## Log service tertentu. Contoh: make logs SERVICE=auth-service
 	cd $(BACKEND) && docker compose logs -f $(SERVICE)
+
+# =============================================================================
+# Podman Compose Stack
+# =============================================================================
+
+podman-up: ## [Podman] Local dev stack (base + override)
+	cd $(BACKEND) && podman-compose -f podman-compose.yml -f podman-compose.override.yml up -d
+
+podman-up-prod: podman-up-prod-1-infra podman-up-prod-2-go-core podman-up-prod-3-go-biz podman-up-prod-4-rust-fe ## [Podman] Production — full stack 4 stage sequential (hemat CPU)
+
+podman-up-prod-1-infra: ## [Podman] Prod stage 1/4 — infra: postgres, redis, rabbitmq (no build)
+	cd $(BACKEND) && podman-compose -f podman-compose.yml up -d postgres redis rabbitmq
+
+podman-up-prod-2-go-core: ## [Podman] Prod stage 2/4 — Go core: auth, billing, notification, admin (4 Go builds)
+	cd $(BACKEND) && podman-compose -f podman-compose.yml up -d auth-service billing-service notification-service admin-service
+
+podman-up-prod-3-go-biz: ## [Podman] Prod stage 3/4 — Go biz + price: user, finance, transaction, investment, price, api-gateway
+	cd $(BACKEND) && podman-compose -f podman-compose.yml up -d user-service finance-service transaction-service investment-service price-service api-gateway
+
+podman-up-prod-4-rust-fe: ## [Podman] Prod stage 4/4 — Rust sync + frontend (build terberat, jalan terakhir)
+	cd $(BACKEND) && podman-compose -f podman-compose.yml up -d sync-service frontend
+
+podman-up-obs: ## [Podman] Production + observability stack
+	cd $(BACKEND) && podman-compose -f podman-compose.yml --profile observability up -d
+
+podman-down: ## [Podman] Stop semua container
+	cd $(BACKEND) && podman-compose -f podman-compose.yml -f podman-compose.override.yml down
+
+podman-restart: podman-down podman-up ## [Podman] Stop lalu start ulang (dev)
+
+podman-ps: ## [Podman] Status semua container
+	cd $(BACKEND) && podman-compose -f podman-compose.yml -f podman-compose.override.yml ps
+
+podman-logs: ## [Podman] Log service tertentu. Contoh: make podman-logs SERVICE=auth-service
+	cd $(BACKEND) && podman-compose -f podman-compose.yml -f podman-compose.override.yml logs -f $(SERVICE)
+
+podman-backup: ## [Podman] Backup DB (butuh BACKUP_BUCKET + AWS_* di .env)
+	cd $(BACKEND) && podman-compose -f podman-compose.yml --profile backup run --rm backup
 
 # =============================================================================
 # Backend — semua microservices (Go + Rust)
@@ -164,6 +205,18 @@ reset-db: ## [DESTRUCTIVE] Hapus semua data DB, reinit dari nol
 	cd $(BACKEND) && docker compose down
 	docker volume rm kasku-pgdata 2>/dev/null || true
 	cd $(BACKEND) && docker compose up -d
+
+fix-db-grants: ## [Docker] Apply GRANT CREATE untuk transaction/investment/sync svc di kasku_finance
+	docker exec kasku-postgres psql -U kasku_superuser -d kasku_finance -c \
+		"GRANT CREATE ON SCHEMA public TO kasku_transaction_svc; \
+		 GRANT CREATE ON SCHEMA public TO kasku_investment_svc; \
+		 GRANT CREATE ON SCHEMA public TO kasku_sync_svc;"
+
+podman-fix-db-grants: ## [Podman] Apply GRANT CREATE untuk transaction/investment/sync svc di kasku_finance
+	podman exec kasku-postgres psql -U kasku_superuser -d kasku_finance -c \
+		"GRANT CREATE ON SCHEMA public TO kasku_transaction_svc; \
+		 GRANT CREATE ON SCHEMA public TO kasku_investment_svc; \
+		 GRANT CREATE ON SCHEMA public TO kasku_sync_svc;"
 
 # =============================================================================
 # CI / Security Audit

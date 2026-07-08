@@ -7,9 +7,11 @@ RUN npm ci --ignore-scripts
 
 COPY . .
 
-# PUBLIC_API_BASE_URL is baked at build time via $env/static/public
+# PUBLIC_* vars are baked at build time via $env/static/public
 ARG PUBLIC_API_BASE_URL=https://api.kasku.id/v1
 ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
+ARG PUBLIC_GOOGLE_CLIENT_ID=
+ENV PUBLIC_GOOGLE_CLIENT_ID=${PUBLIC_GOOGLE_CLIENT_ID}
 
 RUN npm run build
 

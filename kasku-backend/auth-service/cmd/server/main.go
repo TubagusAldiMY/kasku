@@ -11,6 +11,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/delivery/http/handler"
+	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/billing"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/cleanup"
 	authgrpc "github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/messaging"
@@ -160,6 +161,18 @@ func main() {
 		logger.Fatal().Err(err).Msg("gagal parse RSA public key")
 	}
 
+	// ── Billing gRPC Client ───────────────────────────────────────────────────
+	billingClient, err := billing.NewGRPCClient(cfg.Billing.GRPCAddr)
+	if err != nil {
+		logger.Fatal().Err(err).Str("addr", cfg.Billing.GRPCAddr).Msg("gagal init billing gRPC client")
+	}
+	defer func() {
+		if err := billingClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("gagal tutup billing gRPC client")
+		}
+	}()
+	logger.Info().Str("addr", cfg.Billing.GRPCAddr).Msg("billing gRPC client siap")
+
 	// ── Repositories ──────────────────────────────────────────────────────────
 	userRepo := persistence.NewPostgresUserRepository(pool)
 	refreshTokenRepo := persistence.NewPostgresRefreshTokenRepository(pool)
@@ -206,6 +219,7 @@ func main() {
 		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
 		argon2Cfg,
 		cfg.BruteForce.MaxAttempts, cfg.BruteForce.LockoutDuration,
+		billingClient,
 	)
 	googleLoginUC := usecase.NewGoogleLoginUseCase(
 		pool, userRepo, refreshTokenRepo, publisher,
@@ -213,11 +227,13 @@ func main() {
 		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
 		cfg.App.GoogleClientID,
 		cfg.App.GoogleClientSecret,
+		billingClient,
 	)
 	refreshTokenUC := usecase.NewRefreshTokenUseCase(
 		userRepo, refreshTokenRepo,
 		privKey,
 		cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL,
+		billingClient,
 	)
 	logoutUC := usecase.NewLogoutUseCase(refreshTokenRepo, pubKey, blacklist)
 	validateTokenUC := usecase.NewValidateAccessTokenUseCase(pubKey, blacklist)

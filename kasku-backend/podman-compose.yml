@@ -1,16 +1,25 @@
 name: kasku
 
 # ==============================================================
-# KasKu SaaS — Docker Compose (Production Base)
+# KasKu SaaS — Podman Compose (Production Base)
 # Usage:
-#   Local dev  : docker compose up -d          (uses override.yml automatically)
-#   Production : docker compose -f docker-compose.yml up -d
+#   Local dev  : podman-compose -f podman-compose.yml -f podman-compose.override.yml up -d
+#   Production : podman-compose -f podman-compose.yml up -d
+#
+# Perbedaan dari docker-compose.yml:
+#   - Tanpa Traefik — port api-gateway & frontend di-expose langsung,
+#     reverse proxy dihandle di luar (Nginx, Caddy, dll.).
+#   - Promtail mount Podman socket sebagai /var/run/docker.sock agar
+#     docker_sd_configs di promtail-config.yml bekerja tanpa perubahan config.
+#   - Semua image third-party pakai fully-qualified name (docker.io/...)
+#     untuk menghindari interactive prompt registry di Fedora.
+#
+# Catatan rootless Podman:
+#   Pastikan Podman socket service aktif:
+#     systemctl --user enable --now podman.socket
 # ==============================================================
 
 networks:
-  kasku-public:
-    name: kasku-public
-    driver: bridge
   kasku-internal:
     name: kasku-internal
     driver: bridge
@@ -28,8 +37,6 @@ volumes:
     name: kasku-rabbitmq-data
   redis-data:
     name: kasku-redis-data
-  traefik-certs:
-    name: kasku-traefik-certs
   prometheus-data:
     name: kasku-prometheus-data
   grafana-data:
@@ -44,37 +51,10 @@ volumes:
 services:
 
   # ============================================================
-  # Traefik — TLS termination + reverse proxy
-  # ============================================================
-  traefik:
-    image: traefik:v3.0
-    container_name: kasku-traefik
-    restart: unless-stopped
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=kasku-public"
-      - "--entrypoints.web.address=:80"
-      - "--log.level=INFO"
-    ports:
-      - "127.0.0.1:80:80"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - kasku-public
-    stop_grace_period: 35s
-    healthcheck:
-      test: ["CMD", "traefik", "healthcheck"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # ============================================================
   # PostgreSQL 16 — 5 databases, schema-per-tenant for finance
   # ============================================================
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     container_name: kasku-postgres
     restart: unless-stopped
     env_file:
@@ -86,7 +66,7 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro,z
     networks:
       - kasku-data
     healthcheck:
@@ -101,7 +81,7 @@ services:
   # Redis 7 — Rate limiting counters + JWT blacklist
   # ============================================================
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: kasku-redis
     restart: unless-stopped
     command: >
@@ -132,22 +112,22 @@ services:
   # DLQ:      kasku.events.dlq
   # ============================================================
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: docker.io/library/rabbitmq:3.13-management-alpine
     container_name: kasku-rabbitmq
     restart: unless-stopped
+    entrypoint: ["sh", "/etc/rabbitmq/entrypoint.sh"]
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
-      # Aktifkan Prometheus plugin built-in agar Prometheus bisa scrape :15692/metrics.
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_management_agent disable_metrics_collector false"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro,z
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro,z
+      - ./infra/rabbitmq/entrypoint.sh:/etc/rabbitmq/entrypoint.sh:ro,z
     networks:
       - kasku-data
-      - kasku-admin   # untuk discovery dari Prometheus di profile observability
+      - kasku-admin
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 15s
@@ -155,23 +135,6 @@ services:
       retries: 5
       start_period: 45s
     stop_grace_period: 35s
-
-  # ============================================================
-  # Application services — added per task (Phase 1 MVP)
-  #
-  # Task 1:  auth-service        :8081 / gRPC :9081   kasku-internal + kasku-data
-  # Task 2:  api-gateway         :8080                kasku-public + kasku-internal + kasku-admin + kasku-data
-  # Task 3:  user-service        :8082 / gRPC :9082   kasku-internal + kasku-data
-  # Task 4:  billing-service     :8083 / gRPC :9083   kasku-internal + kasku-data
-  # Task 5:  finance-service     :8084 / gRPC :9084   kasku-internal + kasku-data
-  # Task 6:  transaction-service :8085 / gRPC :9085   kasku-internal + kasku-data
-  # Task 7:  notification-service :8089                kasku-internal + kasku-data
-  # Phase 2:
-  # Task 8:  investment-service  :8086 / gRPC :9086   kasku-internal + kasku-data
-  # Task 9:  price-service       :8087 / gRPC :9087   kasku-internal + kasku-data
-  # Task 10: sync-service        :8088                 kasku-internal + kasku-data
-  # Task 11: admin-service       :8090                 kasku-admin only
-  # ============================================================
 
   # ============================================================
   # auth-service
@@ -200,7 +163,6 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      BILLING_SERVICE_GRPC_ADDR: billing-service:9083
     networks:
       - kasku-internal
       - kasku-data
@@ -210,8 +172,6 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
-      billing-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
@@ -231,6 +191,8 @@ services:
       dockerfile: ./api-gateway/Dockerfile
     container_name: kasku-api-gateway
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
     env_file:
       - .env
     environment:
@@ -253,18 +215,12 @@ services:
       ADMIN_SERVICE_URL: http://kasku-admin-service:8090
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     networks:
-      - kasku-public
       - kasku-internal
       - kasku-admin
       - kasku-data
     depends_on:
       auth-service:
         condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`${KASKU_API_DOMAIN:-api.kasku.app}`)"
-      - "traefik.http.routers.api.entrypoints=web"
-      - "traefik.http.services.api.loadbalancer.server.port=8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 15s
@@ -598,8 +554,6 @@ services:
       SERVER_PORT: "8090"
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      # Cross-DB credential — admin-service membonceng credential service pemilik.
-      # Lihat admin-service/README.md untuk trade-off-nya.
       POSTGRES_ADMIN_DSN: postgres://kasku_admin_svc:${KASKU_ADMIN_DB_PASS}@postgres:5432/kasku_admin?sslmode=disable
       POSTGRES_AUTH_ADMIN_DSN: postgres://kasku_auth_svc:${KASKU_AUTH_DB_PASS}@postgres:5432/kasku_auth?sslmode=disable
       POSTGRES_BILLING_ADMIN_DSN: postgres://kasku_billing_svc:${KASKU_BILLING_DB_PASS}@postgres:5432/kasku_billing?sslmode=disable
@@ -643,17 +597,14 @@ services:
         PUBLIC_GOOGLE_CLIENT_ID: ${PUBLIC_GOOGLE_CLIENT_ID:-}
     container_name: kasku-frontend
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOST: "0.0.0.0"
     networks:
-      - kasku-public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN:-app.kasku.id}`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+      - kasku-internal
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || exit 1"]
       interval: 15s
@@ -663,18 +614,18 @@ services:
     stop_grace_period: 35s
 
   # ============================================================
-  # Observability stack — internal/admin profile only
+  # Observability stack — profile observability
   # ============================================================
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: docker.io/prom/prometheus:v2.54.1
     container_name: kasku-prometheus
     restart: unless-stopped
     profiles: ["observability"]
     ports:
       - "127.0.0.1:19090:9090"
     volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./infra/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,z
+      - ./infra/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro,z
       - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -687,14 +638,14 @@ services:
     stop_grace_period: 35s
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: docker.io/prom/alertmanager:v0.27.0
     container_name: kasku-alertmanager
     restart: unless-stopped
     profiles: ["observability"]
     ports:
       - "127.0.0.1:19093:9093"
     volumes:
-      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./infra/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro,z
       - alertmanager-data:/alertmanager
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
@@ -704,7 +655,7 @@ services:
     stop_grace_period: 35s
 
   loki:
-    image: grafana/loki:3.1.1
+    image: docker.io/grafana/loki:3.1.1
     container_name: kasku-loki
     restart: unless-stopped
     profiles: ["observability"]
@@ -712,21 +663,22 @@ services:
     ports:
       - "127.0.0.1:13100:3100"
     volumes:
-      - ./infra/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - ./infra/loki/loki-config.yml:/etc/loki/loki-config.yml:ro,z
       - loki-data:/loki
     networks:
       - kasku-admin
     stop_grace_period: 35s
 
   promtail:
-    image: grafana/promtail:3.1.1
+    image: docker.io/grafana/promtail:3.1.1
     container_name: kasku-promtail
     restart: unless-stopped
     profiles: ["observability"]
     command: ["-config.file=/etc/promtail/promtail-config.yml"]
     volumes:
-      - ./infra/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro,z
+      # Podman socket di-mount sebagai Docker socket agar docker_sd_configs di promtail-config.yml bekerja.
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/podman/podman.sock:/var/run/docker.sock:ro,z
     networks:
       - kasku-admin
     depends_on:
@@ -734,7 +686,7 @@ services:
     stop_grace_period: 35s
 
   grafana:
-    image: grafana/grafana:11.1.4
+    image: docker.io/grafana/grafana:11.1.4
     container_name: kasku-grafana
     restart: unless-stopped
     profiles: ["observability"]
@@ -746,8 +698,8 @@ services:
       - "127.0.0.1:13000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/grafana/dashboards-json:/var/lib/grafana/dashboards:ro
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro,z
+      - ./infra/grafana/dashboards-json:/var/lib/grafana/dashboards:ro,z
     networks:
       - kasku-admin
     depends_on:
@@ -755,13 +707,12 @@ services:
       - loki
     stop_grace_period: 35s
 
-  # ── Jaeger — distributed tracing UI + storage ────────────────────────
   jaeger:
-    image: jaegertracing/all-in-one:1.60
+    image: docker.io/jaegertracing/all-in-one:1.60
     container_name: kasku-jaeger
     restart: unless-stopped
     profiles: ["observability"]
-    user: root   # badger volume perlu write permission; all-in-one non-root by default
+    user: root
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
       SPAN_STORAGE_TYPE: badger
@@ -769,7 +720,7 @@ services:
       BADGER_DIRECTORY_VALUE: /badger/data
       BADGER_DIRECTORY_KEY: /badger/key
     ports:
-      - "127.0.0.1:18686:16686"   # Jaeger UI
+      - "127.0.0.1:18686:16686"
     volumes:
       - jaeger-data:/badger
     networks:
@@ -782,9 +733,8 @@ services:
       start_period: 15s
     stop_grace_period: 35s
 
-  # ── OTEL Collector — receives OTLP from services, forwards to Jaeger ──
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.104.0
+    image: docker.io/otel/opentelemetry-collector-contrib:0.104.0
     container_name: kasku-otel-collector
     restart: unless-stopped
     profiles: ["observability"]
@@ -792,10 +742,10 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-production}
     volumes:
-      - ./infra/otelcollector/otelcollector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ./infra/otelcollector/otelcollector-config.yaml:/etc/otelcol/config.yaml:ro,z
     ports:
-      - "127.0.0.1:18417:4317"   # OTLP/gRPC — services
-      - "127.0.0.1:18418:4318"   # OTLP/HTTP — frontend browser
+      - "127.0.0.1:18417:4317"
+      - "127.0.0.1:18418:4318"
     networks:
       - kasku-admin
       - kasku-internal
@@ -803,19 +753,16 @@ services:
       jaeger:
         condition: service_healthy
     healthcheck:
-      # Image distroless — tidak ada shell/wget/curl. health_check extension
-      # expose HTTP di :13133 tapi tidak bisa di-probe dari dalam container.
-      # Container dianggap healthy jika proses otelcol-contrib berjalan.
       disable: true
       start_period: 10s
     stop_grace_period: 35s
 
   # ============================================================
   # Backup — jalankan manual atau via cron dengan profile backup
-  # Cron production: 0 2 * * * docker compose --profile backup run --rm backup
+  # Cron production: 0 2 * * * podman-compose -f podman-compose.yml --profile backup run --rm backup
   # ============================================================
   backup:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     profiles: ["backup"]
     env_file:
       - .env
@@ -824,7 +771,7 @@ services:
       POSTGRES_PORT: "5432"
       POSTGRES_SUPERUSER: kasku_superuser
     volumes:
-      - ./infra/backup/backup.sh:/backup.sh:ro
+      - ./infra/backup/backup.sh:/backup.sh:ro,z
     entrypoint: ["sh", "/backup.sh"]
     networks:
       - kasku-data

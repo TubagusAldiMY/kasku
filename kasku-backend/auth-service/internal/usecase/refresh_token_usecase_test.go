@@ -50,7 +50,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		ur := mocks.NewMockUserRepository(ctrl)
 		rr := mocks.NewMockRefreshTokenRepository(ctrl)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: ""})
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidToken)
 	})
@@ -64,7 +64,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		rr := mocks.NewMockRefreshTokenRepository(ctrl)
 		rr.EXPECT().FindByTokenHash(gomock.Any(), tokenHash).Return(nil, nil)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: rawToken})
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidToken)
 	})
@@ -83,7 +83,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		// critical: revoke ALL active tokens of this user (force re-login everywhere)
 		rr.EXPECT().RevokeAllActiveByUserID(gomock.Any(), userID).Return(nil)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: rawToken})
 		assert.ErrorIs(t, err, domainerrors.ErrTokenReuseDetected)
 	})
@@ -100,7 +100,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		expired.ExpiresAt = now.Add(-1 * time.Hour)
 		rr.EXPECT().FindByTokenHash(gomock.Any(), tokenHash).Return(&expired, nil)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: rawToken})
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidToken)
 	})
@@ -117,7 +117,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		rr.EXPECT().RevokeByID(gomock.Any(), tokenID).Return(nil)
 		ur.EXPECT().FindByID(gomock.Any(), userID).Return(nil, nil)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: rawToken})
 		assert.ErrorIs(t, err, domainerrors.ErrInvalidToken)
 	})
@@ -142,7 +142,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		ur.EXPECT().FindByID(gomock.Any(), userID).Return(user, nil)
 		rr.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		out, err := uc.Execute(context.Background(), usecase.RefreshInput{
 			RawRefreshToken: rawToken,
 			UserAgent:       "test-agent",
@@ -164,7 +164,7 @@ func TestRefreshTokenUseCase_Execute(t *testing.T) {
 		rr := mocks.NewMockRefreshTokenRepository(ctrl)
 		rr.EXPECT().FindByTokenHash(gomock.Any(), tokenHash).Return(nil, errors.New("db down"))
 
-		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL)
+		uc := usecase.NewRefreshTokenUseCase(ur, rr, priv, accessTTL, refreshTTL, freeQuerier{})
 		_, err := uc.Execute(context.Background(), usecase.RefreshInput{RawRefreshToken: rawToken})
 		assert.Error(t, err)
 	})

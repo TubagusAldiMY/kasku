@@ -27,12 +27,13 @@ type SubscriptionPlan struct {
 // PlanLimits mendefinisikan batas-batas penggunaan fitur untuk satu tier subscription.
 // Nilai -1 berarti unlimited (khusus untuk tier PRO).
 type PlanLimits struct {
-	MaxTransactionsPerMonth   int32 `json:"MaxTransactionsPerMonth"`
-	MaxFinancialAccounts      int32 `json:"MaxFinancialAccounts"`
-	MaxInvestmentInstruments  int32 `json:"MaxInvestmentInstruments"`
-	HistoryRetentionMonths    int32 `json:"HistoryRetentionMonths"`
-	EmailNotificationsEnabled bool  `json:"EmailNotificationsEnabled"`
-	ExportCsvEnabled          bool  `json:"ExportCsvEnabled"`
+	TierName                  string `json:"TierName"`
+	MaxTransactionsPerMonth   int32  `json:"MaxTransactionsPerMonth"`
+	MaxFinancialAccounts      int32  `json:"MaxFinancialAccounts"`
+	MaxInvestmentInstruments  int32  `json:"MaxInvestmentInstruments"`
+	HistoryRetentionMonths    int32  `json:"HistoryRetentionMonths"`
+	EmailNotificationsEnabled bool   `json:"EmailNotificationsEnabled"`
+	ExportCsvEnabled          bool   `json:"ExportCsvEnabled"`
 }
 
 // Subscription merepresentasikan langganan aktif milik seorang user.

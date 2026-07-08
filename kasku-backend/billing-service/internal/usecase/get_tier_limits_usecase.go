@@ -13,6 +13,7 @@ import (
 // freeTierDefaultLimits adalah fallback limit ketika user belum memiliki subscription.
 // Nilai ini sinkron dengan seed data di migration 000002.
 var freeTierDefaultLimits = &entity.PlanLimits{
+	TierName:                  "FREE",
 	MaxTransactionsPerMonth:   50,
 	MaxFinancialAccounts:      3,
 	MaxInvestmentInstruments:  0,
@@ -52,11 +53,12 @@ func (uc *getTierLimitsUseCase) Execute(ctx context.Context, userID string) (*en
 	plan, err := uc.subRepo.GetPlanWithLimits(ctx, sub.PlanID.String())
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrPlanNotFound) {
-			// Plan tidak aktif lagi — fallback ke FREE tier agar tidak blocking.
 			return freeTierDefaultLimits, nil
 		}
 		return nil, fmt.Errorf("gagal membaca plan limits untuk plan %s: %w", sub.PlanID.String(), err)
 	}
 
-	return &plan.Limits, nil
+	limits := plan.Limits
+	limits.TierName = plan.Name
+	return &limits, nil
 }
