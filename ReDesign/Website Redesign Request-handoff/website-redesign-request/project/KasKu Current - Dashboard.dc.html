@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; background: #f9fafb; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  a { color: #217b84; text-decoration: none; }
+  a:hover { color: #1a5f66; }
+</style>
+</helmet>
+<div data-screen-label="Dashboard (Current)" style="display:flex; min-height:100vh; background:#f9fafb;">
+
+  <!-- Sidebar -->
+  <aside style="display:flex; flex-direction:column; width:256px; flex:none; background:#0a2e31; padding:24px; color:#ffffff; box-sizing:border-box;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:40px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; height:32px; width:32px; align-items:center; justify-content:center; border-radius:8px; background:#217b84;">
+          <svg style="height:20px; width:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <span style="font-size:20px; font-weight:900;">KasKu</span>
+      </div>
+      <button style="position:relative; padding:8px; background:none; border:none; color:rgba(255,255,255,0.6); cursor:pointer;" style-hover="color:#ffffff;">
+        <svg style="height:24px; width:24px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        <span style="position:absolute; top:6px; right:6px; display:flex; height:16px; width:16px; align-items:center; justify-content:center; border-radius:9999px; border:2px solid #0a2e31; background:#14b8a6; font-size:9px; font-weight:900; color:#ffffff;">2</span>
+      </button>
+    </div>
+
+    <nav style="display:flex; flex-direction:column; gap:2px;">
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; background:rgba(255,255,255,0.15); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        Dashboard
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 10V7a5 5 0 0110 0v3M4 10v10a1 1 0 001 1h14a1 1 0 001-1V10M10 14v4M14 14v4"></path></svg>
+        Rekening
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01"></path></svg>
+        Transaksi
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h6m-3-8a9 9 0 100 18 9 9 0 000-18z"></path></svg>
+        Anggaran
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+        Kategori
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+        Investasi
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        Hutang &amp; Piutang
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        Laporan
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+        Paket
+      </a>
+      <a href="#" style="display:flex; align-items:center; gap:12px; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; color:rgba(255,255,255,0.6);" style-hover="background:rgba(255,255,255,0.08); color:#ffffff;">
+        <svg style="height:20px; width:20px; flex:none;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+        Profil
+      </a>
+    </nav>
+
+    <div style="margin-top:auto; border-top:1px solid rgba(255,255,255,0.1); padding-top:24px;">
+      <div style="display:flex; align-items:center; gap:12px; padding:0 8px; margin-bottom:16px;">
+        <div style="position:relative; display:flex; height:40px; width:40px; flex:none; align-items:center; justify-content:center; border-radius:9999px; border:1px solid rgba(20,184,166,0.5); background:rgba(20,184,166,0.2); font-weight:900; color:#2dd4bf;">
+          J
+          <span style="position:absolute; right:-4px; bottom:-4px; display:flex; height:20px; width:20px; align-items:center; justify-content:center; border-radius:9999px; border:1px solid #f3f4f6; background:#ffffff; color:#0a2e31; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            <svg style="height:12px; width:12px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          </span>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+          <p style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:700;">Juragan Demo</p>
+          <p style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:rgba(255,255,255,0.4);">demo@kasku.id</p>
+        </div>
+      </div>
+      <button style="width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background:none; color:#ffffff; padding:12px 0; font-size:12px; font-weight:700; cursor:pointer;" style-hover="border-color:rgba(239,68,68,0.2); background:rgba(239,68,68,0.1); color:#f87171;">Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main style="flex:1; overflow-y:auto; padding:48px; box-sizing:border-box;">
+    <div style="max-width:1152px; margin:0 auto; display:flex; flex-direction:column; gap:40px;">
+
+      <!-- Welcome row -->
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <h1 style="margin:0; font-size:30px; font-weight:900; color:#0a2e31;">Halo, Juragan Demo!</h1>
+          <p style="margin:0; font-size:14px; font-weight:500; color:#6b7280;">Ringkasan finansial bulan ini.</p>
+        </div>
+        <div style="display:flex; gap:12px;">
+          <a href="#" style="border-radius:12px; border:1px solid #e5e7eb; background:#ffffff; padding:10px 20px; font-size:14px; font-weight:700; color:#0a2e31; box-shadow:0 1px 2px rgba(0,0,0,0.05);" style-hover="background:#f9fafb;">Riwayat</a>
+          <a href="#" style="border-radius:12px; background:#217b84; padding:10px 20px; font-size:14px; font-weight:700; color:#ffffff; box-shadow:0 10px 15px -3px rgba(19,78,74,0.1);" style-hover="background:#1a5f66; color:#ffffff;">Laporan</a>
+        </div>
+      </div>
+
+      <!-- Hero cards -->
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:24px;">
+        <div style="position:relative; overflow:hidden; border-radius:40px; background:#0a2e31; padding:40px; color:#ffffff; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+          <div style="position:absolute; top:0; right:0; padding:32px; opacity:0.1;">
+            <svg style="height:128px; width:128px;" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.75 14.83h-3.5v-1.45c-1.43-.31-2.47-1.12-2.57-2.43h1.49c.09.68.74 1.19 1.48 1.19.8 0 1.42-.42 1.42-1.16 0-.61-.31-1.01-1.63-1.35-1.57-.41-2.61-1-2.61-2.53 0-1.28.97-2.18 2.42-2.49V7.12h3.5v1.44c1.23.27 2.1 1.01 2.24 2.15h-1.47c-.12-.66-.66-1.07-1.32-1.07-.73 0-1.25.4-1.25 1.05 0 .61.46.91 1.76 1.3 1.54.45 2.49 1.07 2.49 2.56 0 1.25-.9 2.18-2.47 2.52v1.41z"></path></svg>
+          </div>
+          <div style="position:relative; z-index:10; display:flex; flex-direction:column; gap:24px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:11px; font-weight:700; letter-spacing:0.2em; color:#2dd4bf; text-transform:uppercase;">Kekayaan Bersih</span>
+                <button style="background:none; border:none; padding:0; color:#2dd4bf; opacity:0.6; cursor:pointer;" style-hover="opacity:1;">
+                  <svg style="height:16px; width:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+              </div>
+              <div style="font-size:clamp(30px, 3.5vw, 48px); font-weight:900; letter-spacing:-0.05em; white-space:nowrap;">Rp&nbsp;38.380.000</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px; padding-top:4px;">
+                <span style="border-radius:9999px; background:rgba(255,255,255,0.1); padding:4px 10px; font-size:10px; font-weight:700; color:rgba(255,255,255,0.7);">Rekening Rp&nbsp;24.630.000</span>
+                <span style="border-radius:9999px; background:rgba(20,184,166,0.2); padding:4px 10px; font-size:10px; font-weight:700; color:#5eead4;">+Investasi Rp&nbsp;15.750.000</span>
+                <span style="border-radius:9999px; background:rgba(239,68,68,0.2); padding:4px 10px; font-size:10px; font-weight:700; color:#fca5a5;">−Hutang Rp&nbsp;2.000.000</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:24px; padding-top:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; height:40px; width:40px; align-items:center; justify-content:center; border-radius:16px; background:rgba(255,255,255,0.1); color:#4ade80;">
+                  <svg style="height:20px; width:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                </div>
+                <div>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:rgba(255,255,255,0.4); text-transform:uppercase;">Income</p>
+                  <p style="margin:0; font-size:14px; font-weight:700; color:#ffffff;">Rp&nbsp;12.500.000</p>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; height:40px; width:40px; align-items:center; justify-content:center; border-radius:16px; background:rgba(255,255,255,0.1); color:#f87171;">
+                  <svg style="height:20px; width:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                </div>
+                <div>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:rgba(255,255,255,0.4); text-transform:uppercase;">Expense</p>
+                  <p style="margin:0; font-size:14px; font-weight:700; color:#ffffff;">Rp&nbsp;8.450.000</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Savings card -->
+        <div style="display:flex; flex-direction:column; justify-content:space-between; border-radius:40px; border:1px solid #f3f4f6; background:#ffffff; padding:40px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.2em; color:#9ca3af; text-transform:uppercase;">Savings Rate</span>
+            <div style="position:relative; margin:0 auto; height:128px; width:128px;">
+              <svg style="height:100%; width:100%; transform:rotate(-90deg);">
+                <circle cx="64" cy="64" r="58" stroke="#f9fafb" stroke-width="12" fill="transparent"></circle>
+                <circle cx="64" cy="64" r="58" stroke="#217b84" stroke-width="12" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="247.8"></circle>
+              </svg>
+              <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+                <span style="font-size:30px; font-weight:900; color:#0a2e31;">32%</span>
+              </div>
+            </div>
+          </div>
+          <p style="margin:0; text-align:center; font-size:12px; line-height:1.6; font-weight:500; color:#9ca3af;">Anda menyisihkan <span style="font-weight:700; color:#217b84;">32%</span> pendapatan bulan ini. Pertahankan!</p>
+        </div>
+      </div>
+
+      <!-- Weekly chart -->
+      <div style="display:flex; flex-direction:column; gap:32px; border-radius:40px; border:1px solid #f3f4f6; background:#ffffff; padding:40px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <h3 style="margin:0; font-size:20px; font-weight:700; color:#0a2e31;">Pengeluaran 7 Hari Terakhir</h3>
+            <p style="margin:0; font-size:12px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Statistik Mingguan</p>
+          </div>
+          <p style="margin:0; font-size:14px; font-weight:700; color:#ef4444;">Puncak: Rp&nbsp;350.000</p>
+        </div>
+        <div style="position:relative; display:flex; height:256px; width:100%; align-items:stretch; justify-content:space-between; gap:16px; padding:0 8px;">
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:34%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Rab</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:11%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Kam</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:60%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Jum</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:79%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Sab</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:19%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Min</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:100%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Sen</span>
+          </div>
+          <div style="display:flex; flex:1; flex-direction:column; align-items:center; gap:8px;">
+            <div style="display:flex; width:100%; flex:1; align-items:flex-end; justify-content:center;"><div style="width:100%; max-width:40px; overflow:hidden; border-radius:16px; background:#f9fafb; height:24%;"><div style="height:100%; background:linear-gradient(to top, #217b84, #4fd1c5); opacity:0.8;"></div></div></div>
+            <span style="flex:none; font-size:11px; font-weight:900; letter-spacing:-0.05em; color:#9ca3af; text-transform:uppercase;">Sel</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget widget -->
+      <div style="border-radius:40px; border:1px solid #f3f4f6; background:#ffffff; padding:40px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <h3 style="margin:0; font-size:20px; font-weight:700; color:#0a2e31;">Anggaran Bulan Ini</h3>
+            <p style="margin:0; font-size:12px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Progress Pengeluaran</p>
+          </div>
+          <a href="#" style="font-size:12px; font-weight:700; color:#217b84;" style-hover="text-decoration:underline;">Kelola</a>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:14px; font-weight:700; color:#0a2e31;">Belanja Bulanan</span>
+                <span style="border-radius:9999px; background:#f3f4f6; padding:2px 8px; font-size:10px; font-weight:700; color:#6b7280;">Belanja</span>
+              </div>
+              <span style="font-size:12px; font-weight:900; color:#ef4444;">104%</span>
+            </div>
+            <div style="height:8px; overflow:hidden; border-radius:9999px; background:#f3f4f6;"><div style="height:100%; border-radius:9999px; background:#ef4444; width:100%;"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#9ca3af;"><span>Rp&nbsp;2.080.000</span><span>dari Rp&nbsp;2.000.000</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:14px; font-weight:700; color:#0a2e31;">Makan &amp; Jajan</span>
+                <span style="border-radius:9999px; background:#f3f4f6; padding:2px 8px; font-size:10px; font-weight:700; color:#6b7280;">Makanan</span>
+              </div>
+              <span style="font-size:12px; font-weight:900; color:#eab308;">82%</span>
+            </div>
+            <div style="height:8px; overflow:hidden; border-radius:9999px; background:#f3f4f6;"><div style="height:100%; border-radius:9999px; background:#facc15; width:82%;"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#9ca3af;"><span>Rp&nbsp;1.230.000</span><span>dari Rp&nbsp;1.500.000</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:14px; font-weight:700; color:#0a2e31;">Transportasi</span>
+                <span style="border-radius:9999px; background:#f3f4f6; padding:2px 8px; font-size:10px; font-weight:700; color:#6b7280;">Transport</span>
+              </div>
+              <span style="font-size:12px; font-weight:900; color:#9ca3af;">45%</span>
+            </div>
+            <div style="height:8px; overflow:hidden; border-radius:9999px; background:#f3f4f6;"><div style="height:100%; border-radius:9999px; background:#217b84; width:45%;"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:#9ca3af;"><span>Rp&nbsp;450.000</span><span>dari Rp&nbsp;1.000.000</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hutang & Piutang -->
+      <div style="border-radius:40px; border:1px solid #f3f4f6; background:#ffffff; padding:32px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <h3 style="margin:0; font-size:20px; font-weight:700; color:#0a2e31;">Hutang &amp; Piutang</h3>
+            <p style="margin:0; font-size:12px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Status Aktif</p>
+          </div>
+          <a href="#" style="font-size:12px; font-weight:700; color:#217b84;" style-hover="text-decoration:underline;">Kelola</a>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div style="border-radius:16px; border:1px solid #ccfbf1; background:#f0fdfa; padding:16px;">
+            <p style="margin:0 0 4px; font-size:10px; font-weight:700; letter-spacing:0.1em; color:#0d9488; text-transform:uppercase;">Piutang Saya</p>
+            <p style="margin:0; font-size:20px; font-weight:900; color:#0a2e31;">Rp&nbsp;1.500.000</p>
+            <p style="margin:2px 0 0; font-size:10px; color:#14b8a6;">Orang berhutang ke Anda</p>
+          </div>
+          <div style="border-radius:16px; border:1px solid #ffedd5; background:#fff7ed; padding:16px;">
+            <p style="margin:0 0 4px; font-size:10px; font-weight:700; letter-spacing:0.1em; color:#f97316; text-transform:uppercase;">Hutang Saya</p>
+            <p style="margin:0; font-size:20px; font-weight:900; color:#0a2e31;">Rp&nbsp;2.000.000</p>
+            <p style="margin:2px 0 0; font-size:10px; color:#fb923c;">Anda berhutang ke orang lain</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom grid -->
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:32px;">
+        <div style="display:flex; flex-direction:column; gap:24px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:0 8px;">
+            <h3 style="margin:0; font-size:20px; font-weight:700; color:#0a2e31;">Aktivitas Terakhir</h3>
+            <a href="#" style="font-size:12px; font-weight:700; color:#217b84;" style-hover="text-decoration:underline;">Lihat Semua</a>
+          </div>
+          <div style="overflow:hidden; border-radius:40px; border:1px solid #f3f4f6; background:#ffffff; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:24px; border-bottom:1px solid #f9fafb;" style-hover="background:#f9fafb;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; height:48px; width:48px; flex:none; align-items:center; justify-content:center; border-radius:16px; background:#f9fafb; font-size:12px; font-weight:700; color:#0a2e31; text-transform:uppercase;">MA</div>
+                <div style="min-width:0;">
+                  <p style="margin:0; font-weight:700; color:#0a2e31;">Makan siang Padang</p>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Makanan • 8 Jul</p>
+                </div>
+              </div>
+              <p style="margin:0; flex:none; font-size:14px; font-weight:900; letter-spacing:-0.025em; color:#0a2e31;">-Rp&nbsp;45.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:24px; border-bottom:1px solid #f9fafb;" style-hover="background:#f9fafb;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; height:48px; width:48px; flex:none; align-items:center; justify-content:center; border-radius:16px; background:#f9fafb; font-size:12px; font-weight:700; color:#0a2e31; text-transform:uppercase;">TR</div>
+                <div style="min-width:0;">
+                  <p style="margin:0; font-weight:700; color:#0a2e31;">Grab ke kantor</p>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Transport • 7 Jul</p>
+                </div>
+              </div>
+              <p style="margin:0; flex:none; font-size:14px; font-weight:900; letter-spacing:-0.025em; color:#0a2e31;">-Rp&nbsp;28.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:24px; border-bottom:1px solid #f9fafb;" style-hover="background:#f9fafb;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; height:48px; width:48px; flex:none; align-items:center; justify-content:center; border-radius:16px; background:#f9fafb; font-size:12px; font-weight:700; color:#0a2e31; text-transform:uppercase;">BE</div>
+                <div style="min-width:0;">
+                  <p style="margin:0; font-weight:700; color:#0a2e31;">Belanja Superindo</p>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Belanja • 6 Jul</p>
+                </div>
+              </div>
+              <p style="margin:0; flex:none; font-size:14px; font-weight:900; letter-spacing:-0.025em; color:#0a2e31;">-Rp&nbsp;385.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:24px; border-bottom:1px solid #f9fafb;" style-hover="background:#f9fafb;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; height:48px; width:48px; flex:none; align-items:center; justify-content:center; border-radius:16px; background:#f9fafb; font-size:12px; font-weight:700; color:#0a2e31; text-transform:uppercase;">TA</div>
+                <div style="min-width:0;">
+                  <p style="margin:0; font-weight:700; color:#0a2e31;">Listrik PLN</p>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Tagihan • 5 Jul</p>
+                </div>
+              </div>
+              <p style="margin:0; flex:none; font-size:14px; font-weight:900; letter-spacing:-0.025em; color:#0a2e31;">-Rp&nbsp;302.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:24px;" style-hover="background:#f9fafb;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; height:48px; width:48px; flex:none; align-items:center; justify-content:center; border-radius:16px; background:#f9fafb; font-size:12px; font-weight:700; color:#0a2e31; text-transform:uppercase;">GA</div>
+                <div style="min-width:0;">
+                  <p style="margin:0; font-weight:700; color:#0a2e31;">Gaji bulanan</p>
+                  <p style="margin:0; font-size:10px; font-weight:700; letter-spacing:0.05em; color:#9ca3af; text-transform:uppercase;">Gaji • 1 Jul</p>
+                </div>
+              </div>
+              <p style="margin:0; flex:none; font-size:14px; font-weight:900; letter-spacing:-0.025em; color:#16a34a;">Rp&nbsp;12.500.000</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:24px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:0 8px;">
+            <h3 style="margin:0; font-size:20px; font-weight:700; color:#0a2e31;">Rekening</h3>
+            <a href="#" style="font-size:12px; font-weight:700; color:#217b84;" style-hover="text-decoration:underline;">Kelola</a>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; border-radius:29px; border:1px solid #f3f4f6; background:#ffffff; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05);" style-hover="box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="height:12px; width:12px; border-radius:9999px; background:#2563eb; box-shadow:0 10px 15px -3px rgba(37,99,235,0.2);"></div>
+                <p style="margin:0; font-size:14px; font-weight:700; color:#0a2e31;">BCA</p>
+              </div>
+              <p style="margin:0; font-size:14px; font-weight:900; color:#0a2e31; opacity:0.6;">Rp&nbsp;18.200.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; border-radius:29px; border:1px solid #f3f4f6; background:#ffffff; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05);" style-hover="box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="height:12px; width:12px; border-radius:9999px; background:#f97316; box-shadow:0 10px 15px -3px rgba(249,115,22,0.2);"></div>
+                <p style="margin:0; font-size:14px; font-weight:700; color:#0a2e31;">GoPay</p>
+              </div>
+              <p style="margin:0; font-size:14px; font-weight:900; color:#0a2e31; opacity:0.6;">Rp&nbsp;1.430.000</p>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; border-radius:29px; border:1px solid #f3f4f6; background:#ffffff; padding:20px; box-shadow:0 1px 2px rgba(0,0,0,0.05);" style-hover="box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="height:12px; width:12px; border-radius:9999px; background:#14b8a6; box-shadow:0 10px 15px -3px rgba(20,184,166,0.2);"></div>
+                <p style="margin:0; font-size:14px; font-weight:700; color:#0a2e31;">Cash</p>
+              </div>
+              <p style="margin:0; font-size:14px; font-weight:900; color:#0a2e31; opacity:0.6;">Rp&nbsp;5.000.000</p>
+            </div>
+            <a href="#" style="display:block; width:100%; border-radius:29px; border:2px dashed #f3f4f6; padding:16px 0; text-align:center; font-size:12px; font-weight:700; color:#9ca3af; box-sizing:border-box;" style-hover="border-color:#ccfbf1; background:#f9fafb; color:#0d9488;">+ Tambah Akun Baru</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</x-dc>
+</body>
+</html>
