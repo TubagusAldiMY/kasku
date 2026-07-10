@@ -55,7 +55,7 @@ func HandleError(c *gin.Context, err error) {
 // domainErrorToStatus memetakan error code ke HTTP status code.
 func domainErrorToStatus(code string) int {
 	switch code {
-	case "INVALID_CREDENTIALS", "INVALID_TOKEN", "TOKEN_EXPIRED":
+	case "INVALID_CREDENTIALS", "INVALID_TOKEN", "TOKEN_EXPIRED", "GOOGLE_AUTH_FAILED":
 		return http.StatusUnauthorized
 	case "ACCOUNT_LOCKED", "ACCOUNT_NOT_VERIFIED":
 		return http.StatusForbidden

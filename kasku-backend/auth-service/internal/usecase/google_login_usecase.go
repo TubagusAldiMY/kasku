@@ -125,7 +125,7 @@ func (uc *googleLoginUseCase) ExchangeCode(ctx context.Context, input GoogleCode
 
 	idToken, err := uc.exchangeAuthCode(input.Code, input.RedirectURI)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domainerrors.ErrInvalidCredentials, err)
+		return nil, fmt.Errorf("%w: %v", domainerrors.ErrGoogleAuth, err)
 	}
 
 	return uc.Execute(ctx, GoogleLoginInput{
@@ -175,11 +175,11 @@ func (uc *googleLoginUseCase) exchangeAuthCode(code, redirectURI string) (string
 func (uc *googleLoginUseCase) Execute(ctx context.Context, input GoogleLoginInput) (*LoginOutput, error) {
 	tokenInfo, err := uc.verifyGoogleToken(input.IDToken)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domainerrors.ErrInvalidCredentials, err)
+		return nil, fmt.Errorf("%w: %v", domainerrors.ErrGoogleAuth, err)
 	}
 
 	if tokenInfo.EmailVerified != "true" {
-		return nil, fmt.Errorf("%w: email Google belum diverifikasi", domainerrors.ErrInvalidCredentials)
+		return nil, fmt.Errorf("%w: email Google belum diverifikasi", domainerrors.ErrGoogleAuth)
 	}
 
 	// Cari user berdasarkan google_id

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { apiFetch } from '$lib/api/client';
 	import { resolve } from '$app/paths';
+	import { env } from '$env/dynamic/public';
+	import { startGoogleLogin } from '$lib/googleOAuth';
+
+	const googleClientId = env.PUBLIC_GOOGLE_CLIENT_ID ?? '';
 
 	let email = $state('');
 	let username = $state('');
@@ -305,11 +309,13 @@
 				{loading ? 'Mendaftarkan…' : 'Daftar sekarang'}
 			</button>
 
-			<button
-				type="button"
-				class="flex w-full items-center justify-center gap-2.5 rounded-full border border-ink/25 bg-field py-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40"
-			>
-				<svg class="h-4 w-4" viewBox="0 0 24 24">
+			{#if googleClientId}
+				<button
+					type="button"
+					onclick={() => startGoogleLogin(googleClientId)}
+					class="flex w-full items-center justify-center gap-2.5 rounded-full border border-ink/25 bg-field py-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40"
+				>
+					<svg class="h-4 w-4" viewBox="0 0 24 24">
 					<path
 						fill="#4285F4"
 						d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -329,6 +335,7 @@
 				</svg>
 				Daftar dengan Google
 			</button>
+			{/if}
 		</form>
 
 		<p class="text-center text-[13px] text-ink/55">

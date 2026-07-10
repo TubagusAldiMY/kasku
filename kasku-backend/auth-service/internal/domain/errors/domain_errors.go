@@ -19,6 +19,10 @@ var (
 		Code:    "INVALID_CREDENTIALS",
 		Message: "Email atau password salah.",
 	}
+	ErrGoogleAuth = &DomainError{
+		Code:    "GOOGLE_AUTH_FAILED",
+		Message: "Login dengan Google gagal. Silakan coba lagi.",
+	}
 	ErrAccountLocked = &DomainError{
 		Code:    "ACCOUNT_LOCKED",
 		Message: "Akun dikunci sementara akibat terlalu banyak percobaan login gagal.",

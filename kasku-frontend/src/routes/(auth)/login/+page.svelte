@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { env } from '$env/dynamic/public';
+	import { startGoogleLogin } from '$lib/googleOAuth';
 
 	const googleClientId = env.PUBLIC_GOOGLE_CLIENT_ID ?? '';
 
@@ -88,25 +89,6 @@
 		goto(resolve('/dashboard'));
 	}
 
-	// Redirect-based OAuth flow — bekerja di semua browser tanpa popup / GIS library.
-	// Client secret tetap aman di backend; frontend hanya mengirim authorization code.
-	function handleGoogleLogin() {
-		if (!googleClientId) return;
-
-		const state = crypto.randomUUID();
-		sessionStorage.setItem('google_oauth_state', state);
-
-		const params = new URLSearchParams({
-			client_id: googleClientId,
-			redirect_uri: `${window.location.origin}/google/callback`,
-			response_type: 'code',
-			scope: 'openid email profile',
-			state,
-			prompt: 'select_account'
-		});
-
-		window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-	}
 </script>
 
 <div class="space-y-8">
@@ -258,7 +240,7 @@
 		{#if googleClientId}
 			<button
 				type="button"
-				onclick={handleGoogleLogin}
+				onclick={() => startGoogleLogin(googleClientId)}
 				class="flex w-full items-center justify-center gap-2.5 rounded-full border border-ink/25 bg-field py-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40"
 			>
 				<svg class="h-4 w-4" viewBox="0 0 24 24">
