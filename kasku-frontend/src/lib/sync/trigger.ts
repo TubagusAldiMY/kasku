@@ -1,6 +1,6 @@
 import { syncAll } from './engine';
 import { syncStatus } from './store.svelte';
-import { syncQueueRepo } from '$lib/db';
+import { syncQueueRepo, conflictsRepo } from '$lib/db';
 
 const VISIBILITY_THROTTLE_MS = 30_000;
 const PERIODIC_INTERVAL_MS = 5 * 60_000;
@@ -50,7 +50,11 @@ export function initSyncTriggers(): void {
 	periodicHandle = setInterval(() => void safeSync(), PERIODIC_INTERVAL_MS);
 	listenersAttached = true;
 
-	void refreshQueueCount();
+	// Pulihkan operasi yatim (IN_FLIGHT nyangkut) sebelum sync pertama.
+	void syncQueueRepo
+		.recoverStuck()
+		.catch(() => undefined)
+		.finally(() => void refreshCounts());
 }
 
 export function teardownSyncTriggers(): void {
@@ -68,12 +72,13 @@ export function teardownSyncTriggers(): void {
 /** Manual button — bypass throttle. */
 export async function triggerManualSync(): Promise<void> {
 	await safeSync();
-	await refreshQueueCount();
+	await refreshCounts();
 }
 
-async function refreshQueueCount(): Promise<void> {
+async function refreshCounts(): Promise<void> {
 	try {
 		syncStatus.setQueuedCount(await syncQueueRepo.count());
+		syncStatus.setConflictCount(await conflictsRepo.count());
 	} catch {
 		// IDB belum siap di SSR atau ada error transient — diamkan.
 	}

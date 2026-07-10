@@ -10,7 +10,7 @@
  */
 
 export const DB_NAME = 'kasku';
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export type StoreName =
 	| 'accounts'
@@ -19,7 +19,8 @@ export type StoreName =
 	| 'investments'
 	| 'budgets'
 	| 'sync_queue'
-	| 'sync_meta';
+	| 'sync_meta'
+	| 'sync_conflicts';
 
 export type SyncableEntity = {
 	id: string;
@@ -106,6 +107,23 @@ export type SyncMetaRow = {
 	last_synced_at: string;
 };
 
+/** Resource yang ikut sync engine (punya sync_queue + bisa konflik). */
+export type SyncableResourceName = 'accounts' | 'transactions' | 'investments';
+
+/**
+ * Konflik yang terlihat user: perubahan lokal ditimpa versi server (Server Wins).
+ * Direkam agar user bisa review & memilih "pakai versi saya" (re-push lokal).
+ */
+export type SyncConflictRow = {
+	id: string; // conflict id (client-generated)
+	resource: SyncableResourceName;
+	entity_id: string;
+	origin: 'push' | 'pull'; // di mana konflik terdeteksi
+	local_value: unknown; // nilai lokal user yang kalah
+	server_value: unknown; // nilai server yang menang
+	detected_at: string; // ISO 8601
+};
+
 type StoreSpec = {
 	keyPath: string;
 	indexes: { name: string; keyPath: string; options?: IDBIndexParameters }[];
@@ -146,6 +164,10 @@ export const STORES: Record<StoreName, StoreSpec> = {
 	sync_meta: {
 		keyPath: 'resource',
 		indexes: []
+	},
+	sync_conflicts: {
+		keyPath: 'id',
+		indexes: [{ name: 'by_detected_at', keyPath: 'detected_at' }]
 	}
 };
 

@@ -62,6 +62,34 @@ async function markFailed(syncId: string, error: string): Promise<void> {
 	await transactionToPromise(tx);
 }
 
+async function failed(): Promise<SyncQueueRow[]> {
+	const db = await openDB();
+	const tx = db.transaction(STORE, 'readonly');
+	const rows = await requestToPromise(
+		tx.objectStore(STORE).getAll() as IDBRequest<SyncQueueRow[]>
+	);
+	await transactionToPromise(tx);
+	return rows.filter((r) => r.status === 'FAILED');
+}
+
+/**
+ * Reset row yang nyangkut IN_FLIGHT (mis. app ditutup saat push berlangsung)
+ * kembali ke PENDING agar tidak jadi yatim & hilang selamanya.
+ * Panggil saat init sebelum sync pertama.
+ */
+async function recoverStuck(): Promise<void> {
+	const db = await openDB();
+	const tx = db.transaction(STORE, 'readwrite');
+	const store = tx.objectStore(STORE);
+	const rows = await requestToPromise(store.getAll() as IDBRequest<SyncQueueRow[]>);
+	for (const row of rows) {
+		if (row.status === 'IN_FLIGHT') {
+			store.put({ ...row, status: 'PENDING' satisfies SyncOperationStatus });
+		}
+	}
+	await transactionToPromise(tx);
+}
+
 async function count(): Promise<number> {
 	const db = await openDB();
 	const tx = db.transaction(STORE, 'readonly');
@@ -83,6 +111,8 @@ export const syncQueueRepo = {
 	markInFlight,
 	markAcked,
 	markFailed,
+	failed,
+	recoverStuck,
 	count,
 	clear
 };

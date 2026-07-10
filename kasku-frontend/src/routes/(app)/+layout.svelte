@@ -246,7 +246,12 @@
 							aria-expanded={showMenu}
 						>
 							{auth.user?.username?.charAt(0).toUpperCase() ?? 'J'}
-							{#if syncStatus.queuedCount > 0}
+							{#if syncStatus.conflictCount > 0}
+								<span
+									class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-paper bg-clay"
+									aria-hidden="true"
+								></span>
+							{:else if syncStatus.queuedCount > 0}
 								<span
 									class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-paper bg-gold"
 									aria-hidden="true"
@@ -292,6 +297,20 @@
 									{/each}
 								</nav>
 								<div class="border-t border-ink/10 px-3 py-2">
+									<a
+										href={resolve('/sync')}
+										onclick={() => (showMenu = false)}
+										class="flex items-center justify-between rounded-xl px-2 py-2 text-sm text-ink/70 transition-colors hover:bg-ink/5"
+									>
+										<span>Status sinkronisasi</span>
+										{#if syncStatus.conflictCount > 0}
+											<span
+												class="flex h-4 min-w-4 items-center justify-center rounded-full bg-clay px-1 text-[10px] font-semibold text-card"
+											>
+												{syncStatus.conflictCount}
+											</span>
+										{/if}
+									</a>
 									<button
 										onclick={handleSync}
 										disabled={syncLoading}

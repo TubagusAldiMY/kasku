@@ -13,6 +13,8 @@ export {
 	type BudgetRow,
 	type SyncQueueRow,
 	type SyncMetaRow,
+	type SyncConflictRow,
+	type SyncableResourceName,
 	type SyncOperationType,
 	type SyncOperationStatus
 } from './schema';
@@ -23,3 +25,4 @@ export { investmentsRepo } from './repositories/investments';
 export { budgetsRepo } from './repositories/budgets';
 export { syncQueueRepo } from './repositories/sync_queue';
 export { syncMetaRepo } from './repositories/sync_meta';
+export { conflictsRepo } from './repositories/conflicts';

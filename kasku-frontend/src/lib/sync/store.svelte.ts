@@ -8,6 +8,7 @@ type SyncStatus = {
 	running: boolean;
 	lastSyncAt: string | null;
 	queuedCount: number;
+	conflictCount: number;
 	error: string | null;
 	online: boolean;
 	dataVersion: number;
@@ -19,6 +20,7 @@ const state = $state<SyncStatus>({
 	running: false,
 	lastSyncAt: null,
 	queuedCount: 0,
+	conflictCount: 0,
 	error: null,
 	online: initialOnline,
 	dataVersion: 0
@@ -33,6 +35,9 @@ export const syncStatus = {
 	},
 	get queuedCount() {
 		return state.queuedCount;
+	},
+	get conflictCount() {
+		return state.conflictCount;
 	},
 	get error() {
 		return state.error;
@@ -52,6 +57,9 @@ export const syncStatus = {
 	},
 	setQueuedCount(v: number) {
 		state.queuedCount = v;
+	},
+	setConflictCount(v: number) {
+		state.conflictCount = v;
 	},
 	setError(v: string | null) {
 		state.error = v;

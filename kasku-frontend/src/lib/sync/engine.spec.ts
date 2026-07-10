@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _resetConnection } from '$lib/db/connection';
-import { DB_NAME, accountsRepo, syncQueueRepo, syncMetaRepo } from '$lib/db';
+import { DB_NAME, accountsRepo, syncQueueRepo, syncMetaRepo, conflictsRepo } from '$lib/db';
 import type { AccountRow, SyncQueueRow } from '$lib/db';
 import { _internals, syncAll } from './engine';
 import type {
@@ -146,6 +146,48 @@ describe('engine.pullDelta', () => {
 		expect(fetched?.name).toBe('newer-local');
 	});
 
+	it('records a conflict when server overwrites dirty local changes', async () => {
+		// Lokal punya perubahan belum di-ack (_local_dirty) tapi lebih tua dari server.
+		await accountsRepo.put(
+			makeAccount({
+				id: 'a-1',
+				name: 'my-offline-edit',
+				updated_at: '2026-05-17T08:00:00.000Z',
+				_local_dirty: true
+			})
+		);
+
+		const fetcher = vi.fn().mockResolvedValue(
+			envelope<PullResponseData>({
+				changes: [
+					{
+						entity_type: 'financial_account',
+						entity_id: 'a-1',
+						operation: 'update',
+						data: {
+							id: 'a-1',
+							name: 'server-newer',
+							account_type: 'BANK',
+							balance: 0,
+							currency: 'IDR',
+							updated_at: '2026-05-17T12:00:00.000Z'
+						},
+						updated_at: '2026-05-17T12:00:00.000Z'
+					}
+				],
+				server_timestamp: '2026-05-17T12:00:00.000Z'
+			})
+		);
+
+		await pullDelta('accounts', fetcher, () => '2026-05-17T12:00:00.000Z');
+
+		const recorded = await conflictsRepo.list();
+		expect(recorded).toHaveLength(1);
+		expect(recorded[0].origin).toBe('pull');
+		expect((recorded[0].local_value as { name: string }).name).toBe('my-offline-edit');
+		expect((recorded[0].server_value as { name: string }).name).toBe('server-newer');
+	});
+
 	it('hard-deletes locally when server sends delete operation', async () => {
 		await accountsRepo.put(makeAccount({ id: 'gone' }));
 		const fetcher = vi.fn().mockResolvedValue(
@@ -285,6 +327,13 @@ describe('engine.pushPending', () => {
 		expect(await syncQueueRepo.count()).toBe(0);
 		const fetched = await accountsRepo.getById('acc-new');
 		expect(fetched?.name).toBe('server-truth');
+
+		// Konflik direkam agar terlihat user: nilai lokal (payload) vs server.
+		const recorded = await conflictsRepo.list();
+		expect(recorded).toHaveLength(1);
+		expect(recorded[0].origin).toBe('push');
+		expect((recorded[0].local_value as { name: string }).name).toBe('Created');
+		expect((recorded[0].server_value as { name: string }).name).toBe('server-truth');
 	});
 
 	it('returns early when queue is empty', async () => {

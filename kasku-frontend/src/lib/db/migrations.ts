@@ -36,6 +36,10 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
 	// v4: recovery untuk browser yang sudah terlanjur punya DB v3 tanpa store baru.
 	4: (db) => {
 		createMissingStores(db);
+	},
+	// v5: tambah store 'sync_conflicts' untuk resolusi konflik yang terlihat user.
+	5: (db) => {
+		createMissingStores(db);
 	}
 };
 

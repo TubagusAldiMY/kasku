@@ -5,6 +5,7 @@ import {
 	investmentsRepo,
 	syncQueueRepo,
 	syncMetaRepo,
+	conflictsRepo,
 	type SyncableEntity,
 	type SyncQueueRow,
 	type AccountRow,
@@ -61,6 +62,26 @@ function toEntity(change: EntityChange): SyncableEntity {
 	} as SyncableEntity;
 }
 
+/** Rekam konflik (perubahan lokal ditimpa server) agar terlihat & bisa di-review user. */
+async function recordConflict(
+	resource: SyncableResource,
+	entityId: string,
+	origin: 'push' | 'pull',
+	localValue: unknown,
+	serverValue: unknown,
+	detectedAt: string
+): Promise<void> {
+	await conflictsRepo.record({
+		id: crypto.randomUUID(),
+		resource,
+		entity_id: entityId,
+		origin,
+		local_value: localValue,
+		server_value: serverValue,
+		detected_at: detectedAt
+	});
+}
+
 async function pullDelta(
 	resource: SyncableResource,
 	fetcher: FetchLike,
@@ -93,6 +114,10 @@ async function pullDelta(
 		const resolution = applyServerWins(existing as SyncableEntity | undefined, incoming);
 
 		if (resolution.decision === 'apply_server') {
+			// Perubahan lokal user (belum di-ack) akan ditimpa server → rekam dulu.
+			if (resolution.loserHadLocalChanges && existing) {
+				await recordConflict(resource, incoming.id, 'pull', existing, incoming, now());
+			}
 			if (incoming._deleted) {
 				await repo.hardDelete(incoming.id);
 			} else {
@@ -132,6 +157,8 @@ async function pushPending(
 
 	const operations: SyncOperationPayload[] = pending.map((row) => queueRowToOperation(row, now()));
 	const syncIds = pending.map((r) => r.sync_id);
+	// sync_id → payload lokal yang dikirim, untuk merekam nilai lokal saat konflik.
+	const localBySyncId = new Map(pending.map((r) => [r.sync_id, r.payload]));
 
 	await syncQueueRepo.markInFlight(syncIds);
 
@@ -168,6 +195,16 @@ async function pushPending(
 			await syncQueueRepo.markAcked(result.sync_id);
 			if (result.server_data) {
 				const resource = SERVER_ENTITY_TO_RESOURCE[result.entity_type];
+				// Server menolak push kita (punya versi lebih baru) → rekam nilai lokal
+				// yang kalah sebelum ditimpa, agar user bisa "pakai versi saya".
+				await recordConflict(
+					resource,
+					result.entity_id,
+					'push',
+					localBySyncId.get(result.sync_id) ?? null,
+					result.server_data,
+					envelope.data.server_timestamp
+				);
 				const entity = toEntity({
 					entity_type: result.entity_type,
 					entity_id: result.entity_id,
@@ -225,6 +262,7 @@ export async function syncAll(deps: EngineDeps = {}): Promise<void> {
 		}
 
 		syncStatus.setQueuedCount(await syncQueueRepo.count());
+		syncStatus.setConflictCount(await conflictsRepo.count());
 		syncStatus.setLastSyncAt(now());
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
