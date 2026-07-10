@@ -100,6 +100,14 @@ func main() {
 	defer billingPool.Close()
 	logger.Info().Msg("kasku_billing terhubung")
 
+	// Migrations — kasku_user (owner user_profiles). Dijalankan sebelum koneksi
+	// pool agar tabel sudah ada saat handler & consumer mulai bekerja.
+	logger.Info().Msg("menjalankan database migrations (kasku_user)")
+	if err := persistence.RunMigrations(cfg.User.DSN); err != nil {
+		logger.Fatal().Err(err).Msg("gagal menjalankan migrations")
+	}
+	logger.Info().Msg("migrations selesai")
+
 	// PostgreSQL — kasku_user (owner user_profiles)
 	userPool, err := persistence.NewPostgresPool(ctx, cfg.User.DSN)
 	if err != nil {

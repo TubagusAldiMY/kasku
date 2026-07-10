@@ -13,6 +13,7 @@ FROM alpine:3.19
 RUN addgroup -S kasku && adduser -S kasku -G kasku
 WORKDIR /app
 COPY --from=builder /app/user-service/user-service .
+COPY --from=builder /app/user-service/migrations ./migrations
 USER kasku
 EXPOSE 8082 9082
 CMD ["./user-service"]

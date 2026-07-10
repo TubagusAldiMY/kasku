@@ -2,12 +2,48 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const maxPoolConnections = 10
+const (
+	maxPoolConnections = 10
+	migrationSourceURL = "file://migrations"
+)
+
+// RunMigrations menjalankan semua migration user-service yang belum dijalankan (up)
+// terhadap DSN yang diberikan (kasku_user — pemilik tabel user_profiles).
+func RunMigrations(dsn string) (err error) {
+	m, err := migrate.New(migrationSourceURL, dsn)
+	if err != nil {
+		return fmt.Errorf("gagal inisialisasi migrate: %w", err)
+	}
+	defer func() {
+		sourceErr, databaseErr := m.Close()
+		err = errors.Join(
+			err,
+			wrapMigrationCloseError("gagal tutup migration source", sourceErr),
+			wrapMigrationCloseError("gagal tutup migration database", databaseErr),
+		)
+	}()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("gagal menjalankan migration: %w", err)
+	}
+	return nil
+}
+
+func wrapMigrationCloseError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", message, err)
+}
 
 func NewPostgresPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	poolConfig, err := pgxpool.ParseConfig(dsn)
