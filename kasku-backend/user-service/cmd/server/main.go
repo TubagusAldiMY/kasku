@@ -124,9 +124,11 @@ func main() {
 	financeRepo := persistence.NewPostgresFinanceRepository(financePool)
 	subscriptionRepo := persistence.NewPostgresSubscriptionRepository(billingPool)
 	profileRepo := persistence.NewPostgresUserProfileRepository(userPool)
+	exportRepo := persistence.NewPostgresExportRepository(financePool, billingPool)
 
 	// Use Cases
 	provisionUC := usecase.NewProvisionTenantUseCase(financeRepo, subscriptionRepo, profileRepo, logger)
+	exportUC := usecase.NewExportDataUseCase(profileRepo, exportRepo, logger)
 
 	// Event Handler adapter
 	eventHandler := &eventHandlerAdapter{provisionUC: provisionUC, log: logger}
@@ -147,7 +149,7 @@ func main() {
 		userPool:    userPool,
 		consumer:    consumer,
 	}
-	userHandler := handler.NewUserHandler(healthChecker, profileRepo, cfg.App.ServiceVersion, logger)
+	userHandler := handler.NewUserHandler(healthChecker, profileRepo, exportUC, cfg.App.ServiceVersion, logger)
 	metricsReg := obsmetrics.NewRegistry("user-service")
 	metricsReg.RegisterDBPool(userPool)
 	router := deliveryhttp.NewRouter(userHandler, cfg.IsDevelopment(), metricsReg, logger)

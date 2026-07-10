@@ -60,6 +60,7 @@ func NewRouter(userHandler *handler.UserHandler, isDev bool, metricsReg *metrics
 		{
 			users.GET("/profile", userHandler.GetProfile)
 			users.PUT("/profile", userHandler.UpdateProfile)
+			users.GET("/export", userHandler.ExportData)
 		}
 	}
 

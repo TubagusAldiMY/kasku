@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/persistence"
+	"github.com/TubagusAldiMY/kasku/user-service/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 )
@@ -28,14 +30,16 @@ type HealthChecker interface {
 type UserHandler struct {
 	health         HealthChecker
 	profileRepo    persistence.UserProfileRepository
+	exportUC       *usecase.ExportDataUseCase
 	serviceVersion string
 	log            zerolog.Logger
 }
 
-func NewUserHandler(health HealthChecker, profileRepo persistence.UserProfileRepository, serviceVersion string, log zerolog.Logger) *UserHandler {
+func NewUserHandler(health HealthChecker, profileRepo persistence.UserProfileRepository, exportUC *usecase.ExportDataUseCase, serviceVersion string, log zerolog.Logger) *UserHandler {
 	return &UserHandler{
 		health:         health,
 		profileRepo:    profileRepo,
+		exportUC:       exportUC,
 		serviceVersion: serviceVersion,
 		log:            log,
 	}
@@ -144,6 +148,34 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 			"subscription_tier": subscriptionTier,
 		},
 	})
+}
+
+// ExportData mengunduh seluruh data pribadi user sebagai satu file JSON (UU PDP portabilitas).
+func (h *UserHandler) ExportData(c *gin.Context) {
+	userID := c.GetHeader(headerUserID)
+	tenantSchema := c.GetHeader(headerTenantSchema)
+	if userID == "" || tenantSchema == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Header autentikasi tidak ditemukan."},
+		})
+		return
+	}
+
+	data, err := h.exportUC.Execute(c.Request.Context(), userID, tenantSchema)
+	if err != nil {
+		h.log.Error().Err(err).Str("user_id", userID).Msg("gagal export data")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "EXPORT_FAILED", "message": "Gagal menyiapkan ekspor data."},
+		})
+		return
+	}
+
+	filename := "kasku-export-" + time.Now().UTC().Format("2006-01-02") + ".json"
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	// Ditulis mentah (bukan envelope {success,data}) agar file unduhan bersih.
+	c.JSON(http.StatusOK, data)
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {

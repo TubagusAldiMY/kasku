@@ -36,6 +36,30 @@
 	});
 
 	let prefLoading = $state(false);
+	let exportLoading = $state(false);
+
+	async function handleExport() {
+		exportLoading = true;
+		message = null;
+		try {
+			const res = await apiFetch('/users/export');
+			if (!res.ok) throw new Error('export gagal');
+			const blob = await res.blob();
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `kasku-export-${new Date().toISOString().slice(0, 10)}.json`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+			message = { type: 'success', text: 'Data Anda berhasil diunduh.' };
+		} catch {
+			message = { type: 'error', text: 'Gagal mengunduh data. Coba lagi.' };
+		} finally {
+			exportLoading = false;
+		}
+	}
 
 	async function fetchPreferences() {
 		try {
@@ -516,6 +540,41 @@
 							{prefLoading ? 'Menyimpan...' : 'Simpan Preferensi'}
 						</button>
 					</div>
+				</div>
+			</div>
+
+			<!-- Privasi & Data (UU PDP) -->
+			<div class="space-y-6 rounded-2xl border border-ink/10 bg-card p-8 sm:p-10">
+				<div class="flex items-center justify-between">
+					<h3 class="font-serif text-2xl text-ink">Privasi & Data</h3>
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-full border border-teal/25 text-teal"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="1.8"
+								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
+						</svg>
+					</div>
+				</div>
+
+				<div class="flex items-center justify-between border-t border-ink/8 py-4">
+					<div class="space-y-0.5 pr-4">
+						<p class="text-sm font-medium text-ink">Ekspor data saya</p>
+						<p class="text-[12px] text-ink/50">
+							Unduh seluruh data Anda (profil, langganan, keuangan) sebagai satu file JSON.
+						</p>
+					</div>
+					<button
+						onclick={handleExport}
+						disabled={exportLoading}
+						class="shrink-0 rounded-full border border-ink/20 px-5 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-ink/5 disabled:opacity-50"
+					>
+						{exportLoading ? 'Menyiapkan…' : 'Unduh'}
+					</button>
 				</div>
 			</div>
 		</div>
