@@ -32,6 +32,10 @@ go.work.sum
 *.env
 infra/.secrets_generated.env
 
+# Kunci / sertifikat (JWT RS256 private key dll — JANGAN pernah commit)
+*.pem
+*.key
+
 # Editor/IDE
 .idea/
 # .vscode/
@@ -42,7 +46,8 @@ target/
 .npm-cache/
 
 # Other
-#Plan
+# Dokumen arsitektur internal — tidak dicommit (sesuai konvensi CLAUDE.md)
+Plan/
 CLAUDE.md
 Knowledge
 .github/*

@@ -7,3 +7,10 @@
 /captures/
 .externalNativeBuild/
 .cxx/
+
+# Secret rilis — JANGAN commit (kunci signing = bencana kalau bocor)
+*.jks
+*.keystore
+keystore.properties
+# FCM/Firebase config (berisi API key project)
+google-services.json
