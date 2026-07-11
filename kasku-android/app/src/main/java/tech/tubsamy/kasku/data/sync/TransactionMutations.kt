@@ -24,11 +24,12 @@ class TransactionMutations(
     private val txDao = db.transactionDao()
     private val queueDao = db.syncQueueDao()
 
-    /** date null = hari ini (YYYY-MM-DD). type: INCOME | EXPENSE. */
+    /** date null = hari ini (YYYY-MM-DD). type: INCOME | EXPENSE. categoryId opsional. */
     suspend fun create(
         accountId: String,
         type: String,
         amountIdr: Long,
+        categoryId: String? = null,
         date: String? = null,
         notes: String? = null,
     ): String {
@@ -42,7 +43,7 @@ class TransactionMutations(
             local_dirty = true,
             deleted = false,
             account_id = accountId,
-            category_id = null,
+            category_id = categoryId,
             budget_id = null,
             transaction_type = type,
             amount_idr = amountIdr,
@@ -54,6 +55,39 @@ class TransactionMutations(
         enqueue(syncId, "CREATE", id, payload(row))
         fireSync()
         return id
+    }
+
+    /**
+     * Untuk aksi "Pakai versi saya" (F4): regenerate sync_id + updated_at=now → menang LWW,
+     * lalu enqueue UPDATE. Field null = pertahankan nilai existing (pola AccountMutations.update).
+     * Edge case: entity lokal sudah hilang → no-op (tak resurrect entity terhapus server).
+     */
+    suspend fun update(
+        id: String,
+        accountId: String? = null,
+        type: String? = null,
+        amountIdr: Long? = null,
+        categoryId: String? = null,
+        date: String? = null,
+        notes: String? = null,
+    ) {
+        val existing = txDao.findById(id) ?: return
+        val syncId = UUID.randomUUID().toString()
+        val now = clock()
+        val row = existing.copy(
+            sync_id = syncId,
+            updated_at = now,
+            local_dirty = true,
+            account_id = accountId ?: existing.account_id,
+            category_id = categoryId ?: existing.category_id,
+            transaction_type = type ?: existing.transaction_type,
+            amount_idr = amountIdr ?: existing.amount_idr,
+            transaction_date = date ?: existing.transaction_date,
+            notes = notes ?: existing.notes,
+        )
+        txDao.upsert(row)
+        enqueue(syncId, "UPDATE", id, payload(row))
+        fireSync()
     }
 
     private suspend fun enqueue(syncId: String, operation: String, entityId: String, payload: JsonObject) {
@@ -79,6 +113,7 @@ class TransactionMutations(
         put("amount_idr", JsonPrimitive(row.amount_idr))
         put("transaction_date", JsonPrimitive(row.transaction_date))
         put("updated_at", JsonPrimitive(row.updated_at))
+        row.category_id?.let { put("category_id", JsonPrimitive(it)) }
         row.notes?.let { put("notes", JsonPrimitive(it)) }
     }
 }

@@ -24,6 +24,18 @@ interface AccountDao {
 
 @Dao
 interface TransactionDao {
+    /**
+     * Riwayat (F2): semua transaksi hidup, urut kronologis desc.
+     * TransactionEntity tak punya created_at → tie-breaker id DESC (UUID, deterministik).
+     * transaction_date "YYYY-MM-DD" → perbandingan leksikografis = kronologis.
+     */
+    @Query("SELECT * FROM transactions WHERE deleted = 0 ORDER BY transaction_date DESC, id DESC")
+    fun observe(): Flow<List<TransactionEntity>>
+
+    /** Dashboard (F1): rentang bulan berjalan [from,to] inklusif, format "YYYY-MM-DD". */
+    @Query("SELECT * FROM transactions WHERE deleted = 0 AND transaction_date BETWEEN :from AND :to")
+    fun observeByDateRange(from: String, to: String): Flow<List<TransactionEntity>>
+
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun findById(id: String): TransactionEntity?
 
@@ -82,6 +94,18 @@ interface SyncConflictDao {
 
     @Query("SELECT COUNT(*) FROM sync_conflicts")
     suspend fun count(): Int
+
+    /** Review Konflik (F4): daftar konflik, terbaru dulu. */
+    @Query("SELECT * FROM sync_conflicts ORDER BY detected_at DESC")
+    fun observe(): Flow<List<SyncConflictEntity>>
+
+    /** Badge Home (F5): jumlah konflik reaktif. */
+    @Query("SELECT COUNT(*) FROM sync_conflicts")
+    fun observeCount(): Flow<Int>
+
+    /** Dipakai kedua aksi resolve (terima server / pakai versi saya). */
+    @Query("DELETE FROM sync_conflicts WHERE id = :id")
+    suspend fun deleteById(id: String)
 }
 
 @Dao

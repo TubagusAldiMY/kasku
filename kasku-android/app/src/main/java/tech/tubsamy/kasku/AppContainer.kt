@@ -3,10 +3,14 @@ package tech.tubsamy.kasku
 import android.content.Context
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.AuthRepository
+import tech.tubsamy.kasku.data.CategoriesRepository
+import tech.tubsamy.kasku.data.ConflictsRepository
 import tech.tubsamy.kasku.data.TokenStore
+import tech.tubsamy.kasku.data.TransactionsRepository
 import tech.tubsamy.kasku.data.local.KasKuDatabase
 import tech.tubsamy.kasku.data.remote.Network
 import tech.tubsamy.kasku.data.sync.AccountMutations
+import tech.tubsamy.kasku.data.sync.ConflictResolutionService
 import tech.tubsamy.kasku.data.sync.RoomSyncStore
 import tech.tubsamy.kasku.data.sync.SyncEngine
 import tech.tubsamy.kasku.data.sync.SyncWorker
@@ -37,5 +41,18 @@ class AppContainer(context: Context) {
         db = db,
         json = Network.json,
         fireSync = { SyncWorker.enqueueOnce(appContext) },
+    )
+
+    // Slice C — data layer 4 fitur (Dashboard / Riwayat / Kategori / Konflik).
+    // Satu instance CategoriesRepository di-share (satu cache in-memory).
+    val categoriesRepository = CategoriesRepository(apis.financeApi)
+    val transactionsRepository = TransactionsRepository(db, categoriesRepository)
+    val conflictsRepository = ConflictsRepository(db)
+    val conflictResolutionService = ConflictResolutionService(
+        db = db,
+        conflicts = conflictsRepository,
+        accountMutations = accountMutations,
+        transactionMutations = transactionMutations,
+        json = Network.json,
     )
 }

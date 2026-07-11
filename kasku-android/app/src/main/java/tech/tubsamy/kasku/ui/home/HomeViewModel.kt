@@ -10,14 +10,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import tech.tubsamy.kasku.data.AccountItem
 import tech.tubsamy.kasku.data.AccountsRepository
+import tech.tubsamy.kasku.data.ConflictsRepository
 import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
  * OFFLINE-FIRST: akun dibaca reaktif dari Room (diisi sync). Masuk Home → picu
  * sync sekali (one-off, NETWORK_CONNECTED). UI selalu punya data lokal terakhir.
+ *
+ * conflictCount: badge reaktif jumlah konflik sync (F5).
  */
 class HomeViewModel(
     repo: AccountsRepository,
+    conflicts: ConflictsRepository,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -26,6 +30,13 @@ class HomeViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
+        )
+
+    val conflictCount: StateFlow<Int> =
+        conflicts.observeCount().stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
         )
 
     init {
@@ -37,8 +48,12 @@ class HomeViewModel(
     fun refresh() = SyncWorker.enqueueOnce(appContext)
 
     companion object {
-        fun factory(repo: AccountsRepository, appContext: Context) = viewModelFactory {
-            initializer { HomeViewModel(repo, appContext.applicationContext) }
+        fun factory(
+            repo: AccountsRepository,
+            conflicts: ConflictsRepository,
+            appContext: Context,
+        ) = viewModelFactory {
+            initializer { HomeViewModel(repo, conflicts, appContext.applicationContext) }
         }
     }
 }

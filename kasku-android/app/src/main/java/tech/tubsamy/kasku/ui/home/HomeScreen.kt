@@ -32,9 +32,13 @@ fun HomeScreen(
     vm: HomeViewModel,
     onLogout: () -> Unit,
     onAddTransaction: () -> Unit,
+    onDashboard: () -> Unit,
+    onHistory: () -> Unit,
+    onConflicts: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accounts by vm.accounts.collectAsState()
+    val conflictCount by vm.conflictCount.collectAsState()
 
     Box(modifier = modifier.fillMaxSize()) {
     Column(
@@ -55,7 +59,22 @@ fun HomeScreen(
             TextButton(onClick = onLogout) { Text("Keluar") }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
+
+        // Entry point: Dashboard · Riwayat · Konflik (badge). Minimal, tanpa bottom-nav.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onDashboard) { Text("Dashboard") }
+            TextButton(onClick = onHistory) { Text("Riwayat") }
+            TextButton(onClick = onConflicts) {
+                if (conflictCount > 0) {
+                    Text("Konflik ($conflictCount)", color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text("Konflik")
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
 
         if (accounts.isEmpty()) {
             Column(
