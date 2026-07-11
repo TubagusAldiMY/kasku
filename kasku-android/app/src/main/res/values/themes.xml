@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme untuk window/splash; UI sesungguhnya di-render Compose. -->
+    <style name="Theme.KasKu" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+</resources>
