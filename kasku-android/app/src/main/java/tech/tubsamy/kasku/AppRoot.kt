@@ -14,11 +14,14 @@ import tech.tubsamy.kasku.ui.auth.RegisterScreen
 import tech.tubsamy.kasku.ui.auth.RegisterViewModel
 import tech.tubsamy.kasku.ui.home.HomeScreen
 import tech.tubsamy.kasku.ui.home.HomeViewModel
+import tech.tubsamy.kasku.ui.transaction.AddTransactionScreen
+import tech.tubsamy.kasku.ui.transaction.AddTransactionViewModel
 
 private object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home"
+    const val ADD_TRANSACTION = "add_transaction"
 }
 
 @Composable
@@ -54,6 +57,7 @@ fun AppRoot(container: AppContainer) {
             )
             HomeScreen(
                 vm = vm,
+                onAddTransaction = { nav.navigate(Routes.ADD_TRANSACTION) },
                 onLogout = {
                     scope.launch {
                         container.authRepository.logout()
@@ -62,6 +66,19 @@ fun AppRoot(container: AppContainer) {
                         }
                     }
                 },
+            )
+        }
+        composable(Routes.ADD_TRANSACTION) {
+            val vm: AddTransactionViewModel = viewModel(
+                factory = AddTransactionViewModel.factory(
+                    container.accountsRepository,
+                    container.transactionMutations,
+                ),
+            )
+            AddTransactionScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
             )
         }
     }

@@ -10,6 +10,7 @@ import tech.tubsamy.kasku.data.sync.AccountMutations
 import tech.tubsamy.kasku.data.sync.RoomSyncStore
 import tech.tubsamy.kasku.data.sync.SyncEngine
 import tech.tubsamy.kasku.data.sync.SyncWorker
+import tech.tubsamy.kasku.data.sync.TransactionMutations
 
 /**
  * DI manual. ponytail: cukup untuk sekarang — ganti ke Hilt saat graph mulai
@@ -28,6 +29,11 @@ class AppContainer(context: Context) {
     val syncEngine = SyncEngine(syncStore, apis.syncApi, Network.json)
     val accountsRepository = AccountsRepository(db)
     val accountMutations = AccountMutations(
+        db = db,
+        json = Network.json,
+        fireSync = { SyncWorker.enqueueOnce(appContext) },
+    )
+    val transactionMutations = TransactionMutations(
         db = db,
         json = Network.json,
         fireSync = { SyncWorker.enqueueOnce(appContext) },

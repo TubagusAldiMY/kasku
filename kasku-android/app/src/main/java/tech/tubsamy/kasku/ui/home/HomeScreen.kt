@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,12 +31,14 @@ import tech.tubsamy.kasku.ui.formatIdr
 fun HomeScreen(
     vm: HomeViewModel,
     onLogout: () -> Unit,
+    onAddTransaction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accounts by vm.accounts.collectAsState()
 
+    Box(modifier = modifier.fillMaxSize()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
     ) {
@@ -74,6 +77,15 @@ fun HomeScreen(
                     HorizontalDivider()
                 }
             }
+        }
+    }
+        FloatingActionButton(
+            onClick = onAddTransaction,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+        ) {
+            Text("+", style = MaterialTheme.typography.headlineMedium)
         }
     }
 }
