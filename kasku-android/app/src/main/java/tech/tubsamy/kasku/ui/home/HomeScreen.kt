@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,8 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import tech.tubsamy.kasku.data.AccountItem
-import tech.tubsamy.kasku.ui.formatIdr
+import tech.tubsamy.kasku.ui.components.Hairline
+import tech.tubsamy.kasku.ui.components.LedgerRow
 
 @Composable
 fun HomeScreen(
@@ -97,8 +96,12 @@ fun HomeScreen(
         } else {
             LazyColumn {
                 items(accounts) { account ->
-                    AccountRow(account)
-                    HorizontalDivider()
+                    LedgerRow(
+                        label = account.name,
+                        amount = account.balance,
+                        sub = account.accountType,
+                    )
+                    Hairline()
                 }
             }
         }
@@ -114,23 +117,3 @@ fun HomeScreen(
     }
 }
 
-@Composable
-private fun AccountRow(account: AccountItem) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(account.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            Text(
-                account.accountType,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-            )
-        }
-        Text(formatIdr(account.balance), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-    }
-}

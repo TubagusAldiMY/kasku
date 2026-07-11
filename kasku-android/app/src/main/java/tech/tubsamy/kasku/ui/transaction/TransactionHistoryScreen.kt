@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.TransactionItem
+import tech.tubsamy.kasku.ui.components.Hairline
+import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.formatIdr
 
 @Composable
@@ -74,7 +75,7 @@ fun TransactionHistoryScreen(
                         onEdit = { onEdit(tx.id) },
                         onDelete = { pendingDelete = tx },
                     )
-                    HorizontalDivider()
+                    Hairline()
                 }
             }
         }
@@ -110,7 +111,6 @@ private fun TransactionRow(
     val isIncome = tx.type == "INCOME"
     // income = primary (teal), expense = error (clay). Tanpa hardcode hex.
     val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-    val amountText = (if (isIncome) "" else "−") + formatIdr(tx.amountIdr)
 
     Row(
         modifier = Modifier
@@ -128,7 +128,7 @@ private fun TransactionRow(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
             )
         }
-        Text(amountText, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = amountColor)
+        MoneyText(if (isIncome) tx.amountIdr else -tx.amountIdr, fontSize = 20, color = amountColor, signed = true)
         // ponytail: TextButton, bukan ikon — material-icons-extended tak ada di deps (HANDS-OFF).
         TextButton(onClick = onDelete) {
             Text("Hapus", color = MaterialTheme.colorScheme.error)
