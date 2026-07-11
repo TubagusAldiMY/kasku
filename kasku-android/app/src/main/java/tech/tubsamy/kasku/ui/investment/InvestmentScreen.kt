@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.InvestmentItem
+import tech.tubsamy.kasku.ui.components.Hairline
+import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.formatIdr
 
 /** Label ramah untuk asset_type (fallback: nilai mentah). */
@@ -79,7 +80,7 @@ fun InvestmentScreen(
                 LazyColumn {
                     items(investments, key = { it.id }) { inv ->
                         InvestmentRow(inv)
-                        HorizontalDivider()
+                        Hairline()
                     }
                 }
             }
@@ -116,11 +117,7 @@ private fun InvestmentRow(inv: InvestmentItem) {
             )
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                formatIdr(inv.bookValueIdr),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+            MoneyText(inv.bookValueIdr, fontSize = 20)
             Text(
                 "${formatUnits(inv.units)} @ ${formatIdr(inv.avgBuyPriceIdr)}",
                 style = MaterialTheme.typography.bodySmall,

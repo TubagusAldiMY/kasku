@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
@@ -89,7 +90,11 @@ private fun ConflictCard(
     onKeepLocal: () -> Unit,
     onAcceptServer: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // flat: warm card, bukan tonal lavender
+    ) {
         Column(Modifier.padding(16.dp)) {
             Text(
                 "${resourceLabel(conflict.resource)} · ${conflict.entityId}",

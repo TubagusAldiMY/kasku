@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -112,10 +113,10 @@ fun DashboardScreen(
     }
 }
 
-/** Palet warna deterministik untuk irisan donat (di-index modulo). */
+/** Palet warna deterministik untuk irisan donat — palet brand "Buku Kas" (bukan warna generik). */
 private val sliceColors = listOf(
-    Color(0xFF2563EB), Color(0xFF16A34A), Color(0xFFF59E0B), Color(0xFFDC2626),
-    Color(0xFF7C3AED), Color(0xFF0891B2), Color(0xFFDB2777), Color(0xFF65A30D),
+    Color(0xFF1A5F66), Color(0xFFA4502F), Color(0xFF8A6A1F), Color(0xFF7FC7BD),
+    Color(0xFF3F6B5E), Color(0xFFB98A3A), Color(0xFF6E4A3A), Color(0xFF5F6E6A),
 )
 
 /**
@@ -132,7 +133,11 @@ private fun MonthlyTrendChart(trend: List<MonthlyPoint>) {
     val maxVal = trend.maxOf { maxOf(it.income, it.expense) }.coerceAtLeast(1L)
     val incomeColor = MaterialTheme.colorScheme.primary
     val expenseColor = MaterialTheme.colorScheme.error
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // flat: hindari tonal lavender
+    ) {
         Column(Modifier.padding(16.dp)) {
             androidx.compose.foundation.Canvas(
                 modifier = Modifier.fillMaxWidth().height(180.dp),
@@ -184,7 +189,11 @@ private fun CategoryDonut(slices: List<CategorySlice>) {
         EmptyChartHint("Belum ada pengeluaran bulan ini.")
         return
     }
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // flat: hindari tonal lavender
+    ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             androidx.compose.foundation.Canvas(
                 modifier = Modifier.size(140.dp).aspectRatio(1f),
@@ -236,7 +245,11 @@ private fun LegendDot(color: Color, label: String) {
 
 @Composable
 private fun EmptyChartHint(text: String) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // flat: hindari tonal lavender
+    ) {
         Text(
             text,
             modifier = Modifier.padding(24.dp),

@@ -1,66 +1,73 @@
 package tech.tubsamy.kasku.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// ── Palet "Buku Kas" ──────────────────────────────────────────────────────────
-// Light (paper)
-private val Paper = Color(0xFFF7F5F0)
-private val PaperCard = Color(0xFFFCFBF8)
-private val Ink = Color(0xFF1A1A1A)
-private val Teal = Color(0xFF1F6F6B) // pemasukan / primary
-private val Clay = Color(0xFFB4533A) // pengeluaran / alert
-private val Muted = Color(0xFF8A8378)
-private val Hairline = Color(0xFFDED9CE)
+// ── Palet "Buku Kas" — hex PERSIS dari web (kasku-frontend/src/routes/layout.css) ──
+private val Paper = Color(0xFFECEAE4) // canvas
+private val Card = Color(0xFFF7F6F2) // kartu/panel
+private val Field = Color(0xFFFDFCFA) // input, teks di atas warna gelap
+private val Ink = Color(0xFF12312E) // teks utama (dark teal-green)
+private val Teal = Color(0xFF1A5F66) // aksi utama / pemasukan / positif
+private val Mint = Color(0xFF7FC7BD) // teal terang di latar gelap
+private val Clay = Color(0xFFA4502F) // bahaya / pengeluaran / negatif
+private val Gold = Color(0xFF8A6A1F) // caution / tag kategori
+private val Muted = Color(0xFF5F6E6A) // teks sekunder (ink diredam)
+private val Hairline = Color(0xFFDAD7CE) // garis pemisah
 
-// Dark (ink)
-private val InkBg = Color(0xFF141311)
-private val InkCard = Color(0xFF201E1B)
-private val PaperText = Color(0xFFEDEAE3)
-private val TealDark = Color(0xFF5AA8A2)
-private val ClayDark = Color(0xFFD3805F)
-private val MutedDark = Color(0xFFA8A196)
-private val HairlineDark = Color(0xFF34302B)
+// Warna brand tambahan untuk pemakaian langsung (tag/transfer) — di luar colorScheme.
+val KasKuGold = Gold
+val KasKuMint = Mint
 
 private val LightColors = lightColorScheme(
     primary = Teal,
-    onPrimary = Paper,
+    onPrimary = Field,
+    primaryContainer = Teal, // FAB & container = teal, bukan lavender Material default
+    onPrimaryContainer = Field,
+    surfaceTint = Teal, // tonal overlay kartu ke arah teal (on-brand), bukan ungu
     secondary = Clay,
+    onSecondary = Field,
     background = Paper,
     onBackground = Ink,
-    surface = PaperCard,
+    surface = Card,
     onSurface = Ink,
-    surfaceVariant = PaperCard,
+    surfaceVariant = Card,
     onSurfaceVariant = Muted,
     error = Clay,
-    onError = Paper,
+    onError = Field,
     outline = Muted,
     outlineVariant = Hairline,
 )
 
+// Varian gelap konsisten brand (teal→mint). Default app tetap light (samakan web).
+private val InkBg = Color(0xFF0F1F1D)
+private val InkCard = Color(0xFF16302C)
 private val DarkColors = darkColorScheme(
-    primary = TealDark,
+    primary = Mint,
     onPrimary = InkBg,
-    secondary = ClayDark,
+    secondary = Color(0xFFC6714C),
     background = InkBg,
-    onBackground = PaperText,
+    onBackground = Paper,
     surface = InkCard,
-    onSurface = PaperText,
+    onSurface = Paper,
     surfaceVariant = InkCard,
-    onSurfaceVariant = MutedDark,
-    error = ClayDark,
+    onSurfaceVariant = Color(0xFF8CA39D),
+    error = Color(0xFFC6714C),
     onError = InkBg,
-    outline = MutedDark,
-    outlineVariant = HairlineDark,
+    outline = Color(0xFF8CA39D),
+    outlineVariant = Color(0xFF29403B),
 )
 
+/**
+ * Default LIGHT (paper) agar identik dengan web yang light-only. Kirim darkTheme=true
+ * bila nanti ingin mode gelap.
+ */
 @Composable
 fun KasKuTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
