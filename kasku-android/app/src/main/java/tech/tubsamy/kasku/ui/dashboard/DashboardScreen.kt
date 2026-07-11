@@ -33,6 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.CategorySlice
 import tech.tubsamy.kasku.data.MonthlyPoint
+import tech.tubsamy.kasku.ui.components.Hairline
+import tech.tubsamy.kasku.ui.components.LedgerRow
+import tech.tubsamy.kasku.ui.components.MoneyText
+import tech.tubsamy.kasku.ui.components.PercentText
+import tech.tubsamy.kasku.ui.components.SectionLabel
 import tech.tubsamy.kasku.ui.formatIdr
 
 @Composable
@@ -58,49 +63,50 @@ fun DashboardScreen(
             TextButton(onClick = onBack) { Text("Kembali") }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(28.dp))
 
-        MetricCard("Kekayaan Bersih", formatIdr(summary.netWorth), MaterialTheme.colorScheme.onSurface)
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricCard(
-                title = "Pemasukan bulan ini",
-                value = formatIdr(summary.monthIncome),
-                valueColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
-            )
-            MetricCard(
-                title = "Pengeluaran bulan ini",
-                value = formatIdr(summary.monthExpense),
-                valueColor = MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        MetricCard("Tingkat Menabung", "${summary.savingsRate}%", MaterialTheme.colorScheme.primary)
+        // Hero: kekayaan bersih — angka serif besar (signature buku kas).
+        SectionLabel("Kekayaan Bersih")
+        Spacer(Modifier.height(6.dp))
+        MoneyText(summary.netWorth, fontSize = 46)
 
         Spacer(Modifier.height(24.dp))
-        Text("Tren Bulanan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
+        Hairline()
+        LedgerRow("Pemasukan bulan ini", summary.monthIncome, color = MaterialTheme.colorScheme.primary)
+        Hairline()
+        LedgerRow("Pengeluaran bulan ini", summary.monthExpense, color = MaterialTheme.colorScheme.error)
+        Hairline()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Tingkat Menabung", style = MaterialTheme.typography.bodyLarge)
+            PercentText(summary.savingsRate, color = MaterialTheme.colorScheme.primary)
+        }
+        Hairline()
+
+        Spacer(Modifier.height(28.dp))
+        SectionLabel("Tren Bulanan")
+        Spacer(Modifier.height(12.dp))
         MonthlyTrendChart(charts.trend)
 
-        Spacer(Modifier.height(24.dp))
-        Text("Pengeluaran per Kategori", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(28.dp))
+        SectionLabel("Pengeluaran per Kategori")
+        Spacer(Modifier.height(12.dp))
         CategoryDonut(charts.expenseByCategory)
 
         if (summary.insights.isNotEmpty()) {
-            Spacer(Modifier.height(20.dp))
-            Text("Insight", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            summary.insights.forEach { insight ->
-                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Text(insight, modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
-                }
+            Spacer(Modifier.height(28.dp))
+            SectionLabel("Insight")
+            Spacer(Modifier.height(4.dp))
+            summary.insights.forEachIndexed { i, insight ->
+                if (i > 0) Hairline()
+                Text(
+                    insight,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 14.dp),
+                )
             }
         }
     }
@@ -240,22 +246,3 @@ private fun EmptyChartHint(text: String) {
     }
 }
 
-@Composable
-private fun MetricCard(
-    title: String,
-    value: String,
-    valueColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = valueColor)
-        }
-    }
-}
