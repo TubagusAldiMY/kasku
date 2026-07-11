@@ -14,3 +14,4 @@
 keystore.properties
 # FCM/Firebase config (berisi API key project)
 google-services.json
+/notCommit/

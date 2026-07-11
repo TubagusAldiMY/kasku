@@ -15,6 +15,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        // OAuth Web client ID (server client id untuk Credential Manager). Bukan rahasia —
+        // sama dengan PUBLIC_GOOGLE_CLIENT_ID di web. Client SECRET tak dipakai di native.
+        buildConfigField(
+            "String",
+            "GOOGLE_SERVER_CLIENT_ID",
+            "\"99280146239-g42tn7h6hbctde310o823cfv0s9ft9kl.apps.googleusercontent.com\"",
+        )
     }
 
     buildTypes {
@@ -62,6 +70,9 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.serialization.json)

@@ -9,11 +9,14 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.ui.auth.LoginScreen
 import tech.tubsamy.kasku.ui.auth.LoginViewModel
+import tech.tubsamy.kasku.ui.auth.RegisterScreen
+import tech.tubsamy.kasku.ui.auth.RegisterViewModel
 import tech.tubsamy.kasku.ui.home.HomeScreen
 import tech.tubsamy.kasku.ui.home.HomeViewModel
 
 private object Routes {
     const val LOGIN = "login"
+    const val REGISTER = "register"
     const val HOME = "home"
 }
 
@@ -33,6 +36,14 @@ fun AppRoot(container: AppContainer) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
+                onRegister = { nav.navigate(Routes.REGISTER) },
+            )
+        }
+        composable(Routes.REGISTER) {
+            val vm: RegisterViewModel = viewModel(factory = RegisterViewModel.factory(container.authRepository))
+            RegisterScreen(
+                vm = vm,
+                onBackToLogin = { nav.popBackStack(Routes.LOGIN, inclusive = false) },
             )
         }
         composable(Routes.HOME) {

@@ -34,3 +34,23 @@ data class LoginData(
     val token_type: String = "Bearer",
     val expires_in: Long = 0,
 )
+
+@Serializable
+data class RegisterRequest(
+    val email: String,
+    val username: String,
+    val password: String,
+)
+
+@Serializable
+data class RegisterData(
+    val user_id: String = "",
+    val email: String = "",
+    val username: String = "",
+    val message: String = "",
+)
+
+@Serializable
+data class GoogleRequest(
+    val id_token: String,
+)
