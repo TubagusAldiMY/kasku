@@ -9,4 +9,8 @@ import tech.tubsamy.kasku.data.remote.dto.LoginRequest
 interface AuthApi {
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): ApiEnvelope<LoginData>
+
+    /** Refresh token dibawa otomatis oleh cookie `refresh_token` (via CookieJar), bukan body. */
+    @POST("auth/refresh")
+    suspend fun refresh(): ApiEnvelope<LoginData>
 }

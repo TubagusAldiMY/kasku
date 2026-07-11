@@ -4,8 +4,6 @@ import android.content.Context
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.AuthRepository
 import tech.tubsamy.kasku.data.TokenStore
-import tech.tubsamy.kasku.data.remote.AuthApi
-import tech.tubsamy.kasku.data.remote.FinanceApi
 import tech.tubsamy.kasku.data.remote.Network
 
 /**
@@ -14,9 +12,7 @@ import tech.tubsamy.kasku.data.remote.Network
  */
 class AppContainer(context: Context) {
     val tokenStore = TokenStore(context.applicationContext)
-    private val retrofit = Network.retrofit(tokenStore)
-    private val authApi = retrofit.create(AuthApi::class.java)
-    private val financeApi = retrofit.create(FinanceApi::class.java)
-    val authRepository = AuthRepository(authApi, tokenStore, Network.json)
-    val accountsRepository = AccountsRepository(financeApi, Network.json)
+    private val apis = Network.build(context, tokenStore)
+    val authRepository = AuthRepository(apis.authApi, tokenStore, apis.cookieJar, Network.json)
+    val accountsRepository = AccountsRepository(apis.financeApi, Network.json)
 }

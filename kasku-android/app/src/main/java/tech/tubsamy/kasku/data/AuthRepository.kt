@@ -4,12 +4,14 @@ import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import tech.tubsamy.kasku.data.remote.ApiErrors
 import tech.tubsamy.kasku.data.remote.AuthApi
+import tech.tubsamy.kasku.data.remote.PersistentCookieJar
 import tech.tubsamy.kasku.data.remote.dto.LoginRequest
 import java.io.IOException
 
 class AuthRepository(
     private val api: AuthApi,
     private val tokenStore: TokenStore,
+    private val cookieJar: PersistentCookieJar,
     private val json: Json,
 ) {
 
@@ -31,7 +33,10 @@ class AuthRepository(
         }
     }
 
-    suspend fun logout() = tokenStore.clear()
+    suspend fun logout() {
+        tokenStore.clear()
+        cookieJar.clear() // buang refresh token lokal juga
+    }
 
     fun isLoggedIn(): Boolean = tokenStore.cachedAccessToken() != null
 }
