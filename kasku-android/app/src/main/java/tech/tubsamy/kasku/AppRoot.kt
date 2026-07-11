@@ -2,6 +2,7 @@ package tech.tubsamy.kasku
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,6 +25,7 @@ private object Routes {
 fun AppRoot(container: AppContainer) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
+    val appContext = LocalContext.current.applicationContext
     val start = if (container.authRepository.isLoggedIn()) Routes.HOME else Routes.LOGIN
 
     NavHost(navController = nav, startDestination = start) {
@@ -47,7 +49,9 @@ fun AppRoot(container: AppContainer) {
             )
         }
         composable(Routes.HOME) {
-            val vm: HomeViewModel = viewModel(factory = HomeViewModel.factory(container.accountsRepository))
+            val vm: HomeViewModel = viewModel(
+                factory = HomeViewModel.factory(container.accountsRepository, appContext),
+            )
             HomeScreen(
                 vm = vm,
                 onLogout = {

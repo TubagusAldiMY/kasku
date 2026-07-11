@@ -1,30 +1,30 @@
 package tech.tubsamy.kasku.data
 
-import kotlinx.serialization.json.Json
-import retrofit2.HttpException
-import tech.tubsamy.kasku.data.remote.ApiErrors
-import tech.tubsamy.kasku.data.remote.FinanceApi
-import tech.tubsamy.kasku.data.remote.dto.AccountDto
-import java.io.IOException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import tech.tubsamy.kasku.data.local.KasKuDatabase
 
+/** Item akun untuk UI (dari Room, hasil sinkronisasi). */
+data class AccountItem(
+    val id: String,
+    val name: String,
+    val accountType: String,
+    val balance: Long,
+    val currency: String,
+)
+
+/**
+ * OFFLINE-FIRST (M2): sumber kebenaran tampilan = Room, diisi oleh SyncEngine.
+ * Repo ini TIDAK lagi memanggil REST /accounts — sync yang mengisi tabel.
+ */
 class AccountsRepository(
-    private val api: FinanceApi,
-    private val json: Json,
+    db: KasKuDatabase,
 ) {
-    suspend fun listAccounts(): Result<List<AccountDto>> {
-        return try {
-            Result.success(api.listAccounts().data ?: emptyList())
-        } catch (e: HttpException) {
-            // 401 = access token 15m kadaluwarsa. ponytail: alur refresh belum ada (M1.5) →
-            // untuk sekarang minta login ulang. Tambah OkHttp Authenticator saat refresh dibangun.
-            val msg = if (e.code() == 401) {
-                "Sesi berakhir. Silakan masuk lagi."
-            } else {
-                ApiErrors.message(e, json, "Gagal memuat akun.")
-            }
-            Result.failure(Exception(msg))
-        } catch (e: IOException) {
-            Result.failure(Exception("Tak bisa terhubung ke server."))
+    private val accountDao = db.accountDao()
+
+    /** Akun aktif, reaktif. Kosong sampai sync pertama mengisi Room. */
+    fun observeAccounts(): Flow<List<AccountItem>> =
+        accountDao.observeActive().map { rows ->
+            rows.map { AccountItem(it.id, it.name, it.account_type, it.balance, it.currency) }
         }
-    }
 }

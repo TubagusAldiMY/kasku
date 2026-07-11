@@ -25,7 +25,7 @@ class TokenAuthenticatorTest {
         var token: String? = initial
         var cleared = false
         override fun cachedAccessToken() = token
-        override suspend fun saveAccessToken(t: String) { token = t }
+        override suspend fun saveAccessToken(token: String) { this.token = token }
         override suspend fun clear() { token = null; cleared = true }
     }
 

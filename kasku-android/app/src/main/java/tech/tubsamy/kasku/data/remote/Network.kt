@@ -14,6 +14,7 @@ import tech.tubsamy.kasku.data.TokenStore
 class NetworkApis(
     val authApi: AuthApi,
     val financeApi: FinanceApi,
+    val syncApi: SyncApi,
     val cookieJar: PersistentCookieJar,
 )
 
@@ -71,6 +72,7 @@ object Network {
         return NetworkApis(
             authApi = mainRetrofit.create(AuthApi::class.java),
             financeApi = mainRetrofit.create(FinanceApi::class.java),
+            syncApi = mainRetrofit.create(SyncApi::class.java),
             cookieJar = cookieJar,
         )
     }

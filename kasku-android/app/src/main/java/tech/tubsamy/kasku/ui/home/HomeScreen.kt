@@ -11,18 +11,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import tech.tubsamy.kasku.data.remote.dto.AccountDto
+import tech.tubsamy.kasku.data.AccountItem
 import tech.tubsamy.kasku.ui.formatIdr
 
 @Composable
@@ -31,6 +32,8 @@ fun HomeScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accounts by vm.accounts.collectAsState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -51,27 +54,22 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        when {
-            vm.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-            vm.error != null -> Column(
+        if (accounts.isEmpty()) {
+            Column(
                 Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(vm.error!!, color = MaterialTheme.colorScheme.error)
+                Text(
+                    "Belum ada akun.",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                )
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = { vm.load() }) { Text("Coba lagi") }
+                OutlinedButton(onClick = { vm.refresh() }) { Text("Segarkan") }
             }
-
-            vm.accounts.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Belum ada akun.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-            }
-
-            else -> LazyColumn {
-                items(vm.accounts) { account ->
+        } else {
+            LazyColumn {
+                items(accounts) { account ->
                     AccountRow(account)
                     HorizontalDivider()
                 }
@@ -81,7 +79,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun AccountRow(account: AccountDto) {
+private fun AccountRow(account: AccountItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

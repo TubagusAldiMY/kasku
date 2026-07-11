@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -74,8 +75,15 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
     implementation(libs.googleid)
 
+    // Offline-first (M2): Room + WorkManager
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.retrofit)
     testImplementation(libs.retrofit.kotlinx.serialization)
     testImplementation(libs.okhttp.mockwebserver)
