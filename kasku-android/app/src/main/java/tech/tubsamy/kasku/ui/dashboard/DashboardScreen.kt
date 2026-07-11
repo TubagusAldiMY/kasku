@@ -113,10 +113,10 @@ fun DashboardScreen(
     }
 }
 
-/** Palet warna deterministik untuk irisan donat — palet brand "Buku Kas" (bukan warna generik). */
+/** Palet irisan donat — vibrant, pop di latar gelap (deterministik, di-index modulo). */
 private val sliceColors = listOf(
-    Color(0xFF1A5F66), Color(0xFFA4502F), Color(0xFF8A6A1F), Color(0xFF7FC7BD),
-    Color(0xFF3F6B5E), Color(0xFFB98A3A), Color(0xFF6E4A3A), Color(0xFF5F6E6A),
+    Color(0xFF34D399), Color(0xFFFB7185), Color(0xFFFBBF24), Color(0xFF38BDF8),
+    Color(0xFFA78BFA), Color(0xFF2DD4BF), Color(0xFFF472B6), Color(0xFFA3E635),
 )
 
 /**

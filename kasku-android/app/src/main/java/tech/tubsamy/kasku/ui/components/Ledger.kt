@@ -11,18 +11,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tech.tubsamy.kasku.ui.formatIdr
-import tech.tubsamy.kasku.ui.theme.InstrumentSerif
 import tech.tubsamy.kasku.ui.theme.LabelEyebrow
+import tech.tubsamy.kasku.ui.theme.MoneyFont
 
-/** Label seksi ala buku kas: UPPERCASE, tracking lebar. Signature struktural. */
+/** Label seksi modern: sentence case, muted, tracking halus. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text.uppercase(),
+        text = text,
         style = LabelEyebrow,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
@@ -41,7 +42,8 @@ fun MoneyText(
     val prefix = if (signed && amount != 0L) (if (amount > 0) "+" else "−") else ""
     Text(
         text = prefix + formatIdr(kotlin.math.abs(amount)),
-        fontFamily = InstrumentSerif,
+        fontFamily = MoneyFont,
+        fontWeight = FontWeight.Bold,
         fontSize = fontSize.sp,
         color = color,
         modifier = modifier,
@@ -87,7 +89,8 @@ fun LedgerRow(
 fun PercentText(value: Int, color: androidx.compose.ui.graphics.Color) {
     Text(
         text = "$value%",
-        fontFamily = InstrumentSerif,
+        fontFamily = MoneyFont,
+        fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         color = color,
         textAlign = TextAlign.End,

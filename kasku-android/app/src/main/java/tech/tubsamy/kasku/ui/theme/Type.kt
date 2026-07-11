@@ -4,38 +4,63 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import tech.tubsamy.kasku.R
 
-/** Instrument Serif — wajah editorial KasKu (wordmark, judul, angka uang besar). */
-val InstrumentSerif = FontFamily(
-    Font(R.font.instrument_serif_regular, FontWeight.Normal),
-    Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic),
+// Variable font helper — satu file TTF, bobot via axis wght (minSdk 26).
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+private fun variable(resId: Int, weight: FontWeight) =
+    Font(resId, weight = weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+
+/** Space Grotesk — wajah modern KasKu (wordmark, judul, angka uang). Geometric, techy. */
+val SpaceGrotesk = FontFamily(
+    variable(R.font.space_grotesk_var, FontWeight.Normal),
+    variable(R.font.space_grotesk_var, FontWeight.Medium),
+    variable(R.font.space_grotesk_var, FontWeight.SemiBold),
+    variable(R.font.space_grotesk_var, FontWeight.Bold),
 )
 
-// Body & data pakai sans default sistem (kontras dengan serif display) — tetap FontFamily.Default.
+/** Manrope — body & data, sans netral yang bersih. */
+val Manrope = FontFamily(
+    variable(R.font.manrope_var, FontWeight.Normal),
+    variable(R.font.manrope_var, FontWeight.Medium),
+    variable(R.font.manrope_var, FontWeight.SemiBold),
+    variable(R.font.manrope_var, FontWeight.Bold),
+)
+
+/** Font angka uang besar — dipakai MoneyText/PercentText di ui/components. */
+val MoneyFont = SpaceGrotesk
+
 private val base = Typography()
 
 /**
- * Serif untuk display/headline/title (editorial), sans untuk body/label (keterbacaan data).
- * Angka uang besar memakai style display (lihat MoneyText di ui/components).
+ * Space Grotesk untuk display/headline/title (identitas), Manrope untuk body/label
+ * (keterbacaan data). Angka uang besar memakai MoneyFont langsung.
  */
 val KasKuTypography = Typography(
-    displayLarge = base.displayLarge.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    displayMedium = base.displayMedium.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    displaySmall = base.displaySmall.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    headlineLarge = base.headlineLarge.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    headlineMedium = base.headlineMedium.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    headlineSmall = base.headlineSmall.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    titleLarge = base.titleLarge.copy(fontFamily = InstrumentSerif, fontWeight = FontWeight.Normal),
-    // title/body/label lain tetap sans default.
+    displayLarge = base.displayLarge.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    displayMedium = base.displayMedium.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    displaySmall = base.displaySmall.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    headlineLarge = base.headlineLarge.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    headlineMedium = base.headlineMedium.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold),
+    headlineSmall = base.headlineSmall.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold),
+    titleLarge = base.titleLarge.copy(fontFamily = SpaceGrotesk, fontWeight = FontWeight.SemiBold),
+    titleMedium = base.titleMedium.copy(fontFamily = Manrope, fontWeight = FontWeight.SemiBold),
+    titleSmall = base.titleSmall.copy(fontFamily = Manrope, fontWeight = FontWeight.SemiBold),
+    bodyLarge = base.bodyLarge.copy(fontFamily = Manrope),
+    bodyMedium = base.bodyMedium.copy(fontFamily = Manrope),
+    bodySmall = base.bodySmall.copy(fontFamily = Manrope),
+    labelLarge = base.labelLarge.copy(fontFamily = Manrope, fontWeight = FontWeight.SemiBold),
+    labelMedium = base.labelMedium.copy(fontFamily = Manrope, fontWeight = FontWeight.Medium),
+    labelSmall = base.labelSmall.copy(fontFamily = Manrope, fontWeight = FontWeight.Medium),
 )
 
-/** Label seksi ala ledger: UPPERCASE, tracking lebar, kecil. */
+/** Label seksi modern: sentence case, Manrope Medium, tracking halus (bukan eyebrow kuno). */
 val LabelEyebrow = TextStyle(
-    fontSize = 11.sp,
-    letterSpacing = 1.5.sp,
+    fontFamily = Manrope,
+    fontSize = 13.sp,
+    letterSpacing = 0.2.sp,
     fontWeight = FontWeight.Medium,
 )
