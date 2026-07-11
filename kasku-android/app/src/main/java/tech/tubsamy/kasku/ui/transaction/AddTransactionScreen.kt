@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import tech.tubsamy.kasku.ui.components.MoneyText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -72,6 +73,22 @@ fun AddTransactionScreen(
             )
             TextButton(onClick = onCancel) { Text("Batal") }
         }
+
+        Spacer(Modifier.height(20.dp))
+
+        // Preview jumlah live (Instrument Serif) — hero form, signed & berwarna sesuai tipe.
+        val amountLong = vm.amount.toLongOrNull() ?: 0L
+        val isIncome = vm.type == "INCOME"
+        MoneyText(
+            amount = if (isIncome) amountLong else -amountLong,
+            fontSize = 40,
+            color = when {
+                amountLong == 0L -> MaterialTheme.colorScheme.onSurfaceVariant
+                isIncome -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.error
+            },
+            signed = true,
+        )
 
         Spacer(Modifier.height(20.dp))
 

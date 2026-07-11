@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.ui.components.Hairline
 import tech.tubsamy.kasku.ui.components.LedgerRow
+import tech.tubsamy.kasku.ui.components.MoneyText
+import tech.tubsamy.kasku.ui.components.SectionLabel
 
 @Composable
 fun HomeScreen(
@@ -61,7 +63,7 @@ fun HomeScreen(
             TextButton(onClick = onLogout) { Text("Keluar") }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         // Entry point: Dashboard · Riwayat · Konflik · Kategori · Investasi. FlowRow → wrap.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -78,7 +80,16 @@ fun HomeScreen(
             TextButton(onClick = onInvestments) { Text("Investasi") }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(24.dp))
+
+        // Hero: total saldo semua akun — anchor visual halaman (Instrument Serif).
+        SectionLabel("Total Saldo")
+        Spacer(Modifier.height(4.dp))
+        MoneyText(accounts.sumOf { it.balance }, fontSize = 44)
+
+        Spacer(Modifier.height(24.dp))
+        Hairline()
+        Spacer(Modifier.height(4.dp))
 
         if (accounts.isEmpty()) {
             Column(
@@ -100,6 +111,12 @@ fun HomeScreen(
                         label = account.name,
                         amount = account.balance,
                         sub = account.accountType,
+                        // Saldo nol diredam agar akun aktif menonjol.
+                        color = if (account.balance == 0L) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
                     )
                     Hairline()
                 }

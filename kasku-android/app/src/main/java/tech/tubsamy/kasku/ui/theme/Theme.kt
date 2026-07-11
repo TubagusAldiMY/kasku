@@ -30,6 +30,8 @@ private val LightColors = lightColorScheme(
     surfaceTint = Teal, // tonal overlay kartu ke arah teal (on-brand), bukan ungu
     secondary = Clay,
     onSecondary = Field,
+    secondaryContainer = Mint, // chip terpilih = teal lembut, bukan lavender Material default
+    onSecondaryContainer = Ink,
     background = Paper,
     onBackground = Ink,
     surface = Card,
