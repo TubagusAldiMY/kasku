@@ -36,8 +36,12 @@ object SyncMapping {
     private fun JsonObject.strOrNull(key: String): String? =
         this[key]?.jsonPrimitive?.let { if (it.content == "null") null else it.content }
 
-    private fun JsonObject.longVal(key: String, default: Long = 0): Long =
-        this[key]?.jsonPrimitive?.longOrNull ?: default
+    // Backend mengirim kolom NUMERIC sebagai desimal (mis. avg_buy_price "1000000.0000").
+    // longOrNull gagal pada string desimal → fallback lewat Double lalu bulatkan.
+    private fun JsonObject.longVal(key: String, default: Long = 0): Long {
+        val p = this[key]?.jsonPrimitive ?: return default
+        return p.longOrNull ?: p.content.toDoubleOrNull()?.toLong() ?: default
+    }
 
     private fun JsonObject.doubleVal(key: String, default: Double = 0.0): Double =
         this[key]?.jsonPrimitive?.content?.toDoubleOrNull() ?: default
