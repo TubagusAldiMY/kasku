@@ -11,11 +11,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -25,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
@@ -68,7 +71,8 @@ fun AppRoot(container: AppContainer) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
     val appContext = LocalContext.current.applicationContext
-    val start = if (container.authRepository.isLoggedIn()) Routes.HOME else Routes.LOGIN
+    // Landing = Dashboard (ringkasan) saat sudah login.
+    val start = if (container.authRepository.isLoggedIn()) Routes.DASHBOARD else Routes.LOGIN
 
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
@@ -76,6 +80,14 @@ fun AppRoot(container: AppContainer) {
     Scaffold(
         bottomBar = {
             if (currentRoute in TAB_ROUTES) KasKuBottomBar(nav = nav, currentRoute = currentRoute)
+        },
+        floatingActionButton = {
+            // FAB tambah transaksi tersedia di Dashboard & Akun (layar berorientasi transaksi).
+            if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.HOME) {
+                FloatingActionButton(onClick = { nav.navigate(Routes.ADD_TRANSACTION) }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Tambah transaksi")
+                }
+            }
         },
     ) { innerPadding ->
         NavHost(
@@ -88,7 +100,7 @@ fun AppRoot(container: AppContainer) {
             LoginScreen(
                 vm = vm,
                 onLoggedIn = {
-                    nav.navigate(Routes.HOME) {
+                    nav.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -112,13 +124,12 @@ fun AppRoot(container: AppContainer) {
             )
             HomeScreen(
                 vm = vm,
-                onAddTransaction = { nav.navigate(Routes.ADD_TRANSACTION) },
                 onConflicts = { nav.navigate(Routes.CONFLICTS) },
                 onLogout = {
                     scope.launch {
                         container.authRepository.logout()
                         nav.navigate(Routes.LOGIN) {
-                            popUpTo(Routes.HOME) { inclusive = true }
+                            popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
                         }
                     }
                 },
@@ -249,7 +260,7 @@ private fun KasKuBottomBar(nav: NavHostController, currentRoute: String?) {
                     if (currentRoute != tab.route) {
                         nav.navigate(tab.route) {
                             // Satu instance per tab; simpan/pulihkan state antar-tab.
-                            popUpTo(Routes.HOME) { saveState = true }
+                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
