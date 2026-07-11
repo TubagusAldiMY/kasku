@@ -45,7 +45,6 @@ fun CategoryScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Kelola Kategori", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text("Kembali") }
         }
 
         Spacer(Modifier.height(16.dp))

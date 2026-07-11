@@ -63,7 +63,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.material.icons.core) // set ikon kurasi (Delete, dll) — bukan extended
+    implementation(libs.androidx.material.icons.core) // set ikon kurasi (Delete, dll)
+    implementation(libs.androidx.material.icons.extended) // ikon lengkap (nav bar); R8 strip yang tak dipakai di release
     debugImplementation(libs.androidx.ui.tooling)
 
     // Networking + persistence

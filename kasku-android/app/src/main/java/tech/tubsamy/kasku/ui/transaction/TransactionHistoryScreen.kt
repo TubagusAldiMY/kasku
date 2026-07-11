@@ -55,7 +55,6 @@ fun TransactionHistoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("Riwayat", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text("Kembali") }
         }
 
         Spacer(Modifier.height(16.dp))

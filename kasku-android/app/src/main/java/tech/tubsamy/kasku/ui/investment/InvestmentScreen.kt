@@ -59,7 +59,6 @@ fun InvestmentScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Investasi", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                TextButton(onClick = onBack) { Text("Kembali") }
             }
 
             Spacer(Modifier.height(20.dp))

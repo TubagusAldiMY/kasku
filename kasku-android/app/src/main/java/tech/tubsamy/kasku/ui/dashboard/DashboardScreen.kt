@@ -61,7 +61,6 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("Dashboard", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onBack) { Text("Kembali") }
         }
 
         Spacer(Modifier.height(28.dp))

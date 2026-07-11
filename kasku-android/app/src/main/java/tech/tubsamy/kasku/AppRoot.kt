@@ -9,6 +9,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.ui.auth.LoginScreen
 import tech.tubsamy.kasku.ui.auth.LoginViewModel
@@ -52,7 +70,19 @@ fun AppRoot(container: AppContainer) {
     val appContext = LocalContext.current.applicationContext
     val start = if (container.authRepository.isLoggedIn()) Routes.HOME else Routes.LOGIN
 
-    NavHost(navController = nav, startDestination = start) {
+    val backStack by nav.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+
+    Scaffold(
+        bottomBar = {
+            if (currentRoute in TAB_ROUTES) KasKuBottomBar(nav = nav, currentRoute = currentRoute)
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController = nav,
+            startDestination = start,
+            modifier = Modifier.padding(innerPadding),
+        ) {
         composable(Routes.LOGIN) {
             val vm: LoginViewModel = viewModel(factory = LoginViewModel.factory(container.authRepository))
             LoginScreen(
@@ -83,11 +113,7 @@ fun AppRoot(container: AppContainer) {
             HomeScreen(
                 vm = vm,
                 onAddTransaction = { nav.navigate(Routes.ADD_TRANSACTION) },
-                onDashboard = { nav.navigate(Routes.DASHBOARD) },
-                onHistory = { nav.navigate(Routes.HISTORY) },
                 onConflicts = { nav.navigate(Routes.CONFLICTS) },
-                onCategories = { nav.navigate(Routes.CATEGORIES) },
-                onInvestments = { nav.navigate(Routes.INVESTMENTS) },
                 onLogout = {
                     scope.launch {
                         container.authRepository.logout()
@@ -195,6 +221,42 @@ fun AppRoot(container: AppContainer) {
                 vm = vm,
                 onSaved = { nav.popBackStack() },
                 onCancel = { nav.popBackStack() },
+            )
+        }
+        }
+    }
+}
+
+/** Tab bottom nav — 5 destinasi utama. Konflik & Add di luar bar (badge / FAB). */
+private data class Tab(val route: String, val label: String, val icon: ImageVector)
+
+private val TABS = listOf(
+    Tab(Routes.HOME, "Akun", Icons.Outlined.AccountBalanceWallet),
+    Tab(Routes.DASHBOARD, "Grafik", Icons.Outlined.Dashboard),
+    Tab(Routes.HISTORY, "Riwayat", Icons.Outlined.ReceiptLong),
+    Tab(Routes.CATEGORIES, "Kategori", Icons.Outlined.Category),
+    Tab(Routes.INVESTMENTS, "Investasi", Icons.Outlined.TrendingUp),
+)
+private val TAB_ROUTES = TABS.map { it.route }.toSet()
+
+@Composable
+private fun KasKuBottomBar(nav: NavHostController, currentRoute: String?) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+        TABS.forEach { tab ->
+            NavigationBarItem(
+                selected = currentRoute == tab.route,
+                onClick = {
+                    if (currentRoute != tab.route) {
+                        nav.navigate(tab.route) {
+                            // Satu instance per tab; simpan/pulihkan state antar-tab.
+                            popUpTo(Routes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                label = { Text(tab.label) },
             )
         }
     }
