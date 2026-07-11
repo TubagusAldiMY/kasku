@@ -14,10 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -75,20 +79,34 @@ fun HomeScreen(
                             Text("$conflictCount", color = MaterialTheme.colorScheme.error)
                         }
                     }
-                    TextButton(onClick = onLogout) { Text("Keluar") }
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Logout,
+                            contentDescription = "Keluar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Kartu saldo total — anchor visual halaman.
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    SectionLabel("Total Saldo")
+                    Spacer(Modifier.height(6.dp))
+                    MoneyText(accounts.sumOf { it.balance }, fontSize = 44)
                 }
             }
 
             Spacer(Modifier.height(24.dp))
-
-            // Hero: total saldo semua akun — anchor visual halaman.
-            SectionLabel("Total Saldo")
-            Spacer(Modifier.height(4.dp))
-            MoneyText(accounts.sumOf { it.balance }, fontSize = 44)
-
-            Spacer(Modifier.height(24.dp))
-            Hairline()
-            Spacer(Modifier.height(4.dp))
+            SectionLabel("Rekening")
+            Spacer(Modifier.height(8.dp))
 
             if (accounts.isEmpty()) {
                 Column(
