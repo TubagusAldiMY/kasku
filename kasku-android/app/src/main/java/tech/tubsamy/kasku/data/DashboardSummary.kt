@@ -56,3 +56,69 @@ data class DashboardSummary(
         }
     }
 }
+
+/** Satu titik tren bulanan. month = "YYYY-MM". */
+data class MonthlyPoint(val month: String, val income: Long, val expense: Long)
+
+/** Satu irisan donat pengeluaran per kategori. */
+data class CategorySlice(val name: String, val total: Long)
+
+/**
+ * Data grafik dashboard — dihitung LOKAL dari Room (offline-first), pure & KMP-ready.
+ * trend & breakdown dipisah dari DashboardSummary karena butuh rentang data berbeda
+ * (trend = beberapa bulan; breakdown = bulan berjalan).
+ */
+data class DashboardCharts(
+    val trend: List<MonthlyPoint>,
+    val expenseByCategory: List<CategorySlice>,
+) {
+    companion object {
+        val EMPTY = DashboardCharts(emptyList(), emptyList())
+
+        /**
+         * Tren income vs expense untuk [months] bulan terakhir sampai (inklusif) [currentMonth]
+         * ("YYYY-MM"). Bulan tanpa transaksi tetap muncul dengan 0/0 supaya sumbu-x kontinu.
+         *
+         * date TransactionItem = "YYYY-MM-DD"; kunci bulan diambil dari 7 char pertama.
+         */
+        fun trend(txs: List<TransactionItem>, currentMonth: String, months: Int): List<MonthlyPoint> {
+            require(months >= 1) { "months must be >= 1" }
+            val keys = lastMonthKeys(currentMonth, months)
+            val window = keys.toSet()
+            val grouped = txs
+                .filter { it.date.take(7) in window }
+                .groupBy { it.date.take(7) }
+            return keys.map { m ->
+                val list = grouped[m].orEmpty()
+                MonthlyPoint(
+                    month = m,
+                    income = list.filter { it.type == "INCOME" }.sumOf { it.amountIdr },
+                    expense = list.filter { it.type == "EXPENSE" }.sumOf { it.amountIdr },
+                )
+            }
+        }
+
+        /** Breakdown pengeluaran per kategori (desc). txs sudah difilter ke bulan berjalan oleh pemanggil. */
+        fun expenseByCategory(monthTxs: List<TransactionItem>): List<CategorySlice> =
+            monthTxs.filter { it.type == "EXPENSE" }
+                .groupBy { it.categoryName }
+                .map { (name, list) -> CategorySlice(name, list.sumOf { it.amountIdr }) }
+                .filter { it.total > 0 }
+                .sortedByDescending { it.total }
+
+        /** ["YYYY-MM", ...] naik kronologis, panjang [count], berakhir di [currentMonth]. */
+        private fun lastMonthKeys(currentMonth: String, count: Int): List<String> {
+            val year = currentMonth.substring(0, 4).toInt()
+            val month = currentMonth.substring(5, 7).toInt() // 1..12
+            var idx = year * 12 + (month - 1) // bulan absolut sejak tahun 0
+            val out = ArrayDeque<String>()
+            repeat(count) {
+                val y = idx / 12
+                val mo = idx % 12 + 1
+                out.addFirst("%04d-%02d".format(y, mo))
+                idx--
+            }
+            return out.toList()
+        }
+    }
+}

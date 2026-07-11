@@ -36,6 +36,9 @@ class TransactionsRepository(
     fun observeAll(): Flow<List<TransactionItem>> =
         dao.observe().withCategoryNames()
 
+    /** Prefill layar Edit: field mentah (accountId/type dll) yang tak ada di TransactionItem. */
+    suspend fun findRaw(id: String): TransactionEntity? = dao.findById(id)
+
     /** F1 Dashboard: bulan berjalan; from/to "YYYY-MM-DD" di-supply VM via clock. */
     fun observeMonth(from: String, to: String): Flow<List<TransactionItem>> =
         dao.observeByDateRange(from, to).withCategoryNames()

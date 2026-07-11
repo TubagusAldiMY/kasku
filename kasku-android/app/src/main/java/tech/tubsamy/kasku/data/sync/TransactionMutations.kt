@@ -90,6 +90,21 @@ class TransactionMutations(
         fireSync()
     }
 
+    /**
+     * Soft-delete: tombstone tetap ada untuk sinkronisasi (pola AccountMutations.delete).
+     * Regenerate sync_id + updated_at=now → menang LWW; enqueue DELETE payload minimal {id}.
+     * Edge case: entity lokal sudah hilang → no-op.
+     */
+    suspend fun delete(id: String) {
+        val existing = txDao.findById(id) ?: return
+        val syncId = UUID.randomUUID().toString()
+        val now = clock()
+        txDao.upsert(existing.copy(sync_id = syncId, updated_at = now, local_dirty = true, deleted = true))
+        val payload = buildJsonObject { put("id", JsonPrimitive(id)) }
+        enqueue(syncId, "DELETE", id, payload)
+        fireSync()
+    }
+
     private suspend fun enqueue(syncId: String, operation: String, entityId: String, payload: JsonObject) {
         queueDao.enqueue(
             SyncQueueEntity(

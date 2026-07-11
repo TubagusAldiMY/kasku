@@ -16,15 +16,24 @@ import tech.tubsamy.kasku.data.AccountItem
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.CategoryItem
+import tech.tubsamy.kasku.data.TransactionsRepository
 import tech.tubsamy.kasku.data.sync.TransactionMutations
 import java.time.LocalDate
 
+/**
+ * Dipakai untuk Tambah DAN Edit transaksi (reuse layar sama). editId != null → mode edit:
+ * prefill dari Room lalu save() memanggil mutations.update; null → create baru.
+ */
 class AddTransactionViewModel(
     repo: AccountsRepository,
     private val mutations: TransactionMutations,
     private val categories: CategoriesRepository,
+    private val transactions: TransactionsRepository,
+    private val editId: String? = null,
     private val today: () -> String = { LocalDate.now().toString() },
 ) : ViewModel() {
+
+    val isEdit: Boolean get() = editId != null
 
     val accounts: StateFlow<List<AccountItem>> =
         repo.observeAccounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -63,6 +72,19 @@ class AddTransactionViewModel(
 
     init {
         viewModelScope.launch { categories.ensureLoaded() }
+        if (editId != null) {
+            viewModelScope.launch {
+                transactions.findRaw(editId)?.let { tx ->
+                    // Set _type langsung (bukan via setter) agar categoryId prefill tak ter-reset.
+                    _type.value = tx.transaction_type
+                    amount = tx.amount_idr.toString()
+                    notes = tx.notes ?: ""
+                    accountId = tx.account_id
+                    categoryId = tx.category_id
+                    date = tx.transaction_date
+                }
+            }
+        }
     }
 
     fun save(onDone: () -> Unit) {
@@ -76,14 +98,29 @@ class AddTransactionViewModel(
         error = null
         viewModelScope.launch {
             try {
-                mutations.create(
-                    accountId = acc,
-                    type = type,
-                    amountIdr = amt,
-                    categoryId = categoryId,
-                    date = date,
-                    notes = notes,
-                )
+                if (editId != null) {
+                    // categoryId bisa null (Tanpa kategori) — update() abaikan null sbg "pertahankan".
+                    // ponytail: mode edit tak dukung ubah kategori jadi null. Belum diminta; tambah
+                    // param clearCategory ke update() bila perlu.
+                    mutations.update(
+                        id = editId,
+                        accountId = acc,
+                        type = type,
+                        amountIdr = amt,
+                        categoryId = categoryId,
+                        date = date,
+                        notes = notes,
+                    )
+                } else {
+                    mutations.create(
+                        accountId = acc,
+                        type = type,
+                        amountIdr = amt,
+                        categoryId = categoryId,
+                        date = date,
+                        notes = notes,
+                    )
+                }
                 saving = false
                 onDone() // optimistic: transaksi masuk Room + antre sync, langsung kembali
             } catch (e: Exception) {
@@ -98,8 +135,10 @@ class AddTransactionViewModel(
             repo: AccountsRepository,
             mutations: TransactionMutations,
             categories: CategoriesRepository,
+            transactions: TransactionsRepository,
+            editId: String? = null,
         ) = viewModelFactory {
-            initializer { AddTransactionViewModel(repo, mutations, categories) }
+            initializer { AddTransactionViewModel(repo, mutations, categories, transactions, editId) }
         }
     }
 }

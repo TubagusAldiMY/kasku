@@ -65,7 +65,11 @@ fun AddTransactionScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Tambah Transaksi", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                if (vm.isEdit) "Edit Transaksi" else "Tambah Transaksi",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
             TextButton(onClick = onCancel) { Text("Batal") }
         }
 

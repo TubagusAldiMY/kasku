@@ -1,5 +1,6 @@
 package tech.tubsamy.kasku.ui.transaction
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +19,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,9 +33,12 @@ import tech.tubsamy.kasku.ui.formatIdr
 fun TransactionHistoryScreen(
     vm: TransactionHistoryViewModel,
     onBack: () -> Unit,
+    onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val items by vm.items.collectAsState()
+    // Item yang menunggu konfirmasi hapus (null = tak ada dialog).
+    var pendingDelete by remember { mutableStateOf<TransactionItem?>(null) }
 
     Column(
         modifier = modifier
@@ -61,16 +69,44 @@ fun TransactionHistoryScreen(
         } else {
             LazyColumn {
                 items(items, key = { it.id }) { tx ->
-                    TransactionRow(tx)
+                    TransactionRow(
+                        tx = tx,
+                        onEdit = { onEdit(tx.id) },
+                        onDelete = { pendingDelete = tx },
+                    )
                     HorizontalDivider()
                 }
             }
         }
     }
+
+    pendingDelete?.let { tx ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Hapus transaksi?") },
+            text = {
+                val label = (if (tx.type == "INCOME") "" else "−") + formatIdr(tx.amountIdr)
+                Text("$label · ${tx.categoryName} (${tx.date}) akan dihapus.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.delete(tx.id)
+                    pendingDelete = null
+                }) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Batal") }
+            },
+        )
+    }
 }
 
 @Composable
-private fun TransactionRow(tx: TransactionItem) {
+private fun TransactionRow(
+    tx: TransactionItem,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val isIncome = tx.type == "INCOME"
     // income = primary (teal), expense = error (clay). Tanpa hardcode hex.
     val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
@@ -79,11 +115,12 @@ private fun TransactionRow(tx: TransactionItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onEdit) // tap baris = edit
             .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(tx.categoryName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
                 text = tx.notes?.takeIf { it.isNotBlank() }?.let { "${tx.date} · $it" } ?: tx.date,
@@ -92,5 +129,9 @@ private fun TransactionRow(tx: TransactionItem) {
             )
         }
         Text(amountText, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = amountColor)
+        // ponytail: TextButton, bukan ikon — material-icons-extended tak ada di deps (HANDS-OFF).
+        TextButton(onClick = onDelete) {
+            Text("Hapus", color = MaterialTheme.colorScheme.error)
+        }
     }
 }

@@ -16,3 +16,13 @@ data class CategoryDto(
     val color: String? = null,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
 )
+
+/**
+ * Request POST /v1/categories. Backend WAJIB: name, category_type (oneof INCOME|EXPENSE|BOTH).
+ * icon/color opsional — belum dipakai UI, jadi tak dikirim (ponytail).
+ */
+@Serializable
+data class CreateCategoryRequest(
+    val name: String,
+    @SerialName("category_type") val categoryType: String,
+)

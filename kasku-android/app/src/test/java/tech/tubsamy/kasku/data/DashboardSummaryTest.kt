@@ -9,8 +9,8 @@ class DashboardSummaryTest {
     private fun acc(balance: Long) =
         AccountItem(id = "a", name = "n", accountType = "CASH", balance = balance, currency = "IDR")
 
-    private fun tx(type: String, amt: Long, cat: String = "Umum") =
-        TransactionItem(id = "t$amt$type", type = type, amountIdr = amt, date = "2026-07-01", categoryId = null, categoryName = cat, notes = null)
+    private fun tx(type: String, amt: Long, cat: String = "Umum", date: String = "2026-07-01") =
+        TransactionItem(id = "t$amt$type$date", type = type, amountIdr = amt, date = date, categoryId = null, categoryName = cat, notes = null)
 
     private val fmt: (Long) -> String = { "Rp $it" }
 
@@ -50,5 +50,38 @@ class DashboardSummaryTest {
         )
         assertTrue(s.insights.last().contains("Transport")) // 300 > 100 (Makan)
         assertTrue(s.insights.last().contains("Rp 300"))
+    }
+
+    @Test
+    fun trend_fills_empty_months_and_spans_year_boundary() {
+        val t = DashboardCharts.trend(
+            txs = listOf(
+                tx("INCOME", 100, date = "2025-12-15"),
+                tx("EXPENSE", 40, date = "2025-12-20"),
+                tx("INCOME", 200, date = "2026-02-01"),
+                tx("EXPENSE", 999, date = "2026-05-01"), // di luar window → diabaikan
+            ),
+            currentMonth = "2026-02",
+            months = 3,
+        )
+        assertEquals(listOf("2025-12", "2026-01", "2026-02"), t.map { it.month })
+        assertEquals(100, t[0].income); assertEquals(40, t[0].expense)
+        assertEquals(0, t[1].income); assertEquals(0, t[1].expense) // Januari kosong
+        assertEquals(200, t[2].income); assertEquals(0, t[2].expense)
+    }
+
+    @Test
+    fun expenseByCategory_sums_sorts_desc_and_ignores_income() {
+        val slices = DashboardCharts.expenseByCategory(
+            listOf(
+                tx("EXPENSE", 100, "Makan"),
+                tx("EXPENSE", 50, "Makan"),
+                tx("EXPENSE", 300, "Transport"),
+                tx("INCOME", 999, "Gaji"), // bukan expense → diabaikan
+            ),
+        )
+        assertEquals(listOf("Transport", "Makan"), slices.map { it.name })
+        assertEquals(300, slices[0].total)
+        assertEquals(150, slices[1].total) // 100 + 50
     }
 }

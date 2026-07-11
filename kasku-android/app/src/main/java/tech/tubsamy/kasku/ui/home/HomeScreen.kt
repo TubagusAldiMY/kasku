@@ -3,6 +3,7 @@ package tech.tubsamy.kasku.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,8 @@ fun HomeScreen(
     onDashboard: () -> Unit,
     onHistory: () -> Unit,
     onConflicts: () -> Unit,
+    onCategories: () -> Unit,
+    onInvestments: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accounts by vm.accounts.collectAsState()
@@ -61,8 +64,8 @@ fun HomeScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Entry point: Dashboard · Riwayat · Konflik (badge). Minimal, tanpa bottom-nav.
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Entry point: Dashboard · Riwayat · Konflik · Kategori · Investasi. FlowRow → wrap.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onDashboard) { Text("Dashboard") }
             TextButton(onClick = onHistory) { Text("Riwayat") }
             TextButton(onClick = onConflicts) {
@@ -72,6 +75,8 @@ fun HomeScreen(
                     Text("Konflik")
                 }
             }
+            TextButton(onClick = onCategories) { Text("Kategori") }
+            TextButton(onClick = onInvestments) { Text("Investasi") }
         }
 
         Spacer(Modifier.height(8.dp))

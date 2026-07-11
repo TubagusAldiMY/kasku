@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import tech.tubsamy.kasku.data.remote.FinanceApi
+import tech.tubsamy.kasku.data.remote.dto.CreateCategoryRequest
 
 /** Kategori read-only untuk UI (nama + tipe filter dropdown). */
 data class CategoryItem(
@@ -50,6 +51,19 @@ class CategoriesRepository(
     suspend fun refresh() {
         fetchLock.withLock { fetchInto() }
     }
+
+    /**
+     * Buat kategori baru (POST /v1/categories) lalu refresh cache supaya dropdown/daftar
+     * ikut terisi. name di-trim; categoryType harus INCOME|EXPENSE|BOTH (divalidasi caller/backend).
+     * Throw bila gagal (offline/validasi backend) — VM yang menampilkan errornya.
+     */
+    suspend fun createCategory(name: String, categoryType: String) {
+        financeApi.createCategory(CreateCategoryRequest(name = name.trim(), categoryType = categoryType))
+        refresh() // re-fetch: cache + version naik → observer layar kelola & dropdown ikut update.
+    }
+
+    /** Semua kategori aktif untuk layar kelola. Kosong bila cache belum terisi. */
+    fun all(): List<CategoryItem> = cache ?: emptyList()
 
     private suspend fun fetchInto() {
         val result = runCatching {

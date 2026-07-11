@@ -5,12 +5,14 @@ import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.AuthRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.ConflictsRepository
+import tech.tubsamy.kasku.data.InvestmentsRepository
 import tech.tubsamy.kasku.data.TokenStore
 import tech.tubsamy.kasku.data.TransactionsRepository
 import tech.tubsamy.kasku.data.local.KasKuDatabase
 import tech.tubsamy.kasku.data.remote.Network
 import tech.tubsamy.kasku.data.sync.AccountMutations
 import tech.tubsamy.kasku.data.sync.ConflictResolutionService
+import tech.tubsamy.kasku.data.sync.InvestmentMutations
 import tech.tubsamy.kasku.data.sync.RoomSyncStore
 import tech.tubsamy.kasku.data.sync.SyncEngine
 import tech.tubsamy.kasku.data.sync.SyncWorker
@@ -54,5 +56,13 @@ class AppContainer(context: Context) {
         accountMutations = accountMutations,
         transactionMutations = transactionMutations,
         json = Network.json,
+    )
+
+    // Investasi (offline-first)
+    val investmentsRepository = InvestmentsRepository(db)
+    val investmentMutations = InvestmentMutations(
+        db = db,
+        json = Network.json,
+        fireSync = { SyncWorker.enqueueOnce(appContext) },
     )
 }

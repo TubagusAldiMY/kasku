@@ -48,6 +48,10 @@ interface TransactionDao {
 
 @Dao
 interface InvestmentDao {
+    /** Investasi aktif (belum di-soft-delete), reaktif. Urut nama. */
+    @Query("SELECT * FROM investments WHERE deleted = 0 ORDER BY name")
+    fun observeActive(): Flow<List<InvestmentEntity>>
+
     @Query("SELECT * FROM investments WHERE id = :id")
     suspend fun findById(id: String): InvestmentEntity?
 

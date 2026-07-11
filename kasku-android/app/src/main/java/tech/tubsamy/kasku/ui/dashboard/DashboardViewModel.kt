@@ -8,10 +8,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
+import tech.tubsamy.kasku.data.DashboardCharts
 import tech.tubsamy.kasku.data.DashboardSummary
 import tech.tubsamy.kasku.data.TransactionsRepository
 import tech.tubsamy.kasku.data.sync.SyncWorker
@@ -33,13 +35,14 @@ class DashboardViewModel(
     today: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
-    val summary: StateFlow<DashboardSummary> = run {
-        val month = YearMonth.from(today())
-        val from = month.atDay(1).toString()   // "YYYY-MM-DD"
-        val to = month.atEndOfMonth().toString()
+    private val month = YearMonth.from(today())
+    private val monthFrom = month.atDay(1).toString()   // "YYYY-MM-DD"
+    private val monthTo = month.atEndOfMonth().toString()
+
+    val summary: StateFlow<DashboardSummary> =
         combine(
             accounts.observeAccounts(),
-            transactions.observeMonth(from, to),
+            transactions.observeMonth(monthFrom, monthTo),
         ) { accs, txs ->
             DashboardSummary.compute(accs, txs) { formatIdr(it) }
         }.stateIn(
@@ -47,7 +50,24 @@ class DashboardViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = DashboardSummary(0, 0, 0, 0, emptyList()),
         )
-    }
+
+    /**
+     * Data grafik dari SELURUH riwayat (observeAll) — trend butuh beberapa bulan, tak cukup
+     * observeMonth. Dihitung LOKAL/pure; breakdown difilter ulang ke bulan berjalan di sini.
+     */
+    val charts: StateFlow<DashboardCharts> =
+        transactions.observeAll().map { txs ->
+            DashboardCharts(
+                trend = DashboardCharts.trend(txs, month.toString(), months = TREND_MONTHS),
+                expenseByCategory = DashboardCharts.expenseByCategory(
+                    txs.filter { it.date in monthFrom..monthTo },
+                ),
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = DashboardCharts.EMPTY,
+        )
 
     init {
         // Cache kategori untuk insight "pengeluaran terbesar" + segarkan Room.
@@ -56,6 +76,8 @@ class DashboardViewModel(
     }
 
     companion object {
+        private const val TREND_MONTHS = 6
+
         fun factory(
             accounts: AccountsRepository,
             transactions: TransactionsRepository,
