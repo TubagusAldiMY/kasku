@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -129,9 +133,12 @@ private fun TransactionRow(
             )
         }
         MoneyText(if (isIncome) tx.amountIdr else -tx.amountIdr, fontSize = 20, color = amountColor, signed = true)
-        // ponytail: TextButton, bukan ikon — material-icons-extended tak ada di deps (HANDS-OFF).
-        TextButton(onClick = onDelete) {
-            Text("Hapus", color = MaterialTheme.colorScheme.error)
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Outlined.Delete,
+                contentDescription = "Hapus transaksi",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, // muted; dialog konfirmasi jaga keamanan
+            )
         }
     }
 }

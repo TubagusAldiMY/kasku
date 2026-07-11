@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.InvestmentItem
 import tech.tubsamy.kasku.ui.components.Hairline
 import tech.tubsamy.kasku.ui.components.MoneyText
+import tech.tubsamy.kasku.ui.components.SectionLabel
 import tech.tubsamy.kasku.ui.formatIdr
 
 /** Label ramah untuk asset_type (fallback: nilai mentah). */
@@ -61,7 +62,15 @@ fun InvestmentScreen(
                 TextButton(onClick = onBack) { Text("Kembali") }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
+
+            // Hero: total nilai buku semua investasi — anchor serif, sejajar Home.
+            SectionLabel("Total Portofolio")
+            Spacer(Modifier.height(4.dp))
+            MoneyText(investments.sumOf { it.bookValueIdr }, fontSize = 40)
+            Spacer(Modifier.height(20.dp))
+            Hairline()
+            Spacer(Modifier.height(4.dp))
 
             if (investments.isEmpty()) {
                 Column(
