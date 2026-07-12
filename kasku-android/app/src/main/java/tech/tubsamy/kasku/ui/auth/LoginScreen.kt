@@ -1,5 +1,6 @@
 package tech.tubsamy.kasku.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import tech.tubsamy.kasku.R
 import tech.tubsamy.kasku.ui.components.PrimaryButton
 import tech.tubsamy.kasku.ui.theme.KasKuInk
 import tech.tubsamy.kasku.ui.theme.KasKuTealSoft
@@ -136,6 +141,12 @@ fun LoginScreen(
             enabled = !vm.loading,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            Image(
+                painterResource(R.drawable.ic_google_g),
+                contentDescription = null, // dekoratif — label tombol sudah menjelaskan
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(10.dp))
             Text("Masuk dengan Google")
         }
 
