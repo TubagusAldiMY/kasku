@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.AccountsRepository
+import tech.tubsamy.kasku.data.BudgetItem
+import tech.tubsamy.kasku.data.BudgetsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.DashboardCharts
 import tech.tubsamy.kasku.data.DashboardSummary
@@ -31,6 +33,7 @@ class DashboardViewModel(
     accounts: AccountsRepository,
     transactions: TransactionsRepository,
     private val categories: CategoriesRepository,
+    private val budgetsRepo: BudgetsRepository,
     private val appContext: Context,
     today: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
@@ -84,9 +87,13 @@ class DashboardViewModel(
             initialValue = emptyList(),
         )
 
+    /** Anggaran + progress dari backend (online, cache in-memory di repo). */
+    val budgets: StateFlow<List<BudgetItem>> = budgetsRepo.budgets
+
     init {
         // Cache kategori untuk insight "pengeluaran terbesar" + segarkan Room.
         viewModelScope.launch { categories.ensureLoaded() }
+        viewModelScope.launch { budgetsRepo.refresh() }
         SyncWorker.enqueueOnce(appContext)
     }
 
@@ -98,6 +105,7 @@ class DashboardViewModel(
             accounts: AccountsRepository,
             transactions: TransactionsRepository,
             categories: CategoriesRepository,
+            budgets: BudgetsRepository,
             appContext: Context,
         ) = viewModelFactory {
             initializer {
@@ -105,6 +113,7 @@ class DashboardViewModel(
                     accounts,
                     transactions,
                     categories,
+                    budgets,
                     appContext.applicationContext,
                 )
             }

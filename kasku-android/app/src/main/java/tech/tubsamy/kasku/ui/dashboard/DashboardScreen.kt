@@ -37,6 +37,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import tech.tubsamy.kasku.data.BudgetItem
 import tech.tubsamy.kasku.data.CategorySlice
 import tech.tubsamy.kasku.data.MonthlyPoint
 import tech.tubsamy.kasku.data.TransactionItem
@@ -44,6 +45,7 @@ import tech.tubsamy.kasku.ui.components.Hairline
 import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.components.SectionLabel
 import tech.tubsamy.kasku.ui.formatIdr
+import tech.tubsamy.kasku.ui.theme.KasKuGold
 
 @Composable
 fun DashboardScreen(
@@ -55,6 +57,7 @@ fun DashboardScreen(
     val summary by vm.summary.collectAsState()
     val charts by vm.charts.collectAsState()
     val recent by vm.recent.collectAsState()
+    val budgets by vm.budgets.collectAsState()
 
     Column(
         modifier = modifier
@@ -124,6 +127,13 @@ fun DashboardScreen(
                 RecentRow(tx)
                 Hairline()
             }
+        }
+
+        if (budgets.isNotEmpty()) {
+            Spacer(Modifier.height(36.dp))
+            SectionLabel("Anggaran bulan ini")
+            Spacer(Modifier.height(4.dp))
+            budgets.forEach { BudgetRow(it) }
         }
 
         Spacer(Modifier.height(36.dp))
@@ -211,6 +221,55 @@ private fun RecentRow(tx: TransactionItem) {
                 fontWeight = if (isIncome) FontWeight.SemiBold else FontWeight.Normal,
             ),
             color = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+/**
+ * Baris anggaran (desain ReDesign/): nama + persen berwarna, bar tipis, caption terpakai/limit.
+ * Warna: lewat limit = clay, ≥ ambang alert = gold, sisanya teal.
+ */
+@Composable
+private fun BudgetRow(b: BudgetItem) {
+    val accent = when {
+        b.isOverBudget -> MaterialTheme.colorScheme.error
+        b.alertThreshold in 1..b.progressPercent -> KasKuGold
+        else -> MaterialTheme.colorScheme.primary
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(b.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(
+                "${b.progressPercent}%",
+                style = MaterialTheme.typography.titleSmall,
+                color = accent,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        // Bar progres editorial 3dp — track hairline, isi warna status.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth((b.progressPercent / 100f).coerceIn(0f, 1f))
+                    .height(3.dp)
+                    .background(accent),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "${formatIdr(b.spentIdr)} terpakai · limit ${formatIdr(b.limitIdr)} · " +
+                if (b.isOverBudget) "lewat ${formatIdr(-b.remainingIdr)}" else "sisa ${formatIdr(b.remainingIdr)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

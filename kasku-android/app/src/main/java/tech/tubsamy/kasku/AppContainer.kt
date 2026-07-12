@@ -3,6 +3,7 @@ package tech.tubsamy.kasku
 import android.content.Context
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.AuthRepository
+import tech.tubsamy.kasku.data.BudgetsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.ConflictsRepository
 import tech.tubsamy.kasku.data.InvestmentsRepository
@@ -48,6 +49,7 @@ class AppContainer(context: Context) {
     // Slice C — data layer 4 fitur (Dashboard / Riwayat / Kategori / Konflik).
     // Satu instance CategoriesRepository di-share (satu cache in-memory).
     val categoriesRepository = CategoriesRepository(apis.financeApi)
+    val budgetsRepository = BudgetsRepository(apis.financeApi)
     val transactionsRepository = TransactionsRepository(db, categoriesRepository)
     val conflictsRepository = ConflictsRepository(db)
     val conflictResolutionService = ConflictResolutionService(

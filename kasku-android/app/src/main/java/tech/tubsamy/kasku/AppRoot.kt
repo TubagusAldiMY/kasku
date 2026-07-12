@@ -180,6 +180,7 @@ fun AppRoot(container: AppContainer) {
                     container.accountsRepository,
                     container.transactionsRepository,
                     container.categoriesRepository,
+                    container.budgetsRepository,
                     appContext,
                 ),
             )
