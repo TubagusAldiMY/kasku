@@ -19,6 +19,10 @@ data class BudgetItem(
     val categoryId: String?,
     val categoryName: String,
     val dailyLimitEnabled: Boolean,
+    // Terisi hanya saat dailyLimitEnabled = true.
+    val dailyAllowanceTodayIdr: Long? = null,
+    val spentTodayIdr: Long? = null,
+    val dailyRemainingIdr: Long? = null,
 )
 
 /**
@@ -48,6 +52,9 @@ class BudgetsRepository(
                     categoryId = it.categoryId,
                     categoryName = it.categoryName,
                     dailyLimitEnabled = it.dailyLimitEnabled,
+                    dailyAllowanceTodayIdr = it.dailyAllowanceTodayIdr,
+                    spentTodayIdr = it.spentTodayIdr,
+                    dailyRemainingIdr = it.dailyRemainingIdr,
                 )
             }
         }.getOrNull() ?: return

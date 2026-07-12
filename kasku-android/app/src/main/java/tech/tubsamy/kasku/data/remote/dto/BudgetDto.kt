@@ -20,6 +20,10 @@ data class BudgetDto(
     @SerialName("progress_percent") val progressPercent: Double = 0.0,
     @SerialName("is_over_budget") val isOverBudget: Boolean = false,
     @SerialName("daily_limit_enabled") val dailyLimitEnabled: Boolean = false,
+    // Ada hanya saat daily_limit_enabled = true (backend omitempty).
+    @SerialName("daily_allowance_today_idr") val dailyAllowanceTodayIdr: Long? = null,
+    @SerialName("spent_today_idr") val spentTodayIdr: Long? = null,
+    @SerialName("daily_remaining_idr") val dailyRemainingIdr: Long? = null,
 )
 
 /**

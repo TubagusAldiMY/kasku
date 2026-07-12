@@ -14,7 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.BudgetItem
 import tech.tubsamy.kasku.ui.formatIdr
@@ -67,5 +70,28 @@ fun BudgetProgress(b: BudgetItem, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Jatah harian — hanya saat diaktifkan; sisa hari ini diwarnai (minus = clay).
+        if (b.dailyLimitEnabled && b.dailyAllowanceTodayIdr != null && b.dailyRemainingIdr != null) {
+            val minus = b.dailyRemainingIdr < 0
+            Spacer(Modifier.height(4.dp))
+            Text(
+                buildAnnotatedString {
+                    append("Jatah hari ini ${formatIdr(b.dailyAllowanceTodayIdr)} · ")
+                    withStyle(
+                        SpanStyle(
+                            color = if (minus) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                    ) {
+                        append(
+                            if (minus) "lewat ${formatIdr(-b.dailyRemainingIdr)}"
+                            else "sisa ${formatIdr(b.dailyRemainingIdr)}",
+                        )
+                    }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
