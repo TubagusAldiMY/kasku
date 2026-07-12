@@ -3,8 +3,10 @@ package tech.tubsamy.kasku.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import tech.tubsamy.kasku.data.remote.FinanceApi
+import tech.tubsamy.kasku.data.remote.dto.CreateBudgetRequest
+import tech.tubsamy.kasku.data.remote.dto.UpdateBudgetRequest
 
-/** Anggaran read-only untuk seksi Dashboard (backend sudah hitung progress). */
+/** Anggaran untuk UI (backend sudah hitung progress). */
 data class BudgetItem(
     val id: String,
     val name: String,
@@ -14,7 +16,9 @@ data class BudgetItem(
     val progressPercent: Int, // 0..∞ (bisa >100 saat lewat limit)
     val isOverBudget: Boolean,
     val alertThreshold: Int, // persen; 0 = tanpa ambang
+    val categoryId: String?,
     val categoryName: String,
+    val dailyLimitEnabled: Boolean,
 )
 
 /**
@@ -41,10 +45,52 @@ class BudgetsRepository(
                     progressPercent = it.progressPercent.toInt(),
                     isOverBudget = it.isOverBudget,
                     alertThreshold = it.alertThreshold,
+                    categoryId = it.categoryId,
                     categoryName = it.categoryName,
+                    dailyLimitEnabled = it.dailyLimitEnabled,
                 )
             }
         }.getOrNull() ?: return
         _budgets.value = loaded
+    }
+
+    // Mutasi CRUD — throw bila gagal (VM yang menampilkan error), sukses → refresh cache.
+
+    suspend fun create(name: String, limitIdr: Long, categoryId: String?, dailyLimitEnabled: Boolean) {
+        financeApi.createBudget(
+            CreateBudgetRequest(
+                name = name.trim(),
+                limitIdr = limitIdr,
+                categoryId = categoryId,
+                dailyLimitEnabled = dailyLimitEnabled,
+            ),
+        )
+        refresh()
+    }
+
+    suspend fun update(
+        id: String,
+        name: String,
+        limitIdr: Long,
+        categoryId: String?,
+        alertThreshold: Int,
+        dailyLimitEnabled: Boolean,
+    ) {
+        financeApi.updateBudget(
+            id,
+            UpdateBudgetRequest(
+                name = name.trim(),
+                limitIdr = limitIdr,
+                categoryId = categoryId,
+                alertThreshold = alertThreshold,
+                dailyLimitEnabled = dailyLimitEnabled,
+            ),
+        )
+        refresh()
+    }
+
+    suspend fun delete(id: String) {
+        financeApi.deleteBudget(id)
+        refresh()
     }
 }

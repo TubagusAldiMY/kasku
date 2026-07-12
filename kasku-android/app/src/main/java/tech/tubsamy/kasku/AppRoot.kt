@@ -35,6 +35,10 @@ import tech.tubsamy.kasku.ui.auth.LoginScreen
 import tech.tubsamy.kasku.ui.auth.LoginViewModel
 import tech.tubsamy.kasku.ui.auth.RegisterScreen
 import tech.tubsamy.kasku.ui.auth.RegisterViewModel
+import tech.tubsamy.kasku.ui.budget.AddBudgetScreen
+import tech.tubsamy.kasku.ui.budget.AddBudgetViewModel
+import tech.tubsamy.kasku.ui.budget.BudgetScreen
+import tech.tubsamy.kasku.ui.budget.BudgetViewModel
 import tech.tubsamy.kasku.ui.category.CategoryScreen
 import tech.tubsamy.kasku.ui.category.CategoryViewModel
 import tech.tubsamy.kasku.ui.conflicts.ConflictsScreen
@@ -64,6 +68,9 @@ private object Routes {
     const val CATEGORIES = "categories"
     const val INVESTMENTS = "investments"
     const val ADD_INVESTMENT = "add_investment"
+    const val BUDGETS = "budgets"
+    const val ADD_BUDGET = "add_budget"
+    const val EDIT_BUDGET = "edit_budget" // arg: budgetId
 }
 
 @Composable
@@ -195,6 +202,7 @@ fun AppRoot(container: AppContainer) {
                         restoreState = true
                     }
                 },
+                onManageBudgets = { nav.navigate(Routes.BUDGETS) },
             )
         }
         composable(Routes.HISTORY) {
@@ -234,6 +242,49 @@ fun AppRoot(container: AppContainer) {
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onAddInvestment = { nav.navigate(Routes.ADD_INVESTMENT) },
+            )
+        }
+        composable(Routes.BUDGETS) {
+            val vm: BudgetViewModel = viewModel(
+                factory = BudgetViewModel.factory(container.budgetsRepository),
+            )
+            BudgetScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onAddBudget = { nav.navigate(Routes.ADD_BUDGET) },
+                onEditBudget = { id -> nav.navigate("${Routes.EDIT_BUDGET}/$id") },
+            )
+        }
+        composable(Routes.ADD_BUDGET) {
+            val vm: AddBudgetViewModel = viewModel(
+                factory = AddBudgetViewModel.factory(container.budgetsRepository, container.categoriesRepository),
+            )
+            AddBudgetScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = "${Routes.EDIT_BUDGET}/{budgetId}",
+            arguments = listOf(navArgument("budgetId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val budgetId = backStackEntry.arguments?.getString("budgetId")
+            if (budgetId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: AddBudgetViewModel = viewModel(
+                factory = AddBudgetViewModel.factory(
+                    container.budgetsRepository,
+                    container.categoriesRepository,
+                    budgetId,
+                ),
+            )
+            AddBudgetScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
             )
         }
         composable(Routes.ADD_INVESTMENT) {
