@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ fun TransactionHistoryScreen(
     modifier: Modifier = Modifier,
 ) {
     val items by vm.items.collectAsState()
+    val typeFilter by vm.typeFilter.collectAsState()
     // Item yang menunggu konfirmasi hapus (null = tak ada dialog).
     var pendingDelete by remember { mutableStateOf<TransactionItem?>(null) }
 
@@ -60,7 +62,21 @@ fun TransactionHistoryScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // Filter pills desain: Semua / Masuk / Keluar.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(null to "Semua", "INCOME" to "Masuk", "EXPENSE" to "Keluar").forEach { (type, label) ->
+                FilterChip(
+                    selected = typeFilter == type,
+                    onClick = { vm.typeFilter.value = type },
+                    label = { Text(label) },
+                    shape = RoundedCornerShape(999.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         if (items.isEmpty()) {
             Column(
@@ -69,7 +85,7 @@ fun TransactionHistoryScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "Belum ada transaksi.",
+                    if (typeFilter == null) "Belum ada transaksi." else "Tidak ada transaksi untuk filter ini.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

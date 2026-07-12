@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.CategoriesRepository
@@ -29,8 +31,13 @@ class TransactionHistoryViewModel(
         viewModelScope.launch { mutations.delete(id) }
     }
 
+    /** Filter tipe (pills desain ReDesign/): null = Semua, "INCOME" = Masuk, "EXPENSE" = Keluar. */
+    val typeFilter = MutableStateFlow<String?>(null)
+
     val items: StateFlow<List<TransactionItem>> =
-        transactions.observeAll().stateIn(
+        combine(transactions.observeAll(), typeFilter) { txs, type ->
+            if (type == null) txs else txs.filter { it.type == type }
+        }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
