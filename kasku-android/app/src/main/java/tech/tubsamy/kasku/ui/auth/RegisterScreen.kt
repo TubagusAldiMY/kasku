@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -18,11 +16,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import tech.tubsamy.kasku.ui.components.PrimaryButton
 
 @Composable
 fun RegisterScreen(
@@ -38,17 +36,15 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Pendaftaran berhasil", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Pendaftaran berhasil", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text(
                 vm.successMessage!!,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(24.dp))
-            Button(onClick = onBackToLogin, modifier = Modifier.fillMaxWidth()) {
-                Text("Kembali ke masuk")
-            }
+            PrimaryButton(text = "Kembali ke masuk", onClick = onBackToLogin)
         }
         return
     }
@@ -59,11 +55,12 @@ fun RegisterScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Buat akun", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+        Text("Buat akun", style = MaterialTheme.typography.headlineLarge)
+        Spacer(Modifier.height(6.dp))
         Text(
             "Gratis, mulai kelola keuanganmu.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Spacer(Modifier.height(24.dp))
@@ -103,21 +100,12 @@ fun RegisterScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
+        PrimaryButton(
+            text = "Daftar",
             onClick = { vm.register() },
-            enabled = !vm.loading && vm.canSubmit,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (vm.loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.height(18.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Daftar")
-            }
-        }
+            enabled = vm.canSubmit,
+            loading = vm.loading,
+        )
 
         Spacer(Modifier.height(8.dp))
 
@@ -129,7 +117,7 @@ fun RegisterScreen(
             Text(
                 "Sudah punya akun?",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(onClick = onBackToLogin) { Text("Masuk") }
         }

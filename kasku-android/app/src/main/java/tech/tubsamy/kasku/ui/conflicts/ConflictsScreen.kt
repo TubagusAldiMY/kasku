@@ -45,7 +45,7 @@ fun ConflictsScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Konflik Sync", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text("Konflik sync", style = MaterialTheme.typography.headlineMedium)
             TextButton(onClick = onBack) { Text("Kembali") }
         }
 
@@ -59,7 +59,7 @@ fun ConflictsScreen(
             ) {
                 Text(
                     "Tidak ada konflik.",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         } else {
@@ -104,7 +104,7 @@ private fun ConflictCard(
             Text(
                 conflict.detectedAt,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -128,7 +128,7 @@ private fun ValueBlock(label: String, rawJson: String) {
     Text(
         label,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     // ponytail: tampilkan raw JSON apa adanya (scroll horizontal) — cukup untuk review, tak parse field.
     Text(

@@ -14,23 +14,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import tech.tubsamy.kasku.ui.formatIdr
 import tech.tubsamy.kasku.ui.theme.LabelEyebrow
 import tech.tubsamy.kasku.ui.theme.MoneyFont
 
-/** Label seksi modern: sentence case, muted, tracking halus. */
+/** Eyebrow editorial: UPPERCASE, muted, tracking lebar (desain ReDesign/). */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
-        text = text,
+        text = text.uppercase(),
         style = LabelEyebrow,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,
     )
 }
 
-/** Angka uang — Instrument Serif, elemen pahlawan. sign=true → +/- untuk income/expense. */
+/** Angka uang — Instrument Serif 400, elemen pahlawan. sign=true → +/- untuk income/expense. */
 @Composable
 fun MoneyText(
     amount: Long,
@@ -43,7 +44,8 @@ fun MoneyText(
     Text(
         text = prefix + formatIdr(kotlin.math.abs(amount)),
         fontFamily = MoneyFont,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal, // Instrument Serif hanya punya 400 — bold justru faux-bold
+        letterSpacing = (-0.01).em,
         fontSize = fontSize.sp,
         color = color,
         modifier = modifier,
@@ -90,7 +92,7 @@ fun PercentText(value: Int, color: androidx.compose.ui.graphics.Color) {
     Text(
         text = "$value%",
         fontFamily = MoneyFont,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal,
         fontSize = 22.sp,
         color = color,
         textAlign = TextAlign.End,

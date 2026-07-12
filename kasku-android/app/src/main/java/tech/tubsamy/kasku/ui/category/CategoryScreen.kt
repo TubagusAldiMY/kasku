@@ -44,7 +44,7 @@ fun CategoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Kelola Kategori", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Kelola kategori", style = MaterialTheme.typography.headlineSmall)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -104,7 +104,7 @@ fun CategoryScreen(
             ) {
                 Text(
                     "Belum ada kategori.",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         } else {
@@ -131,7 +131,7 @@ private fun CategoryRow(cat: CategoryItem) {
         Text(
             typeLabel(cat.categoryType),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

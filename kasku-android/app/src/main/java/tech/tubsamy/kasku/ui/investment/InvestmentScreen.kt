@@ -21,7 +21,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.InvestmentItem
 import tech.tubsamy.kasku.ui.components.Hairline
@@ -53,20 +52,16 @@ fun InvestmentScreen(
                 .fillMaxSize()
                 .padding(24.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Investasi", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // Hero: total nilai buku semua investasi — anchor serif, sejajar Home.
-            SectionLabel("Total Portofolio")
-            Spacer(Modifier.height(4.dp))
+            // Hero editorial: eyebrow + angka serif besar (pola sama dengan Dashboard).
+            SectionLabel("Total portofolio · modal")
+            Spacer(Modifier.height(10.dp))
             MoneyText(investments.sumOf { it.bookValueIdr }, fontSize = 40)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "${investments.size} aset",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(20.dp))
             Hairline()
             Spacer(Modifier.height(4.dp))
@@ -79,7 +74,7 @@ fun InvestmentScreen(
                 ) {
                     Text(
                         "Belum ada investasi.",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(onClick = { vm.refresh() }) { Text("Segarkan") }
@@ -115,21 +110,22 @@ private fun InvestmentRow(inv: InvestmentItem) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text(inv.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            // Nama aset serif — treatment tabel investasi desain ReDesign/.
+            Text(inv.name, style = MaterialTheme.typography.titleLarge)
             Text(
                 text = inv.symbol?.takeIf { it.isNotBlank() }
                     ?.let { "${assetTypeLabel(inv.assetType)} · $it" }
                     ?: assetTypeLabel(inv.assetType),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Column(horizontalAlignment = Alignment.End) {
             MoneyText(inv.bookValueIdr, fontSize = 20)
             Text(
-                "${formatUnits(inv.units)} @ ${formatIdr(inv.avgBuyPriceIdr)}",
+                "${formatUnits(inv.units)} unit @ ${formatIdr(inv.avgBuyPriceIdr)}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

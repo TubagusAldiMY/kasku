@@ -39,6 +39,11 @@ class DashboardViewModel(
     private val monthFrom = month.atDay(1).toString()   // "YYYY-MM-DD"
     private val monthTo = month.atEndOfMonth().toString()
 
+    /** "Juli 2026" — konteks eyebrow hero (desain ReDesign/). */
+    val monthLabel: String =
+        month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.forLanguageTag("id")) +
+            " " + month.year
+
     val summary: StateFlow<DashboardSummary> =
         combine(
             accounts.observeAccounts(),
@@ -69,6 +74,16 @@ class DashboardViewModel(
             initialValue = DashboardCharts.EMPTY,
         )
 
+    /** 4 transaksi terakhir — seksi "Aktivitas terakhir" (desain ReDesign/). */
+    val recent: StateFlow<List<tech.tubsamy.kasku.data.TransactionItem>> =
+        transactions.observeAll().map { txs ->
+            txs.sortedByDescending { it.date }.take(RECENT_COUNT)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
     init {
         // Cache kategori untuk insight "pengeluaran terbesar" + segarkan Room.
         viewModelScope.launch { categories.ensureLoaded() }
@@ -77,6 +92,7 @@ class DashboardViewModel(
 
     companion object {
         private const val TREND_MONTHS = 6
+        private const val RECENT_COUNT = 4
 
         fun factory(
             accounts: AccountsRepository,

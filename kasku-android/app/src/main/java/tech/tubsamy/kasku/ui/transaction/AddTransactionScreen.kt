@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -32,10 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.ui.components.MoneyText
+import tech.tubsamy.kasku.ui.components.PrimaryButton
+import tech.tubsamy.kasku.ui.components.SectionLabel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -67,9 +66,8 @@ fun AddTransactionScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                if (vm.isEdit) "Edit Transaksi" else "Tambah Transaksi",
+                if (vm.isEdit) "Edit transaksi" else "Catat transaksi",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
             )
             TextButton(onClick = onCancel) { Text("Batal") }
         }
@@ -112,7 +110,7 @@ fun AddTransactionScreen(
         Spacer(Modifier.height(16.dp))
 
         // Akun (dropdown)
-        Text("Akun", style = MaterialTheme.typography.labelMedium)
+        SectionLabel("Akun")
         Spacer(Modifier.height(4.dp))
         Box {
             OutlinedButton(onClick = { accountMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
@@ -134,7 +132,7 @@ fun AddTransactionScreen(
         Spacer(Modifier.height(16.dp))
 
         // Kategori (dropdown, opsional — filter otomatis by tipe)
-        Text("Kategori (opsional)", style = MaterialTheme.typography.labelMedium)
+        SectionLabel("Kategori (opsional)")
         Spacer(Modifier.height(4.dp))
         Box {
             OutlinedButton(onClick = { categoryMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
@@ -163,7 +161,7 @@ fun AddTransactionScreen(
         Spacer(Modifier.height(16.dp))
 
         // Tanggal (Material3 DatePicker, default hari ini)
-        Text("Tanggal", style = MaterialTheme.typography.labelMedium)
+        SectionLabel("Tanggal")
         Spacer(Modifier.height(4.dp))
         OutlinedButton(onClick = { datePickerOpen = true }, modifier = Modifier.fillMaxWidth()) {
             Text(vm.date)
@@ -186,21 +184,12 @@ fun AddTransactionScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
+        PrimaryButton(
+            text = "Simpan",
             onClick = { vm.save(onSaved) },
             enabled = vm.canSave,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (vm.saving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.height(18.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Simpan")
-            }
-        }
+            loading = vm.saving,
+        )
     }
 
     if (datePickerOpen) {

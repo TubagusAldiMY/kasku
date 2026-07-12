@@ -9,74 +9,85 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// ── Palet "Midnight" — fintech gelap premium (Revolut/Robinhood vibe) ──
-private val Bg = Color(0xFF0B0F14) // canvas near-black
-private val Card = Color(0xFF151B23) // kartu/panel
-private val Elevated = Color(0xFF1C2530) // field, chip, kartu terangkat
-private val Mint = Color(0xFF34D399) // aksi utama / pemasukan / positif
-private val MintDeep = Color(0xFF0E3A2C) // container mint gelap
-private val MintSoft = Color(0xFFA7F3D0) // teks di atas container mint
-private val Coral = Color(0xFFFB7185) // bahaya / pengeluaran / negatif
-private val Ink = Color(0xFFE6EDF3) // teks utama (near-white cool)
-private val Muted = Color(0xFF8A97A6) // teks sekunder
-private val Line = Color(0xFF232C36) // hairline / border kartu
-private val Outline = Color(0xFF2E3A46)
+// ── Palet "Editorial" — paper cream + serif, mengikuti handoff ReDesign/ (web kasku.id) ──
+private val Paper = Color(0xFFF7F6F2) // canvas krem
+private val Bright = Color(0xFFFDFCFA) // kartu/field lebih terang
+private val Ink = Color(0xFF12312E) // teks utama, hijau-hitam pekat
+private val Teal = Color(0xFF1A5F66) // aksi utama / pemasukan / positif
+private val TealSoft = Color(0xFF7FC7BD) // aksen di atas ink gelap
+private val Clay = Color(0xFFA4502F) // bahaya / pengeluaran / lewat anggaran
+private val Gold = Color(0xFF8A6A1F) // peringatan / cache / anggaran mendekati limit
+private val Muted = Color(0xFF6E807C) // teks sekunder (ink 60% di atas paper)
+private val Line = Color(0xFFE3E4DF) // hairline pemisah baris (ink ~10%)
+private val Border = Color(0xFFBEC5C1) // border field/chip (ink ~25%)
 
 // Warna brand tambahan untuk pemakaian langsung.
-val KasKuMint = Mint
-val KasKuCoral = Coral
+val KasKuTeal = Teal
+val KasKuClay = Clay
+val KasKuGold = Gold
+val KasKuInk = Ink // panel brand gelap (login, kartu saldo)
+val KasKuTealSoft = TealSoft // aksen "Ku" di atas ink
 
-private val DarkColors = darkColorScheme(
-    primary = Mint,
-    onPrimary = Color(0xFF04261B),
-    primaryContainer = Mint, // FAB & tombol utama = mint solid
-    onPrimaryContainer = Color(0xFF04261B),
-    secondary = Coral,
-    onSecondary = Color(0xFF2A0A10),
-    secondaryContainer = MintDeep, // chip terpilih = mint gelap
-    onSecondaryContainer = MintSoft,
-    background = Bg,
+/** Default: editorial terang. */
+private val LightColors = lightColorScheme(
+    primary = Teal,
+    onPrimary = Paper,
+    primaryContainer = Teal, // FAB & tombol utama = teal solid
+    onPrimaryContainer = Paper,
+    secondary = Clay,
+    onSecondary = Paper,
+    secondaryContainer = Ink, // chip/filter terpilih = ink solid (desain)
+    onSecondaryContainer = Paper,
+    tertiary = Gold,
+    onTertiary = Paper,
+    background = Paper,
     onBackground = Ink,
-    surface = Card,
+    surface = Bright,
     onSurface = Ink,
-    surfaceVariant = Elevated,
+    surfaceVariant = Color(0xFFECEAE4), // field/chip netral
     onSurfaceVariant = Muted,
-    surfaceTint = Mint,
-    error = Coral,
-    onError = Color(0xFF2A0A10),
-    outline = Outline,
+    surfaceTint = Color.Transparent, // flat: tanpa tonal overlay
+    error = Clay,
+    onError = Paper,
+    outline = Border,
     outlineVariant = Line,
 )
 
-// Fallback light (jarang dipakai — app default gelap). Netral modern, bukan paper kuno.
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF0F766E),
-    onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFFE11D48),
-    background = Color(0xFFF7F8FA),
-    onBackground = Color(0xFF0F172A),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF0F172A),
-    surfaceVariant = Color(0xFFEEF1F5),
-    onSurfaceVariant = Color(0xFF64748B),
-    error = Color(0xFFE11D48),
-    outline = Color(0xFFCBD5E1),
-    outlineVariant = Color(0xFFE2E8F0),
+/** Fallback gelap: panel ink (seperti panel brand di desain login). */
+private val DarkColors = darkColorScheme(
+    primary = TealSoft,
+    onPrimary = Ink,
+    primaryContainer = Teal,
+    onPrimaryContainer = Paper,
+    secondary = Color(0xFFD98E6B),
+    onSecondary = Ink,
+    secondaryContainer = Paper,
+    onSecondaryContainer = Ink,
+    background = Ink,
+    onBackground = Paper,
+    surface = Color(0xFF1A3C38),
+    onSurface = Paper,
+    surfaceVariant = Color(0xFF224844),
+    onSurfaceVariant = Color(0xFFA9BDB8),
+    error = Color(0xFFD98E6B),
+    onError = Ink,
+    outline = Color(0xFF3C5D58),
+    outlineVariant = Color(0xFF2A4A46),
 )
 
-// Sudut membulat modern.
+// Sudut editorial: field lembut, tombol pill via komponen.
 private val KasKuShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(14.dp),
-    medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(28.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(18.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
-/** Default GELAP (midnight premium). Kirim darkTheme=false untuk fallback light. */
+/** Default TERANG (editorial paper). Kirim darkTheme=true untuk fallback ink. */
 @Composable
 fun KasKuTheme(
-    darkTheme: Boolean = true,
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(

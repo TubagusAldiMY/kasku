@@ -34,14 +34,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tech.tubsamy.kasku.ui.components.Hairline
 import tech.tubsamy.kasku.ui.components.LedgerRow
 import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.components.SectionLabel
+import tech.tubsamy.kasku.ui.theme.KasKuGold
+import tech.tubsamy.kasku.ui.theme.KasKuInk
+import tech.tubsamy.kasku.ui.theme.KasKuTealSoft
+import tech.tubsamy.kasku.ui.theme.LabelEyebrow
 
 @Composable
 fun HomeScreen(
@@ -64,9 +71,8 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Akun Saya",
+                text = "Akun saya",
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Konflik hanya muncul saat ada — badge coral, tap → layar konflik.
@@ -134,17 +140,16 @@ fun HomeScreen(
     }
 }
 
-/** Kartu saldo bergaya kartu ATM/debit — gradient, chip emas, contactless, nomor bertopeng. */
+/** Kartu saldo bergaya kartu fisik di atas ink brand — chip emas, contactless, nomor bertopeng. */
 @Composable
 private fun BalanceCard(total: Long) {
+    val paper = MaterialTheme.colorScheme.background
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(colors = listOf(Color(0xFF1E6B62), Color(0xFF0C2E2B))),
-            )
+            .background(KasKuInk)
             .padding(24.dp),
     ) {
         Column(
@@ -156,29 +161,29 @@ private fun BalanceCard(total: Long) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Chip emas EMV
+                // Chip emas EMV — gradasi gold palet editorial.
                 Box(
                     modifier = Modifier
                         .size(width = 46.dp, height = 34.dp)
                         .clip(RoundedCornerShape(7.dp))
                         .background(
-                            Brush.linearGradient(colors = listOf(Color(0xFFE8CC7A), Color(0xFFB8912F))),
+                            Brush.linearGradient(colors = listOf(Color(0xFFD9BC6A), KasKuGold)),
                         ),
                 )
                 Icon(
                     Icons.Outlined.Contactless,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.85f),
+                    tint = paper.copy(alpha = 0.85f),
                 )
             }
             Column {
                 Text(
-                    "Total Saldo",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.7f),
+                    "TOTAL SALDO",
+                    style = LabelEyebrow,
+                    color = paper.copy(alpha = 0.7f),
                 )
                 Spacer(Modifier.height(2.dp))
-                MoneyText(total, fontSize = 34, color = Color.White)
+                MoneyText(total, fontSize = 34, color = paper)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -187,18 +192,21 @@ private fun BalanceCard(total: Long) {
                 Text(
                     "•••• •••• •••• ••••",
                     modifier = Modifier.weight(1f),
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = paper.copy(alpha = 0.75f),
                     fontSize = 15.sp,
                     letterSpacing = 1.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
                 )
                 Spacer(Modifier.width(12.dp))
+                // Wordmark editorial: "Kas" + "Ku" italic teal lembut.
                 Text(
-                    "KasKu",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                    buildAnnotatedString {
+                        append("Kas")
+                        withStyle(SpanStyle(color = KasKuTealSoft, fontStyle = FontStyle.Italic)) { append("Ku") }
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    color = paper,
                     maxLines = 1,
                     softWrap = false,
                 )

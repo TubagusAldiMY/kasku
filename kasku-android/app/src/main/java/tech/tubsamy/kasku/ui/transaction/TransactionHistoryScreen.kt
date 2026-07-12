@@ -1,5 +1,6 @@
 package tech.tubsamy.kasku.ui.transaction
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
@@ -31,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.data.TransactionItem
 import tech.tubsamy.kasku.ui.components.Hairline
-import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.formatIdr
 
 @Composable
@@ -50,14 +52,15 @@ fun TransactionHistoryScreen(
             .fillMaxSize()
             .padding(24.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("Riwayat", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        }
+        Text("Riwayat transaksi", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "${items.size} transaksi",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         if (items.isEmpty()) {
             Column(
@@ -67,7 +70,7 @@ fun TransactionHistoryScreen(
             ) {
                 Text(
                     "Belum ada transaksi.",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         } else {
@@ -105,6 +108,19 @@ fun TransactionHistoryScreen(
     }
 }
 
+/** Chip kategori editorial: pill outline tipis, teks kecil muted. */
+@Composable
+private fun CategoryChip(name: String) {
+    Text(
+        name,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(999.dp))
+            .padding(horizontal = 9.dp, vertical = 2.dp),
+    )
+}
+
 @Composable
 private fun TransactionRow(
     tx: TransactionItem,
@@ -112,26 +128,42 @@ private fun TransactionRow(
     onDelete: () -> Unit,
 ) {
     val isIncome = tx.type == "INCOME"
-    // income = primary (teal), expense = error (clay). Tanpa hardcode hex.
-    val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    // Gaya tabel desain: income teal semibold (+), expense ink netral (−).
+    val amountColor = if (isIncome) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+    // Angka rata: tabular figures supaya kolom nominal lurus antar-baris.
+    val amountStyle = MaterialTheme.typography.bodyLarge.copy(
+        fontFeatureSettings = "tnum",
+        fontWeight = if (isIncome) FontWeight.SemiBold else FontWeight.Normal,
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onEdit) // tap baris = edit
             .padding(vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(tx.categoryName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        // Kolom tanggal ala tabel editorial ("2026-07-08" → "08/07").
+        Text(
+            tx.date.takeLast(5).split("-").reversed().joinToString("/"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(44.dp),
+        )
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
             Text(
-                text = tx.notes?.takeIf { it.isNotBlank() }?.let { "${tx.date} · $it" } ?: tx.date,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                tx.notes?.takeIf { it.isNotBlank() } ?: tx.categoryName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
             )
+            Spacer(Modifier.height(4.dp))
+            CategoryChip(tx.categoryName)
         }
-        MoneyText(if (isIncome) tx.amountIdr else -tx.amountIdr, fontSize = 20, color = amountColor, signed = true)
+        Text(
+            (if (isIncome) "+" else "−") + formatIdr(tx.amountIdr).removePrefix("Rp "),
+            style = amountStyle,
+            color = amountColor,
+        )
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Outlined.Delete,

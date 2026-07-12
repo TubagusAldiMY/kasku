@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import tech.tubsamy.kasku.ui.components.PrimaryButton
+import tech.tubsamy.kasku.ui.components.SectionLabel
 
 // (nilai server, label UI). Single source of truth untuk dropdown jenis aset.
 private val ASSET_TYPES = listOf(
@@ -57,7 +56,7 @@ fun AddInvestmentScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Tambah Investasi", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Tambah investasi", style = MaterialTheme.typography.headlineSmall)
             TextButton(onClick = onCancel) { Text("Batal") }
         }
 
@@ -74,7 +73,7 @@ fun AddInvestmentScreen(
         Spacer(Modifier.height(16.dp))
 
         // Jenis aset (dropdown)
-        Text("Jenis aset", style = MaterialTheme.typography.labelMedium)
+        SectionLabel("Jenis aset")
         Spacer(Modifier.height(4.dp))
         Box {
             OutlinedButton(onClick = { typeMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
@@ -136,20 +135,11 @@ fun AddInvestmentScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
+        PrimaryButton(
+            text = "Simpan",
             onClick = { vm.save(onSaved) },
             enabled = vm.canSave,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (vm.saving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.height(18.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Simpan")
-            }
-        }
+            loading = vm.saving,
+        )
     }
 }

@@ -183,7 +183,18 @@ fun AppRoot(container: AppContainer) {
                     appContext,
                 ),
             )
-            DashboardScreen(vm = vm, onBack = { nav.popBackStack() })
+            DashboardScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onSeeAllHistory = {
+                    // Sama seperti pindah tab: satu instance, state dipulihkan.
+                    nav.navigate(Routes.HISTORY) {
+                        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+            )
         }
         composable(Routes.HISTORY) {
             val vm: TransactionHistoryViewModel = viewModel(
