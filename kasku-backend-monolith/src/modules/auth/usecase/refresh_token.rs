@@ -92,7 +92,7 @@ impl RefreshTokenUseCase {
         let access_token = encode(&Header::new(Algorithm::RS256), &claims, &encoding_key)
             .map_err(|e| AuthError::Internal(anyhow::anyhow!("JWT encode error: {}", e)))?;
 
-        let (raw_new, new_hash) = generate_secure_token().map_err(|e| AuthError::Internal(e))?;
+        let (raw_new, new_hash) = generate_secure_token().map_err(AuthError::Internal)?;
 
         let new_rt = RefreshToken {
             id: Uuid::new_v4(),

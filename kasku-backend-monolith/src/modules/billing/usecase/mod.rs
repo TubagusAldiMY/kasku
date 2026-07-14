@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::modules::billing::domain::repository::{PaymentRepository, SubscriptionPlanRepository, SubscriptionRepository};
+use crate::modules::billing::infrastructure::orchestrator_client::OrchestratorClient;
 use crate::shared::middleware::tier_inject::TierLimits;
 use self::get_tier_limits::GetTierLimitsUseCaseImpl;
 
@@ -26,6 +27,7 @@ pub struct BillingUseCases {
     pub create_payment: create_payment::CreatePaymentUseCase,
     pub cancel_subscription: cancel_subscription::CancelSubscriptionUseCase,
     pub expire_subscriptions: expire_subscriptions::ExpireSubscriptionsUseCase,
+    pub handle_webhook: handle_webhook::HandleWebhookUseCase,
     pub get_tier_limits: Arc<GetTierLimitsUseCaseImpl>,
 }
 
@@ -34,7 +36,7 @@ impl BillingUseCases {
         plan_repo: Arc<dyn SubscriptionPlanRepository>,
         sub_repo: Arc<dyn SubscriptionRepository>,
         payment_repo: Arc<dyn PaymentRepository>,
-        orchestrator_url: Option<String>,
+        orchestrator: Option<Arc<OrchestratorClient>>,
         webhook_secret: Option<String>,
         pool: sqlx_postgres::PgPool,
     ) -> Self {
@@ -43,10 +45,11 @@ impl BillingUseCases {
             list_plans: list_plans::ListPlansUseCase::new(plan_repo.clone()),
             get_subscription: get_subscription::GetSubscriptionUseCase::new(sub_repo.clone(), plan_repo.clone()),
             create_payment: create_payment::CreatePaymentUseCase::new(
-                sub_repo.clone(), plan_repo.clone(), payment_repo.clone(), orchestrator_url,
+                sub_repo.clone(), plan_repo.clone(), payment_repo.clone(), orchestrator,
             ),
             cancel_subscription: cancel_subscription::CancelSubscriptionUseCase::new(sub_repo.clone(), pool.clone()),
             expire_subscriptions: expire_subscriptions::ExpireSubscriptionsUseCase::new(sub_repo.clone(), pool.clone()),
+            handle_webhook: handle_webhook::HandleWebhookUseCase::new(payment_repo.clone(), pool.clone(), webhook_secret),
             get_tier_limits: tier_uc,
         }
     }

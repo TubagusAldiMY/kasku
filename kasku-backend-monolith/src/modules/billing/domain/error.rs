@@ -14,8 +14,14 @@ pub enum BillingError {
     #[error("webhook signature tidak valid")]
     InvalidWebhookSignature,
 
+    #[error("webhook payload tidak valid")]
+    InvalidWebhookPayload,
+
     #[error("payment sudah diproses")]
     PaymentAlreadyProcessed,
+
+    #[error("payment gateway tidak tersedia")]
+    PaymentGatewayUnavailable,
 
     #[error("internal error: {0}")]
     Internal(#[from] anyhow::Error),

@@ -1,5 +1,4 @@
 use sqlx_postgres::PgPool;
-use sqlx::migrate::MigrateDatabase;
 
 pub async fn new_postgres_pool(database_url: &str, max_connections: u32) -> anyhow::Result<PgPool> {
     let pool = sqlx_postgres::PgPoolOptions::new()

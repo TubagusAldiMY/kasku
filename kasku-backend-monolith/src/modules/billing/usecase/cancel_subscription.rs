@@ -4,7 +4,7 @@ use serde_json::json;
 use sqlx_postgres::PgPool;
 use uuid::Uuid;
 
-use crate::modules::billing::domain::{error::BillingError, repository::{SubscriptionPlanRepository, SubscriptionRepository}};
+use crate::modules::billing::domain::{error::BillingError, repository::SubscriptionRepository};
 
 pub struct CancelSubscriptionUseCase {
     sub_repo: Arc<dyn SubscriptionRepository>,

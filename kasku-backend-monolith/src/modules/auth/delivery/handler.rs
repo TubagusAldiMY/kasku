@@ -54,7 +54,7 @@ pub async fn register(
 ) -> Result<Response, AppError> {
     let ip = get_client_ip(&headers);
     let rl = check_register(&state.redis_pool, &ip).await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
     rate_limited_if_denied(rl)?;
 
     let out = state.auth_uc.register.execute(RegisterInput {
@@ -79,11 +79,11 @@ pub async fn login(
     let ip = get_client_ip(&headers);
 
     let rl_ip = check_login_ip(&state.redis_pool, &ip).await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
     rate_limited_if_denied(rl_ip)?;
 
     let rl_email = check_login_email(&state.redis_pool, &req.email).await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
     rate_limited_if_denied(rl_email)?;
 
     let user_agent = headers.get("User-Agent").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
@@ -164,7 +164,7 @@ pub async fn forgot_password(
     Json(req): Json<ForgotPasswordRequest>,
 ) -> Result<Response, AppError> {
     let rl = check_forgot_password(&state.redis_pool, &req.email).await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
     rate_limited_if_denied(rl)?;
 
     state.auth_uc.forgot_password.execute(&req.email)

@@ -28,11 +28,3 @@ pub struct CreatePaymentResponse {
     pub amount_idr: i64,
     pub payment_url: Option<String>,
 }
-
-#[derive(Debug, Deserialize)]
-pub struct WebhookRequest {
-    pub order_id: String,
-    pub status: String,
-    pub signature: String,
-    pub user_email: Option<String>,
-}

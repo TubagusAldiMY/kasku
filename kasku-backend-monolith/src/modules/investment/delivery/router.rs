@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use axum::{middleware, routing::{delete, get, post, put}, Router};
+use axum::{middleware, routing::{get, post}, Router};
 
 use crate::app_state::AppState;
 use crate::shared::middleware::auth::auth_middleware;

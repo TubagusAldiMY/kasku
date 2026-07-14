@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::modules::auth::domain::{entity::RefreshToken, error::AuthError, repository::{RefreshTokenRepository, UserRepository}};
-use crate::modules::auth::usecase::helpers::{generate_secure_token, mask_email, sha256_hex, verify_password};
+use crate::modules::auth::usecase::helpers::{generate_secure_token, mask_email, verify_password};
 use crate::modules::billing::usecase::GetTierLimitsUseCase;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -76,7 +76,7 @@ impl LoginUseCase {
         }
 
         let password_valid = verify_password(&input.password, &user.password_hash)
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         if !password_valid {
             self.user_repo.increment_failed_login_and_lock(
@@ -118,7 +118,7 @@ impl LoginUseCase {
 
         // Refresh token
         let (raw_refresh, refresh_hash) = generate_secure_token()
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         let rt = RefreshToken {
             id: Uuid::new_v4(),

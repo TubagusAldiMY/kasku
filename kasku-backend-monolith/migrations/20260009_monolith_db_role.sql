@@ -1,13 +1,6 @@
--- 20260009: Single monolith DB role — kasku_app
--- Run as superuser before migrations 20260002–20260008 if role doesn't exist.
--- This migration is idempotent.
-
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kasku_app') THEN
-        CREATE ROLE kasku_app LOGIN PASSWORD 'changeme';
-    END IF;
-END $$;
+-- 20260009: Grants for the monolith DB role kasku_app.
+-- The role itself is created in 20260001 (before any GRANT ... TO kasku_app runs),
+-- so this migration only assigns privileges. Idempotent.
 
 -- Grant on all existing schemas
 GRANT USAGE ON SCHEMA auth, user_mgmt, billing, notification, admin_panel, price TO kasku_app;
