@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::modules::transaction::domain::entity::{
-    Budget, BudgetWithProgress, Category, Transaction, TransactionSummary,
+    BudgetWithProgress, Category, Transaction, TransactionSummary,
 };
 
 // ---------- Transaction DTOs ----------

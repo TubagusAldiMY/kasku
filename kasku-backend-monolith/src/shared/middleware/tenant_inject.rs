@@ -1,8 +1,6 @@
-use axum::{extract::{Request, State}, middleware::Next, response::Response};
-use std::sync::Arc;
+use axum::{extract::Request, middleware::Next, response::Response};
 
 use crate::app_error::AppError;
-use crate::app_state::AppState;
 use crate::shared::middleware::auth::AuthClaims;
 use crate::shared::tenant::validate_tenant_schema;
 

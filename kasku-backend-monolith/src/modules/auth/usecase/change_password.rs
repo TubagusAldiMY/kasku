@@ -21,14 +21,14 @@ impl ChangePasswordUseCase {
             .ok_or(AuthError::UserNotFound)?;
 
         let valid = verify_password(current_password, &user.password_hash)
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         if !valid {
             return Err(AuthError::InvalidCredentials);
         }
 
         let new_hash = hash_password(new_password, &self.argon2_cfg)
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         self.user_repo.update_password(user_id, &new_hash).await?;
 

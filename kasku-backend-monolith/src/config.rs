@@ -70,6 +70,7 @@ pub struct Config {
 
     // Payment
     pub payment_orchestrator_url: Option<String>,
+    pub payment_orchestrator_api_key: Option<String>,
     pub payment_webhook_secret: Option<String>,
 
     // Price (MetalsLive only — CoinGecko removed)
@@ -140,17 +141,14 @@ impl Config {
 
 fn parse_duration_str(s: &str) -> anyhow::Result<Duration> {
     let s = s.trim();
-    if s.ends_with('s') {
-        let n: u64 = s[..s.len() - 1].parse()?;
-        return Ok(Duration::from_secs(n));
+    if let Some(n) = s.strip_suffix('s') {
+        return Ok(Duration::from_secs(n.parse()?));
     }
-    if s.ends_with('m') {
-        let n: u64 = s[..s.len() - 1].parse()?;
-        return Ok(Duration::from_secs(n * 60));
+    if let Some(n) = s.strip_suffix('m') {
+        return Ok(Duration::from_secs(n.parse::<u64>()? * 60));
     }
-    if s.ends_with('h') {
-        let n: u64 = s[..s.len() - 1].parse()?;
-        return Ok(Duration::from_secs(n * 3600));
+    if let Some(n) = s.strip_suffix('h') {
+        return Ok(Duration::from_secs(n.parse::<u64>()? * 3600));
     }
     Err(anyhow::anyhow!("unknown duration format: {}", s))
 }

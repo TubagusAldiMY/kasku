@@ -4,7 +4,7 @@ use lapin::{
     types::FieldTable,
     BasicProperties, Channel, Connection, ConnectionProperties, ExchangeKind,
 };
-use tracing::{error, info};
+use tracing::info;
 
 pub const EXCHANGE_NAME: &str = "kasku.events";
 

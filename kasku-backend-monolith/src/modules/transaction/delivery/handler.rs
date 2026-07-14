@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use uuid::Uuid;
 
 use crate::app_error::AppError;
@@ -19,6 +19,11 @@ use crate::modules::transaction::domain::entity::{BudgetPeriodType, CategoryType
 use super::dto::*;
 
 fn parse_datetime(s: &str) -> Result<DateTime<Utc>, AppError> {
+    // Terima date-only `YYYY-MM-DD` (kontrak kanonik klien Android/web & microservice,
+    // kolom DB bertipe DATE) maupun RFC3339 penuh. Date-only → tengah malam UTC.
+    if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+        return Ok(DateTime::from_naive_utc_and_offset(d.and_time(NaiveTime::MIN), Utc));
+    }
     DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|_| AppError::Validation(format!("format tanggal tidak valid: {}", s)))
@@ -26,17 +31,17 @@ fn parse_datetime(s: &str) -> Result<DateTime<Utc>, AppError> {
 
 fn parse_transaction_type(s: &str) -> Result<TransactionType, AppError> {
     s.parse::<TransactionType>()
-        .map_err(|e| AppError::Validation(e))
+        .map_err(AppError::Validation)
 }
 
 fn parse_category_type(s: &str) -> Result<CategoryType, AppError> {
     s.parse::<CategoryType>()
-        .map_err(|e| AppError::Validation(e))
+        .map_err(AppError::Validation)
 }
 
 fn parse_budget_period_type(s: &str) -> Result<BudgetPeriodType, AppError> {
     s.parse::<BudgetPeriodType>()
-        .map_err(|e| AppError::Validation(e))
+        .map_err(AppError::Validation)
 }
 
 fn default_from() -> DateTime<Utc> {

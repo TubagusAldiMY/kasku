@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Utc};
-use sqlx::Acquire;
 use sqlx_postgres::PgPool;
 use uuid::Uuid;
 
@@ -262,11 +261,9 @@ impl TransactionRepository for PostgresTransactionRepository {
 
     async fn list_for_export(&self, schema: &str, user_id: Uuid, from: Option<DateTime<Utc>>, to: Option<DateTime<Utc>>) -> Result<Vec<Transaction>, TransactionError> {
         let schema = validate_tenant_schema(schema).map_err(|_| TransactionError::TenantNotProvisioned)?;
-        let mut conditions = vec![
-            "a.user_id = $1".to_string(),
-            "t.is_deleted = false".to_string(),
-        ];
-        let mut bindings: Vec<Box<dyn Fn(sqlx::query::Query<sqlx::Postgres, sqlx::postgres::PgArguments>) -> sqlx::query::Query<sqlx::Postgres, sqlx::postgres::PgArguments> + Send>> = vec![];
+        let _conditions = ["a.user_id = $1".to_string(),
+            "t.is_deleted = false".to_string()];
+        let bindings: Vec<Box<dyn Fn(sqlx::query::Query<sqlx::Postgres, sqlx::postgres::PgArguments>) -> sqlx::query::Query<sqlx::Postgres, sqlx::postgres::PgArguments> + Send>> = vec![];
         let _ = bindings; // unused - we use a simpler approach below
 
         // Use optional date filtering inline

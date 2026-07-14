@@ -1,3 +1,14 @@
+// Monolith ini adalah port bertahap dari 11 microservice. Sebagian API surface sudah
+// dimodelkan lengkap (varian error domain, method repository, field entity yang mirror
+// kolom DB) tapi belum semua endpoint-nya di-wire, sehingga menghasilkan dead_code
+// warning yang bukan bug. Dibungkam di level crate; cabut allow ini saat wiring selesai
+// untuk kembali mendapat sinyal. Gap fungsional nyata (mis. rate-limit refresh/sync belum
+// terpasang) dilacak terpisah, bukan lewat lint ini.
+#![allow(dead_code)]
+// Konstruktor use-case menerima banyak dependency lewat DI eksplisit (mis. AuthUseCases::new
+// dengan 14 arg). Ini disengaja — alternatifnya struct params hanya memindah boilerplate.
+#![allow(clippy::too_many_arguments)]
+
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
@@ -21,6 +32,7 @@ use modules::auth::infrastructure::{
 };
 use modules::auth::usecase::{helpers::Argon2Config, AuthUseCases};
 use modules::billing::infrastructure::{
+    orchestrator_client::OrchestratorClient,
     payment_repo::PostgresPaymentRepository,
     plan_repo::PostgresSubscriptionPlanRepository,
     subscription_repo::PostgresSubscriptionRepository,
@@ -99,11 +111,35 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(PostgresPaymentRepository::new(pool.clone()));
 
     // ---- Billing ----
+    // Payment Orchestrator client — hanya aktif jika URL + API key di-set. Kalau tidak,
+    // create_payment jalan tanpa gateway (PENDING lokal, payment_url kosong).
+    let orchestrator = match (
+        cfg.payment_orchestrator_url.clone(),
+        cfg.payment_orchestrator_api_key.clone(),
+    ) {
+        (Some(url), Some(key)) => {
+            match OrchestratorClient::new(
+                url,
+                key,
+                Duration::from_secs(cfg.external_request_timeout_seconds),
+            ) {
+                Ok(c) => Some(Arc::new(c)),
+                Err(e) => {
+                    tracing::error!(error = %e, "gagal inisialisasi payment orchestrator client");
+                    None
+                }
+            }
+        }
+        _ => {
+            tracing::warn!("PAYMENT_ORCHESTRATOR_URL/PAYMENT_ORCHESTRATOR_API_KEY tidak di-set — create_payment jalan tanpa orchestrator");
+            None
+        }
+    };
     let billing_uc = Arc::new(BillingUseCases::new(
         plan_repo.clone(),
         sub_repo.clone(),
         payment_repo,
-        cfg.payment_orchestrator_url.clone(),
+        orchestrator,
         cfg.payment_webhook_secret.clone(),
         pool.clone(),
     ));

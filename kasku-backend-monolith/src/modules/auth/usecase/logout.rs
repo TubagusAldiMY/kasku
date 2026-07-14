@@ -21,7 +21,7 @@ impl LogoutUseCase {
         if ttl > 0 {
             blacklist_token(&self.redis_pool, &claims.jti, ttl)
                 .await
-                .map_err(|e| AuthError::Internal(e))?;
+                .map_err(AuthError::Internal)?;
         }
 
         // Revoke refresh token if provided

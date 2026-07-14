@@ -69,7 +69,12 @@ impl<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow> for Transaction {
             budget_id: row.try_get("budget_id")?,
             transaction_type,
             amount_idr: row.try_get("amount_idr")?,
-            transaction_date: row.try_get("transaction_date")?,
+            // Kolom DB `transaction_date` bertipe DATE — baca sebagai NaiveDate lalu
+            // normalisasi ke tengah malam UTC (field entity tetap DateTime<Utc>).
+            transaction_date: {
+                let d: chrono::NaiveDate = row.try_get("transaction_date")?;
+                DateTime::from_naive_utc_and_offset(d.and_time(chrono::NaiveTime::MIN), Utc)
+            },
             notes: row.try_get("notes")?,
             to_account_id: row.try_get("to_account_id")?,
             is_deleted: row.try_get("is_deleted")?,

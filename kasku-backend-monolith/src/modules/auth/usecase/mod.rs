@@ -22,7 +22,6 @@ use sqlx_postgres::PgPool;
 
 use self::{
     change_password::ChangePasswordUseCase,
-    cleanup::AuthCleanupTask,
     forgot_password::ForgotPasswordUseCase,
     helpers::Argon2Config,
     login::LoginUseCase,
