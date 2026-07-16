@@ -46,7 +46,7 @@ func TestTransactionRepository_CRUD(t *testing.T) {
 
 	t.Run("Create dan GetByID", func(t *testing.T) {
 		tx := newTx(100_000, entity.TransactionIncome)
-		require.NoError(t, repo.Create(ctx, tenantSchema, tx))
+		require.NoError(t, repo.Create(ctx, tenantSchema, userID.String(), tx))
 
 		got, err := repo.GetByID(ctx, tenantSchema, tx.ID.String(), userID.String())
 		require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestTransactionRepository_CRUD(t *testing.T) {
 
 	t.Run("List — mengembalikan transaksi dalam rentang waktu", func(t *testing.T) {
 		tx := newTx(50_000, entity.TransactionExpense)
-		require.NoError(t, repo.Create(ctx, tenantSchema, tx))
+		require.NoError(t, repo.Create(ctx, tenantSchema, userID.String(), tx))
 
 		from := time.Now().UTC().AddDate(0, -1, 0)
 		to := time.Now().UTC().AddDate(0, 1, 0)
@@ -74,7 +74,7 @@ func TestTransactionRepository_CRUD(t *testing.T) {
 
 	t.Run("SoftDelete — transaksi tidak muncul di GetByID", func(t *testing.T) {
 		tx := newTx(25_000, entity.TransactionExpense)
-		require.NoError(t, repo.Create(ctx, tenantSchema, tx))
+		require.NoError(t, repo.Create(ctx, tenantSchema, userID.String(), tx))
 
 		require.NoError(t, repo.SoftDelete(ctx, tenantSchema, tx.ID.String(), userID.String()))
 
@@ -90,7 +90,7 @@ func TestTransactionRepository_CRUD(t *testing.T) {
 
 	t.Run("ListForExport — semua transaksi user dikembalikan", func(t *testing.T) {
 		tx := newTx(200_000, entity.TransactionIncome)
-		require.NoError(t, repo.Create(ctx, tenantSchema, tx))
+		require.NoError(t, repo.Create(ctx, tenantSchema, userID.String(), tx))
 
 		all, err := repo.ListForExport(ctx, tenantSchema, userID.String(), nil, nil)
 		require.NoError(t, err)

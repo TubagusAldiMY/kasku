@@ -39,7 +39,7 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		userID := testUserID()
 		accountID := testAccountID()
 
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(nil)
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any(), gomock.Any()).Return(nil)
 
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
 		tx, err := uc.Execute(context.Background(), baseInput(userID, accountID))
@@ -86,7 +86,7 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		catRepo := mocks.NewMockCategoryRepository(ctrl)
 		userID := testUserID()
 
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(nil)
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any(), gomock.Any()).Return(nil)
 		// CountMonthly tidak boleh dipanggil
 
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
@@ -103,7 +103,7 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		catRepo := mocks.NewMockCategoryRepository(ctrl)
 		userID := testUserID()
 
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(nil)
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any(), gomock.Any()).Return(nil)
 
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
 		input := baseInput(userID, testAccountID())
@@ -114,20 +114,18 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		assert.NoError(t, parseErr, "SyncID harus berupa UUID yang valid")
 	})
 
-	t.Run("AccountID tidak valid UUID — tidak panic, disimpan sebagai zero UUID", func(t *testing.T) {
+	t.Run("AccountID tidak valid UUID — ErrInvalidInput, Create tidak dipanggil", func(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		txRepo := mocks.NewMockTransactionRepository(ctrl)
 		catRepo := mocks.NewMockCategoryRepository(ctrl)
 		userID := testUserID()
 
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(nil)
-
+		// Create tidak boleh dipanggil — parse gagal harus ditolak di usecase.
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
 		input := baseInput(userID, "bukan-uuid")
-		tx, err := uc.Execute(context.Background(), input)
-		require.NoError(t, err)
-		assert.Equal(t, uuid.Nil, tx.AccountID) // invalid UUID → zero value
+		_, err := uc.Execute(context.Background(), input)
+		assert.ErrorIs(t, err, domainerrors.ErrInvalidInput)
 	})
 
 	t.Run("repo error saat Create — propagate", func(t *testing.T) {
@@ -137,7 +135,7 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		catRepo := mocks.NewMockCategoryRepository(ctrl)
 		userID := testUserID()
 
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(errors.New("db error"))
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
 
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
 		_, err := uc.Execute(context.Background(), baseInput(userID, testAccountID()))
@@ -153,7 +151,7 @@ func TestCreateTransactionUseCase_Execute(t *testing.T) {
 		userID := testUserID()
 
 		// Repository mengembalikan ErrInsufficientBalance (dicek di dalam DB transaction).
-		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any()).Return(domainerrors.ErrInsufficientBalance)
+		txRepo.EXPECT().Create(gomock.Any(), testTenant, gomock.Any(), gomock.Any()).Return(domainerrors.ErrInsufficientBalance)
 
 		uc := usecase.NewCreateTransactionUseCase(txRepo, catRepo)
 		input := baseInput(userID, testAccountID())

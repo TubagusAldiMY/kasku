@@ -33,32 +33,25 @@ func (uc *RecordDebtPaymentUseCase) Execute(ctx context.Context, input RecordDeb
 		return nil, fmt.Errorf("%w: jumlah pembayaran harus lebih dari 0", domainerrors.ErrInvalidInput)
 	}
 
-	debt, err := uc.repo.GetByID(ctx, input.TenantSchema, input.DebtID, input.UserID)
+	debtID, err := uuid.Parse(input.DebtID)
 	if err != nil {
-		return nil, err
-	}
-
-	if debt.Status == entity.DebtStatusSettled {
-		return nil, domainerrors.ErrDebtAlreadySettled
-	}
-	if input.Amount > debt.RemainingAmount {
-		return nil, domainerrors.ErrPaymentExceedsDebt
+		return nil, fmt.Errorf("%w: debt id tidak valid", domainerrors.ErrInvalidInput)
 	}
 
 	payment := &entity.DebtPayment{
 		ID:          uuid.New(),
-		DebtID:      debt.ID,
+		DebtID:      debtID,
 		Amount:      input.Amount,
 		PaymentDate: input.PaymentDate,
 		Notes:       input.Notes,
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	if err := uc.repo.CreatePayment(ctx, input.TenantSchema, payment); err != nil {
-		return nil, fmt.Errorf("gagal catat pembayaran: %w", err)
-	}
-	if err := uc.repo.DeductRemaining(ctx, input.TenantSchema, input.DebtID, input.Amount); err != nil {
-		return nil, fmt.Errorf("gagal update sisa hutang: %w", err)
+	// RecordPayment melakukan insert payment + deduct remaining secara atomik
+	// (SELECT ... FOR UPDATE). Validasi status/jumlah dilakukan di dalam transaksi
+	// terhadap nilai terkunci sehingga tidak ada race check-then-act.
+	if err := uc.repo.RecordPayment(ctx, input.TenantSchema, input.DebtID, input.UserID, payment); err != nil {
+		return nil, err
 	}
 
 	return payment, nil

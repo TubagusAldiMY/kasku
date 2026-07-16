@@ -153,7 +153,7 @@ func main() {
 
 	// ── Middleware ────────────────────────────────────────────────────────────
 	authMiddleware := middleware.Auth(jwtVerifyUC, tierProvider)
-	rateLimitMiddleware := middleware.RateLimit(rateLimitUC)
+	rateLimitMiddleware := middleware.RateLimit(rateLimitUC, logger)
 	corsMiddleware := middleware.CORS(cfg.CORS.AllowedOrigins)
 
 	// ── Router ────────────────────────────────────────────────────────────────
@@ -167,6 +167,8 @@ func main() {
 		IsDev:               cfg.IsDevelopment(),
 		Logger:              logger,
 		Metrics:             metricsReg,
+		TrustedProxies:      cfg.Server.TrustedProxies,
+		MetricsToken:        cfg.Server.MetricsToken,
 	})
 
 	// ── HTTP Server ───────────────────────────────────────────────────────────

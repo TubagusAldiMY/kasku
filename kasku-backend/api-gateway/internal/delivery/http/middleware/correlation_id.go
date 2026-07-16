@@ -12,18 +12,38 @@ const (
 	CorrelationIDKey    = "correlation_id"
 )
 
+// maxCorrelationIDLen membatasi panjang correlation ID dari klien agar tidak dipakai
+// untuk log flooding / injection payload.
+const maxCorrelationIDLen = 64
+
 // CorrelationID meng-inject X-Correlation-ID ke setiap request.
-// Jika header sudah ada dari upstream client, nilainya dipertahankan.
+// Nilai dari klien HANYA dipertahankan jika valid (charset & panjang terbatas) —
+// mencegah injeksi karakter berbahaya ke log/trace. Jika tidak valid atau absen, generate baru.
 func CorrelationID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		correlationID := c.GetHeader(CorrelationIDHeader)
-		if correlationID == "" {
+		if !isValidCorrelationID(correlationID) {
 			correlationID = uuid.New().String()
 		}
 		c.Set(CorrelationIDKey, correlationID)
 		c.Header(CorrelationIDHeader, correlationID)
 		c.Next()
 	}
+}
+
+// isValidCorrelationID menerima hanya [A-Za-z0-9-] dengan panjang 1..maxCorrelationIDLen.
+func isValidCorrelationID(s string) bool {
+	if s == "" || len(s) > maxCorrelationIDLen {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // GetCorrelationID mengambil correlation ID dari Gin context.

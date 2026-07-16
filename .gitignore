@@ -60,3 +60,6 @@ ui-example
 not-push
 
 .claude
+
+# Metadata tooling Claude Code skills — bukan source
+skills-lock.json

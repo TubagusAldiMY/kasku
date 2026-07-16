@@ -255,6 +255,7 @@ func main() {
 		forgotPasswordUC,
 		resetPasswordUC,
 		changePasswordUC,
+		validateTokenUC,
 		healthChecker,
 		cfg.App.ServiceVersion,
 		cfg.IsDevelopment(),

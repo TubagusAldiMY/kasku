@@ -43,6 +43,7 @@ type AuthHandler struct {
 	forgotPasswordUC     usecase.ForgotPasswordUseCase
 	resetPasswordUC      usecase.ResetPasswordUseCase
 	changePasswordUC     usecase.ChangePasswordUseCase
+	validateTokenUC      usecase.ValidateAccessTokenUseCase
 	healthChecker        HealthChecker
 	serviceVersion       string
 	isDev                bool
@@ -61,6 +62,7 @@ func NewAuthHandler(
 	forgotPasswordUC usecase.ForgotPasswordUseCase,
 	resetPasswordUC usecase.ResetPasswordUseCase,
 	changePasswordUC usecase.ChangePasswordUseCase,
+	validateTokenUC usecase.ValidateAccessTokenUseCase,
 	healthChecker HealthChecker,
 	serviceVersion string,
 	isDev bool,
@@ -77,6 +79,7 @@ func NewAuthHandler(
 		forgotPasswordUC:     forgotPasswordUC,
 		resetPasswordUC:      resetPasswordUC,
 		changePasswordUC:     changePasswordUC,
+		validateTokenUC:      validateTokenUC,
 		healthChecker:        healthChecker,
 		serviceVersion:       serviceVersion,
 		isDev:                isDev,
@@ -314,17 +317,25 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	response.OK(c, gin.H{"message": "Password berhasil direset. Silakan login dengan password baru."})
 }
 
-// ChangePassword menangani PUT /auth/change-password (butuh JWT — X-User-ID diinject api-gateway).
+// ChangePassword menangani PUT /auth/change-password.
+// Identitas diambil dari klaim 'sub' access token yang diverifikasi lokal (RS256),
+// bukan dari header X-User-ID yang bisa dipalsukan.
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
-	userIDStr := c.GetHeader("X-User-ID")
-	if userIDStr == "" {
-		response.Fail(c, http.StatusUnauthorized, "UNAUTHORIZED", "Header autentikasi tidak ditemukan.", nil)
+	accessToken := extractBearerToken(c)
+	if accessToken == "" {
+		response.Fail(c, http.StatusUnauthorized, "UNAUTHORIZED", "Access token tidak ditemukan.", nil)
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	claims, err := h.validateTokenUC.Execute(c.Request.Context(), accessToken)
 	if err != nil {
-		response.Fail(c, http.StatusBadRequest, "INVALID_INPUT", "User ID tidak valid.", nil)
+		response.Fail(c, http.StatusUnauthorized, "INVALID_TOKEN", "Access token tidak valid.", nil)
+		return
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		response.Fail(c, http.StatusUnauthorized, "INVALID_TOKEN", "Access token tidak valid.", nil)
 		return
 	}
 

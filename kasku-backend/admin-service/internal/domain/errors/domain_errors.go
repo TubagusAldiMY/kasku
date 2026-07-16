@@ -15,6 +15,7 @@ func (e *DomainError) Error() string {
 // Pre-defined domain errors. Pesan singkat, kode konsisten dengan KasKu naming.
 var (
 	ErrInvalidCredentials = &DomainError{Code: "INVALID_CREDENTIALS", Message: "Username atau password salah."}
+	ErrTooManyAttempts    = &DomainError{Code: "TOO_MANY_ATTEMPTS", Message: "Terlalu banyak percobaan login. Coba lagi nanti."}
 	ErrAdminInactive      = &DomainError{Code: "ADMIN_INACTIVE", Message: "Akun admin dinonaktifkan."}
 	ErrAdminNotFound      = &DomainError{Code: "ADMIN_NOT_FOUND", Message: "Admin tidak ditemukan."}
 	ErrUserNotFound       = &DomainError{Code: "USER_NOT_FOUND", Message: "User tidak ditemukan."}
