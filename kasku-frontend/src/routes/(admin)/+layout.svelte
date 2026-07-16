@@ -10,6 +10,12 @@
 
 	const isLoginRoute = $derived(page.url.pathname.endsWith('/admin/login'));
 
+	// Role admin yang backend terbitkan di JWT claim `role` (admin-service entity.AdminRole).
+	const ADMIN_ROLES = ['SUPER_ADMIN', 'SUPPORT'];
+	// UX / defense-in-depth SAJA. Trust boundary sesungguhnya adalah admin-service
+	// (middleware RequireRole) — gate ini hanya menyembunyikan UI, bukan kontrol keamanan.
+	const hasAdminRole = $derived(!!adminAuth.admin && ADMIN_ROLES.includes(adminAuth.admin.role));
+
 	let online = $state(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
 	function setOnline() {
@@ -30,7 +36,7 @@
 
 	$effect(() => {
 		if (isLoginRoute) return;
-		if (!adminAuth.isAuthenticated) {
+		if (!adminAuth.isAuthenticated || !hasAdminRole) {
 			goto(resolve('/admin/login'));
 		}
 	});
@@ -66,6 +72,11 @@
 
 {#if isLoginRoute}
 	{@render children()}
+{:else if !adminAuth.isAuthenticated || !hasAdminRole}
+	<!-- Tidak me-render UI admin selama redirect berlangsung (lihat $effect di atas). -->
+	<div class="flex min-h-screen items-center justify-center bg-paper text-sm text-ink/60">
+		Mengalihkan…
+	</div>
 {:else}
 	<div class="flex min-h-screen flex-col bg-paper">
 		{#if !online}

@@ -41,7 +41,7 @@ func (r *postgresTransactionRepository) CountMonthly(ctx context.Context, tenant
 	return count, nil
 }
 
-func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema string, tx *entity.Transaction) error {
+func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error {
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
@@ -54,6 +54,23 @@ func (r *postgresTransactionRepository) Create(ctx context.Context, tenantSchema
 		return fmt.Errorf("gagal mulai transaksi DB: %w", err)
 	}
 	defer dbTx.Rollback(ctx) //nolint:errcheck
+
+	// Defense-in-depth: pastikan account_id sumber ada & milik user ini (bukan sekadar
+	// isolasi schema-per-tenant). Berlaku untuk INCOME/EXPENSE/TRANSFER — tanpa ini,
+	// account_id orphan diterima dan RecalculateAccountBalance jalan terhadap akun tak ada.
+	if err := ValidateAccountForUser(ctx, dbTx, tenantSchema, userID, tx.AccountID); err != nil {
+		return err
+	}
+	if tx.ToAccountID != nil {
+		if err := ValidateAccountForUser(ctx, dbTx, tenantSchema, userID, *tx.ToAccountID); err != nil {
+			return err
+		}
+	}
+	// Kategori hanya schema-scoped (tidak ada kolom user_id) — isolasi via tenant schema,
+	// jadi cukup validasi keberadaan di schema tenant.
+	if err := validateCategoryInSchema(ctx, dbTx, tenantSchema, tx.CategoryID); err != nil {
+		return err
+	}
 
 	// Validasi saldo mencukupi untuk TRANSFER — dilakukan di dalam dbTx dengan FOR UPDATE
 	// agar atomik terhadap concurrent request (mencegah race condition TOCTOU).
@@ -174,6 +191,29 @@ func ValidateAccountForUser(ctx context.Context, q QueryRower, tenantSchema, use
 	}
 	if !exists {
 		return domainerrors.ErrAccountNotFound
+	}
+	return nil
+}
+
+// validateCategoryInSchema memastikan category_id (jika di-set) ada di schema tenant.
+// Tabel categories tidak punya kolom user_id — kepemilikan dijamin oleh isolasi
+// schema-per-tenant, jadi existence-in-schema adalah pengecekan yang benar.
+func validateCategoryInSchema(ctx context.Context, q QueryRower, tenantSchema string, categoryID *uuid.UUID) error {
+	if categoryID == nil {
+		return nil
+	}
+	query := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1 FROM %s.categories
+			WHERE id = $1 AND is_deleted = false
+		)
+	`, tenantSchema)
+	var exists bool
+	if err := q.QueryRow(ctx, query, *categoryID).Scan(&exists); err != nil {
+		return fmt.Errorf("gagal validasi kategori: %w", err)
+	}
+	if !exists {
+		return domainerrors.ErrCategoryNotFound
 	}
 	return nil
 }

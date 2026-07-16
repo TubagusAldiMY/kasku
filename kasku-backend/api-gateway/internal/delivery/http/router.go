@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"time"
 
@@ -23,6 +24,11 @@ type RouterConfig struct {
 	IsDev               bool
 	Logger              zerolog.Logger
 	Metrics             *obsmetrics.Registry
+	// TrustedProxies berisi CIDR proxy yang dipercaya untuk header X-Forwarded-For.
+	// Kosong = tidak percaya proxy apa pun (ClientIP jatuh ke direct peer/Traefik).
+	TrustedProxies []string
+	// MetricsToken menggate GET /metrics via bearer token. Kosong = /metrics dinonaktifkan.
+	MetricsToken string
 }
 
 // NewRouter membuat dan mengkonfigurasi Gin router dengan semua middleware dan route.
@@ -33,8 +39,21 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 
 	r := gin.New()
 
+	// Trusted proxies — WAJIB agar c.ClientIP() tidak percaya X-Forwarded-For dari klien.
+	// Jika kosong, SetTrustedProxies(nil) membuat ClientIP jatuh ke direct peer (Traefik),
+	// sehingga XFF yang di-spoof diabaikan dan rate limit per-IP tidak bisa di-bypass.
+	// Operator HARUS set GATEWAY_TRUSTED_PROXIES ke subnet CIDR Traefik untuk memulihkan IP klien asli.
+	// SetTrustedProxies hanya error jika CIDR tidak valid — fatal saat startup agar misconfig ketahuan.
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		cfg.Logger.Fatal().Err(err).Msg("GATEWAY_TRUSTED_PROXIES tidak valid")
+	}
+
 	// Recovery — mencegah crash dari panic
 	r.Use(gin.Recovery())
+
+	// Strip identity headers yang diinject gateway dari SEMUA request masuk,
+	// sebelum route group mana pun. Membuat spoofing identitas mustahil secara struktural.
+	r.Use(stripInjectedIdentityHeaders())
 
 	// CORS — harus sebelum route lain agar OPTIONS preflight bisa dihandle
 	r.Use(cfg.CORSMiddleware)
@@ -57,7 +76,14 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 
 	// Health check (public, tanpa auth)
 	r.GET("/health", cfg.HealthHandler.Health)
-	r.GET("/metrics", gin.WrapH(cfg.Metrics.Handler()))
+
+	// /metrics — hanya diaktifkan jika METRICS_TOKEN diset, dan digate via bearer token.
+	// Tanpa token, endpoint tidak didaftarkan sama sekali (tidak ada exposure Prometheus tanpa auth).
+	if cfg.MetricsToken != "" {
+		r.GET("/metrics", metricsAuth(cfg.MetricsToken), gin.WrapH(cfg.Metrics.Handler()))
+	} else {
+		cfg.Logger.Warn().Msg("METRICS_TOKEN kosong — endpoint /metrics dinonaktifkan")
+	}
 
 	// ── /v1/auth/** ───────────────────────────────────────────────────────────
 	// Catatan: sebagian besar auth endpoint adalah public (tidak butuh JWT),
@@ -187,6 +213,45 @@ func NewRouter(cfg RouterConfig) *gin.Engine {
 	}
 
 	return r
+}
+
+// injectedIdentityHeaders adalah semua header identitas yang HANYA boleh diset oleh
+// gateway (Auth middleware). Request masuk tidak boleh membawanya — kalau ada, itu spoofing.
+var injectedIdentityHeaders = []string{
+	middleware.HeaderUserID,
+	middleware.HeaderUserEmail,
+	middleware.HeaderTenantSchema,
+	middleware.HeaderSubscriptionTier,
+	middleware.HeaderTierMaxTransactions,
+	middleware.HeaderTierMaxAccounts,
+	middleware.HeaderTierMaxInvestments,
+	middleware.HeaderTierHistoryMonths,
+	middleware.HeaderTierExportCSV,
+}
+
+// stripInjectedIdentityHeaders menghapus semua header identitas yang diinject gateway
+// dari request masuk, tanpa syarat. Dijalankan sebelum route group mana pun sehingga
+// tidak ada rute yang bisa menerima identitas hasil spoofing dari klien.
+func stripInjectedIdentityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		for _, h := range injectedIdentityHeaders {
+			c.Request.Header.Del(h)
+		}
+		c.Next()
+	}
+}
+
+// metricsAuth menggate endpoint /metrics via bearer token dengan perbandingan constant-time.
+func metricsAuth(token string) gin.HandlerFunc {
+	expected := []byte("Bearer " + token)
+	return func(c *gin.Context) {
+		got := []byte(c.GetHeader("Authorization"))
+		if len(got) != len(expected) || subtle.ConstantTimeCompare(got, expected) != 1 {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		c.Next()
+	}
 }
 
 // securityHeaders meng-inject OWASP security headers ke setiap response.

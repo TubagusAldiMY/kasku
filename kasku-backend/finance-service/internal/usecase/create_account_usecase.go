@@ -54,10 +54,15 @@ func (uc *CreateAccountUseCase) Execute(ctx context.Context, input CreateAccount
 		input.Currency = defaultCurrency
 	}
 
+	userID, err := uuid.Parse(input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: user id tidak valid", domainerrors.ErrInvalidInput)
+	}
+
 	now := time.Now().UTC()
 	account := &entity.FinancialAccount{
 		ID:          uuid.New(),
-		UserID:      uuid.MustParse(input.UserID),
+		UserID:      userID,
 		Name:        input.Name,
 		AccountType: input.AccountType,
 		Balance:     input.Balance,

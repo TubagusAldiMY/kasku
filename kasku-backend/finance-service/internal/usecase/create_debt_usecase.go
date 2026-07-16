@@ -40,10 +40,15 @@ func (uc *CreateDebtUseCase) Execute(ctx context.Context, input CreateDebtInput)
 		return nil, fmt.Errorf("%w: direction tidak valid", domainerrors.ErrInvalidInput)
 	}
 
+	userID, err := uuid.Parse(input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: user id tidak valid", domainerrors.ErrInvalidInput)
+	}
+
 	now := time.Now().UTC()
 	debt := &entity.Debt{
 		ID:              uuid.New(),
-		UserID:          uuid.MustParse(input.UserID),
+		UserID:          userID,
 		Direction:       input.Direction,
 		PersonName:      input.PersonName,
 		TotalAmount:     input.TotalAmount,

@@ -16,8 +16,11 @@ type DebtRepository interface {
 	Delete(ctx context.Context, tenantSchema, id, userID string) error
 
 	// Pembayaran
-	CreatePayment(ctx context.Context, tenantSchema string, payment *entity.DebtPayment) error
+	// RecordPayment mencatat pembayaran dan mengurangi remaining_amount secara ATOMIK
+	// dalam satu transaksi (SELECT ... FOR UPDATE) untuk mencegah race condition
+	// overpay pada pembayaran konkuren. Mengembalikan ErrDebtNotFound jika hutang
+	// tidak ditemukan, ErrDebtAlreadySettled jika sudah lunas, atau ErrPaymentExceedsDebt
+	// jika amount melebihi sisa hutang.
+	RecordPayment(ctx context.Context, tenantSchema string, debtID, userID string, payment *entity.DebtPayment) error
 	ListPayments(ctx context.Context, tenantSchema, debtID string) ([]entity.DebtPayment, error)
-	// DeductRemaining mengurangi remaining_amount dan update status ke SETTLED jika sudah lunas.
-	DeductRemaining(ctx context.Context, tenantSchema, debtID string, amount int64) error
 }

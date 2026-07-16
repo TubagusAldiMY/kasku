@@ -10,7 +10,7 @@ import (
 // TransactionRepository mendefinisikan port akses data transaksi (multi-tenant).
 type TransactionRepository interface {
 	CountMonthly(ctx context.Context, tenantSchema, userID string, month time.Time) (int, error)
-	Create(ctx context.Context, tenantSchema string, tx *entity.Transaction) error
+	Create(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error
 	List(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.Transaction, error)
 	GetByID(ctx context.Context, tenantSchema, id, userID string) (*entity.Transaction, error)
 	Update(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error

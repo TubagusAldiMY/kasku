@@ -153,20 +153,78 @@ func (r *postgresDebtRepository) Delete(ctx context.Context, tenantSchema, id, u
 	return nil
 }
 
-func (r *postgresDebtRepository) CreatePayment(ctx context.Context, tenantSchema string, payment *entity.DebtPayment) error {
+// RecordPayment mencatat pembayaran + mengurangi remaining_amount secara atomik.
+// Row hutang dikunci dengan SELECT ... FOR UPDATE sehingga pembayaran konkuren
+// diserialisasi — mencegah overpay/remaining_amount negatif. Validasi status &
+// jumlah dilakukan di dalam transaksi terhadap nilai yang sudah terkunci.
+func (r *postgresDebtRepository) RecordPayment(ctx context.Context, tenantSchema string, debtID, userID string, payment *entity.DebtPayment) error {
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return err
 	}
-	query := fmt.Sprintf(`
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("gagal mulai transaksi: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	lockQuery := fmt.Sprintf(`
+		SELECT remaining_amount, status
+		FROM %s.debts
+		WHERE id = $1 AND user_id = $2
+		FOR UPDATE
+	`, tenantSchema)
+
+	var (
+		remaining int64
+		status    string
+	)
+	if err := tx.QueryRow(ctx, lockQuery, debtID, userID).Scan(&remaining, &status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domainerrors.ErrDebtNotFound
+		}
+		return fmt.Errorf("gagal lock debt: %w", err)
+	}
+
+	if status == string(entity.DebtStatusSettled) {
+		return domainerrors.ErrDebtAlreadySettled
+	}
+	if payment.Amount > remaining {
+		return domainerrors.ErrPaymentExceedsDebt
+	}
+
+	insertQuery := fmt.Sprintf(`
 		INSERT INTO %s.debt_payments (id, debt_id, amount, payment_date, notes, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, tenantSchema)
-	_, err := r.pool.Exec(ctx, query,
+	if _, err := tx.Exec(ctx, insertQuery,
 		payment.ID, payment.DebtID, payment.Amount,
 		payment.PaymentDate, payment.Notes, payment.CreatedAt,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("gagal insert payment: %w", err)
+	}
+
+	// Self-guarding update: WHERE remaining_amount >= $2 sebagai lapis pertahanan
+	// kedua (row sudah terkunci, jadi ini selalu benar; tetap dipertahankan agar
+	// invariant eksplisit di SQL). RowsAffected==0 menandakan race yang lolos.
+	deductQuery := fmt.Sprintf(`
+		UPDATE %s.debts
+		SET
+			remaining_amount = remaining_amount - $2,
+			status = CASE WHEN remaining_amount - $2 <= 0 THEN 'SETTLED' ELSE status END,
+			updated_at = now()
+		WHERE id = $1 AND user_id = $3 AND remaining_amount >= $2
+	`, tenantSchema)
+	result, err := tx.Exec(ctx, deductQuery, debtID, payment.Amount, userID)
+	if err != nil {
+		return fmt.Errorf("gagal deduct remaining: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return domainerrors.ErrPaymentExceedsDebt
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("gagal commit pembayaran: %w", err)
 	}
 	return nil
 }
@@ -200,23 +258,4 @@ func (r *postgresDebtRepository) ListPayments(ctx context.Context, tenantSchema,
 		return nil, fmt.Errorf("error iterasi payments: %w", err)
 	}
 	return payments, nil
-}
-
-func (r *postgresDebtRepository) DeductRemaining(ctx context.Context, tenantSchema, debtID string, amount int64) error {
-	if err := ValidateTenantSchema(tenantSchema); err != nil {
-		return err
-	}
-	query := fmt.Sprintf(`
-		UPDATE %s.debts
-		SET
-			remaining_amount = remaining_amount - $2,
-			status = CASE WHEN remaining_amount - $2 <= 0 THEN 'SETTLED' ELSE status END,
-			updated_at = now()
-		WHERE id = $1
-	`, tenantSchema)
-	_, err := r.pool.Exec(ctx, query, debtID, amount)
-	if err != nil {
-		return fmt.Errorf("gagal deduct remaining: %w", err)
-	}
-	return nil
 }

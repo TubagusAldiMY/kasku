@@ -130,6 +130,7 @@ func main() {
 	}
 
 	blacklist := rdsinfra.NewTokenBlacklist(redisClient)
+	loginLimiter := rdsinfra.NewLoginRateLimiter(redisClient, 5, 15*time.Minute)
 
 	// ── JWT ─────────────────────────────────────────────────────────────
 	signer := jwt.NewSigner(cfg.JWT.Secret, cfg.JWT.TTL)
@@ -159,7 +160,7 @@ func main() {
 	// ── Use cases ───────────────────────────────────────────────────────
 	auditLogger := usecase.NewAuditLogger(auditLogRepo, logger)
 
-	loginUC := usecase.NewLoginUseCase(adminUserRepo, signer, argon2Cfg, auditLogger)
+	loginUC := usecase.NewLoginUseCase(adminUserRepo, signer, argon2Cfg, auditLogger, loginLimiter)
 	logoutUC := usecase.NewLogoutUseCase(blacklist, auditLogger)
 	currentUC := usecase.NewGetCurrentAdminUseCase(adminUserRepo)
 

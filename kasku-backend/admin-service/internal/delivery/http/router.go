@@ -6,6 +6,7 @@ import (
 
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/delivery/http/handler"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/delivery/http/middleware"
+	"github.com/TubagusAldiMY/kasku/admin-service/internal/domain/entity"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/jwt"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/redis"
 	obsmetrics "github.com/TubagusAldiMY/kasku/observability-go/metrics"
@@ -68,13 +69,21 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 
 		protected.GET("/users", deps.UserHandler.List)
 		protected.GET("/users/:id", deps.UserHandler.Detail)
-		protected.POST("/users/:id/suspend", deps.UserHandler.Suspend)
-		protected.POST("/users/:id/activate", deps.UserHandler.Activate)
-		protected.POST("/users/:id/override-subscription", deps.SubHandler.Override)
 
 		protected.GET("/payments", deps.PaymentHandler.List)
 		protected.GET("/stats/dashboard", deps.StatsHandler.Dashboard)
-		protected.GET("/audit-log", deps.AuditLogHandler.List)
+	}
+
+	// SUPER_ADMIN-only: mutasi user + subscription + akses audit trail.
+	// SUPPORT hanya boleh route read-only di atas.
+	superAdmin := r.Group("/v1/admin")
+	superAdmin.Use(authMW, middleware.RequireRole(entity.AdminRoleSuperAdmin))
+	{
+		superAdmin.POST("/users/:id/suspend", deps.UserHandler.Suspend)
+		superAdmin.POST("/users/:id/activate", deps.UserHandler.Activate)
+		superAdmin.POST("/users/:id/override-subscription", deps.SubHandler.Override)
+
+		superAdmin.GET("/audit-log", deps.AuditLogHandler.List)
 	}
 
 	return r

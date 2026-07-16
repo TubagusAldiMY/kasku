@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,9 +11,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 
 	"github.com/TubagusAldiMY/kasku/api-gateway/internal/usecase"
 )
+
+// maxRateLimitBodyPeek membatasi berapa banyak body yang dibaca saat mengekstrak email
+// untuk keperluan rate limiting. Body lengkap tetap di-restore ke request; batas ini
+// hanya melindungi dari body raksasa sambil tetap menampung payload login normal.
+const maxRateLimitBodyPeek = 1 << 20 // 1 MiB
 
 // RateLimiter adalah interface untuk use case rate limiting.
 type RateLimiter interface {
@@ -25,7 +32,7 @@ type RateLimiter interface {
 }
 
 // RateLimit adalah middleware yang menerapkan rate limiting per endpoint.
-func RateLimit(limiter RateLimiter) gin.HandlerFunc {
+func RateLimit(limiter RateLimiter, logger zerolog.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.FullPath()
 		method := c.Request.Method
@@ -33,16 +40,22 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 
 		var result *usecase.RateLimitCheckResult
 		var err error
+		// authSensitive menandai jalur credential (register/login/refresh/forgot-password).
+		// Untuk jalur ini limiter WAJIB fail-closed jika error (jangan buka pintu brute-force).
+		authSensitive := false
 
 		switch {
 		case method == http.MethodPost && strings.HasSuffix(path, "/auth/register"):
+			authSensitive = true
 			result, err = limiter.CheckRegister(c.Request.Context(), clientIP)
 
 		case method == http.MethodPost && strings.HasSuffix(path, "/auth/login"):
+			authSensitive = true
 			email := extractEmailFromBody(c)
 			result, err = limiter.CheckLogin(c.Request.Context(), clientIP, email)
 
 		case method == http.MethodPost && strings.HasSuffix(path, "/auth/refresh"):
+			authSensitive = true
 			userID := ""
 			if token, ok := GetParsedToken(c); ok {
 				userID = token.UserID.String()
@@ -56,6 +69,7 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 			}
 
 		case method == http.MethodPost && strings.HasSuffix(path, "/auth/forgot-password"):
+			authSensitive = true
 			email := extractEmailFromBody(c)
 			result, err = limiter.CheckForgotPassword(c.Request.Context(), email)
 
@@ -79,7 +93,29 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 		}
 
 		if err != nil {
-			// Jika rate limiter error, biarkan request lewat (fail-open untuk ketersediaan)
+			// OWASP A09 — jangan pernah menelan error limiter secara diam-diam.
+			logger.Error().
+				Err(err).
+				Str("path", path).
+				Str("method", method).
+				Str("client_ip", clientIP).
+				Bool("auth_sensitive", authSensitive).
+				Msg("rate limiter error")
+
+			if authSensitive {
+				// Fail-CLOSED pada jalur credential: tolak request agar brute-force tidak lolos
+				// saat backend limiter (Redis) bermasalah.
+				c.Header("Retry-After", "5")
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+					"success": false,
+					"error": gin.H{
+						"code":    "RATE_LIMITER_UNAVAILABLE",
+						"message": "Layanan sedang sibuk. Coba lagi sebentar.",
+					},
+				})
+				return
+			}
+			// Fail-open HANYA untuk bucket default terautentikasi (ketersediaan diutamakan).
 			c.Next()
 			return
 		}
@@ -113,19 +149,20 @@ func RateLimit(limiter RateLimiter) gin.HandlerFunc {
 	}
 }
 
-// extractEmailFromBody mencoba membaca field "email" dari JSON request body.
-// Body di-cache ulang agar handler downstream tetap bisa membacanya.
+// extractEmailFromBody membaca field "email" dari JSON request body.
+// Body LENGKAP dibaca (dibatasi maxRateLimitBodyPeek) lalu di-restore utuh ke request,
+// sehingga handler downstream / proxy tetap menerima body yang tidak terpotong.
 func extractEmailFromBody(c *gin.Context) string {
 	if c.Request.Body == nil {
 		return ""
 	}
 
-	bodyBytes, err := io.ReadAll(io.LimitReader(c.Request.Body, 1024))
+	bodyBytes, err := io.ReadAll(io.LimitReader(c.Request.Body, maxRateLimitBodyPeek))
 	if err != nil {
 		return ""
 	}
-	// Restore body untuk handler downstream
-	c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
+	// Restore body LENGKAP untuk handler downstream sebelum parsing apa pun.
+	c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
 	var body struct {
 		Email string `json:"email"`

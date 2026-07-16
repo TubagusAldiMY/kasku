@@ -32,6 +32,12 @@ type AppConfig struct {
 
 type ServerConfig struct {
 	Port string
+	// TrustedProxies berisi CIDR proxy yang boleh dipercaya untuk header X-Forwarded-For.
+	// Kosong = tidak mempercayai proxy apa pun (ClientIP jatuh ke direct peer / Traefik),
+	// sehingga spoofing XFF diabaikan. Operator harus set subnet Traefik agar IP klien asli terlihat.
+	TrustedProxies []string
+	// MetricsToken menggate endpoint /metrics via bearer token. Kosong = /metrics dinonaktifkan.
+	MetricsToken string
 }
 
 type RedisConfig struct {
@@ -77,6 +83,18 @@ func Load() (*Config, error) {
 	cfg.App.OTELEndpoint = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 	cfg.Server.Port = getEnvOrDefault("SERVER_PORT", "8080")
+
+	// GATEWAY_TRUSTED_PROXIES — CIDR (comma-separated) proxy tepercaya untuk XFF.
+	// Kosong = SetTrustedProxies(nil): tidak percaya proxy mana pun, ClientIP = direct peer.
+	if raw := strings.TrimSpace(os.Getenv("GATEWAY_TRUSTED_PROXIES")); raw != "" {
+		for _, p := range strings.Split(raw, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				cfg.Server.TrustedProxies = append(cfg.Server.TrustedProxies, p)
+			}
+		}
+	}
+
+	cfg.Server.MetricsToken = os.Getenv("METRICS_TOKEN")
 
 	cfg.Redis.Addr = getEnvOrDefault("REDIS_ADDR", "localhost:6379")
 	cfg.Redis.Password = os.Getenv("REDIS_PASSWORD")

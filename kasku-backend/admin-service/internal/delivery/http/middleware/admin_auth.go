@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TubagusAldiMY/kasku/admin-service/internal/domain/entity"
 	domainerrors "github.com/TubagusAldiMY/kasku/admin-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/jwt"
 	"github.com/TubagusAldiMY/kasku/admin-service/internal/infrastructure/redis"
@@ -61,6 +62,22 @@ func AdminAuth(signer *jwt.Signer, blacklist *redis.TokenBlacklist) gin.HandlerF
 			c.Set(ContextKeyAdminExp, time.Time{})
 		}
 		c.Next()
+	}
+}
+
+// RequireRole memblokir request bila role admin (dari context, di-set AdminAuth)
+// tidak cocok dengan salah satu role yang diizinkan. Wajib dipasang SETELAH AdminAuth.
+// Mengembalikan 403 dengan typed domain error tanpa membocorkan role yang dibutuhkan.
+func RequireRole(allowed ...entity.AdminRole) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role := entity.AdminRole(c.GetString(ContextKeyAdminRole))
+		for _, r := range allowed {
+			if role == r {
+				c.Next()
+				return
+			}
+		}
+		abortWithError(c, http.StatusForbidden, domainerrors.ErrForbidden)
 	}
 }
 

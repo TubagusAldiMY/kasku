@@ -70,18 +70,24 @@ func (uc *CreateTransactionUseCase) Execute(ctx context.Context, input CreateTra
 		UpdatedAt:       now,
 	}
 
-	if id, err := uuid.Parse(input.AccountID); err == nil {
-		tx.AccountID = id
+	accountID, err := uuid.Parse(input.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ID rekening tidak valid", domainerrors.ErrInvalidInput)
 	}
+	tx.AccountID = accountID
 	if input.CategoryID != "" {
-		if id, err := uuid.Parse(input.CategoryID); err == nil {
-			tx.CategoryID = &id
+		id, err := uuid.Parse(input.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: ID kategori tidak valid", domainerrors.ErrInvalidInput)
 		}
+		tx.CategoryID = &id
 	}
 	if input.ToAccountID != "" {
-		if id, err := uuid.Parse(input.ToAccountID); err == nil {
-			tx.ToAccountID = &id
+		id, err := uuid.Parse(input.ToAccountID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: ID rekening tujuan tidak valid", domainerrors.ErrInvalidInput)
 		}
+		tx.ToAccountID = &id
 	}
 	if input.TransactionType == entity.TransactionExpense && input.BudgetID != "" {
 		id, err := uuid.Parse(input.BudgetID)
@@ -91,7 +97,7 @@ func (uc *CreateTransactionUseCase) Execute(ctx context.Context, input CreateTra
 		tx.BudgetID = &id
 	}
 
-	if err := uc.txRepo.Create(ctx, input.TenantSchema, tx); err != nil {
+	if err := uc.txRepo.Create(ctx, input.TenantSchema, input.UserID, tx); err != nil {
 		return nil, fmt.Errorf("gagal buat transaksi: %w", err)
 	}
 

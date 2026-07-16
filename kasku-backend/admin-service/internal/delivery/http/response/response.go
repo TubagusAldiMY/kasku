@@ -63,6 +63,8 @@ func codeToStatus(code string) int {
 		return http.StatusNotFound
 	case domainerrors.ErrValidation.Code:
 		return http.StatusBadRequest
+	case domainerrors.ErrTooManyAttempts.Code:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}

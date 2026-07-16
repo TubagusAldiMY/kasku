@@ -31,21 +31,31 @@ type LoginUseCase interface {
 	Execute(ctx context.Context, in LoginInput) (*LoginOutput, error)
 }
 
-type loginUseCase struct {
-	repo   repository.AdminUserRepository
-	signer *jwt.Signer
-	argon2 Argon2Config
-	audit  *AuditLogger
+// LoginRateLimiter membatasi brute-force login per username + IP.
+// Diimplementasikan Redis (lihat infrastructure/redis). Boleh nil (limiter dimatikan).
+type LoginRateLimiter interface {
+	IsLocked(ctx context.Context, username, ip string) (bool, error)
+	RegisterFailure(ctx context.Context, username, ip string) error
+	Reset(ctx context.Context, username, ip string) error
 }
 
-// NewLoginUseCase membuat instance.
+type loginUseCase struct {
+	repo    repository.AdminUserRepository
+	signer  *jwt.Signer
+	argon2  Argon2Config
+	audit   *AuditLogger
+	limiter LoginRateLimiter
+}
+
+// NewLoginUseCase membuat instance. limiter boleh nil untuk menonaktifkan rate limit.
 func NewLoginUseCase(
 	repo repository.AdminUserRepository,
 	signer *jwt.Signer,
 	argon2Cfg Argon2Config,
 	audit *AuditLogger,
+	limiter LoginRateLimiter,
 ) LoginUseCase {
-	return &loginUseCase{repo: repo, signer: signer, argon2: argon2Cfg, audit: audit}
+	return &loginUseCase{repo: repo, signer: signer, argon2: argon2Cfg, audit: audit, limiter: limiter}
 }
 
 // Execute:
@@ -55,6 +65,18 @@ func NewLoginUseCase(
 // 4. Verify password Argon2id (constant-time)
 // 5. Generate HS256 JWT, update last_login_at, audit LOGIN
 func (uc *loginUseCase) Execute(ctx context.Context, in LoginInput) (*LoginOutput, error) {
+	// Brute-force guard: tolak lebih awal bila username atau IP terkunci.
+	// Error generik (tanpa enumerasi) supaya lockout tidak membocorkan validitas username.
+	if uc.limiter != nil {
+		locked, err := uc.limiter.IsLocked(ctx, in.Username, in.IP)
+		if err != nil {
+			return nil, fmt.Errorf("gagal cek rate limit login: %w", err)
+		}
+		if locked {
+			return nil, domainerrors.ErrTooManyAttempts
+		}
+	}
+
 	admin, err := uc.repo.FindByUsername(ctx, in.Username)
 	if err != nil {
 		return nil, fmt.Errorf("gagal lookup admin: %w", err)
@@ -62,6 +84,7 @@ func (uc *loginUseCase) Execute(ctx context.Context, in LoginInput) (*LoginOutpu
 
 	if admin == nil {
 		runDummyVerify(in.Password, uc.argon2)
+		uc.registerFailure(ctx, in)
 		return nil, domainerrors.ErrInvalidCredentials
 	}
 
@@ -70,7 +93,17 @@ func (uc *loginUseCase) Execute(ctx context.Context, in LoginInput) (*LoginOutpu
 	}
 
 	if !VerifyPassword(in.Password, admin.PasswordHash) {
+		uc.registerFailure(ctx, in)
 		return nil, domainerrors.ErrInvalidCredentials
+	}
+
+	// Kredensial valid — reset counter agar login berikutnya tidak terpengaruh
+	// kegagalan sebelumnya.
+	if uc.limiter != nil {
+		if err := uc.limiter.Reset(ctx, in.Username, in.IP); err != nil {
+			// non-fatal: gagal reset tidak boleh menolak login yang sudah valid.
+			uc.audit.log.Warn().Err(err).Msg("gagal reset counter rate limit login")
+		}
 	}
 
 	now := time.Now().UTC()
@@ -101,4 +134,15 @@ func (uc *loginUseCase) Execute(ctx context.Context, in LoginInput) (*LoginOutpu
 		ExpiresIn:   int64(uc.signer.TTL().Seconds()),
 		Admin:       admin,
 	}, nil
+}
+
+// registerFailure menaikkan counter brute-force. Kegagalan Redis di-log sebagai
+// warning, tidak dipropagasi — kita tetap mengembalikan INVALID_CREDENTIALS ke caller.
+func (uc *loginUseCase) registerFailure(ctx context.Context, in LoginInput) {
+	if uc.limiter == nil {
+		return
+	}
+	if err := uc.limiter.RegisterFailure(ctx, in.Username, in.IP); err != nil {
+		uc.audit.log.Warn().Err(err).Msg("gagal mencatat kegagalan login untuk rate limit")
+	}
 }

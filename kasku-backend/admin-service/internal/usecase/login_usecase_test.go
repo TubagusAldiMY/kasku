@@ -49,7 +49,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		repo.EXPECT().UpdateLastLogin(gomock.Any(), admin.ID, gomock.Any()).Return(nil)
 		mockAudit.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		out, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: "admin", Password: testPassword, IP: "127.0.0.1",
 		})
@@ -67,7 +67,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		repo.EXPECT().FindByUsername(gomock.Any(), "notexist").Return(nil, nil)
 		// runDummyVerify dipanggil internal — tidak ada repo call lain
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		_, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: "notexist", Password: testPassword,
 		})
@@ -83,7 +83,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 
 		repo.EXPECT().FindByUsername(gomock.Any(), admin.Username).Return(admin, nil)
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		_, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: admin.Username, Password: "WrongPassword!",
 		})
@@ -100,7 +100,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 
 		repo.EXPECT().FindByUsername(gomock.Any(), admin.Username).Return(admin, nil)
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		_, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: admin.Username, Password: testPassword,
 		})
@@ -118,7 +118,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 		repo.EXPECT().UpdateLastLogin(gomock.Any(), admin.ID, gomock.Any()).Return(errors.New("db timeout"))
 		mockAudit.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		out, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: admin.Username, Password: testPassword, IP: "10.0.0.1",
 		})
@@ -135,7 +135,7 @@ func TestLoginUseCase_Execute(t *testing.T) {
 
 		repo.EXPECT().FindByUsername(gomock.Any(), "admin").Return(nil, errors.New("db error"))
 
-		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger)
+		uc := usecase.NewLoginUseCase(repo, testSigner(), testArgon2(), auditLogger, nil)
 		_, err := uc.Execute(context.Background(), usecase.LoginInput{
 			Username: "admin", Password: testPassword,
 		})
