@@ -34,7 +34,7 @@ impl ResetPasswordUseCase {
         }
 
         let new_hash = hash_password(new_password, &self.argon2_cfg)
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         self.user_repo.update_password(token.user_id, &new_hash).await?;
         self.reset_repo.mark_used(token.id).await?;

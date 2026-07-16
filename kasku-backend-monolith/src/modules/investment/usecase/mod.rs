@@ -36,7 +36,7 @@ impl InvestmentUseCases {
             id: Uuid::new_v4(),
             name,
             asset_type: asset_type.parse::<AssetType>()
-                .map_err(|_| AppError::Validation(format!("asset_type tidak valid")))?,
+                .map_err(|_| AppError::Validation("asset_type tidak valid".to_string()))?,
             symbol,
             quantity,
             avg_buy_price,

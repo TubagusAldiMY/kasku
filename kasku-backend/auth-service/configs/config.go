@@ -85,7 +85,7 @@ type AppConfig struct {
 	LogLevel           string
 	ServiceVersion     string
 	OTELEndpoint       string // OTEL_EXPORTER_OTLP_ENDPOINT — empty = disabled
-	GoogleClientID     string // GOOGLE_CLIENT_ID — empty = audience check dinonaktifkan (dev only)
+	GoogleClientID     string // GOOGLE_CLIENT_ID — audience yang divalidasi lokal; wajib jika APP_ENV != development
 	GoogleClientSecret string // GOOGLE_CLIENT_SECRET — wajib untuk authorization code flow
 }
 
@@ -184,6 +184,14 @@ func Load() (*Config, error) {
 	}
 	cleanupDryRun := parseBoolEnv("CLEANUP_DRY_RUN", false)
 
+	appEnv := getEnvOrDefault("APP_ENV", "development")
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	// GOOGLE_CLIENT_ID wajib di luar development: dipakai untuk validasi audience
+	// ID token Google secara lokal (idtoken.Validate). Tanpa ini, Google login tidak aman.
+	if appEnv != "development" && googleClientID == "" {
+		return nil, fmt.Errorf("GOOGLE_CLIENT_ID wajib diisi ketika APP_ENV != development")
+	}
+
 	return &Config{
 		Server: ServerConfig{
 			Port:           getEnvOrDefault("SERVER_PORT", "8081"),
@@ -232,11 +240,11 @@ func Load() (*Config, error) {
 			DryRun:   cleanupDryRun,
 		},
 		App: AppConfig{
-			Env:                getEnvOrDefault("APP_ENV", "development"),
+			Env:                appEnv,
 			LogLevel:           getEnvOrDefault("LOG_LEVEL", "info"),
 			ServiceVersion:     getEnvOrDefault("SERVICE_VERSION", "1.0.0"),
 			OTELEndpoint:       os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
-			GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+			GoogleClientID:     googleClientID,
 			GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		},
 		Billing: BillingConfig{

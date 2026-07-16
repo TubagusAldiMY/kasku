@@ -52,10 +52,10 @@ impl RegisterUseCase {
         }
 
         let password_hash = hash_password(&input.password, &self.argon2_cfg)
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         let (raw_token, token_hash) = generate_secure_token()
-            .map_err(|e| AuthError::Internal(e))?;
+            .map_err(AuthError::Internal)?;
 
         let now = Utc::now();
         let user_id = Uuid::new_v4();
@@ -165,7 +165,7 @@ fn validate_register_input(input: &RegisterInput) -> Result<(), AuthError> {
 
     // Username: 3–30 chars, alphanumeric + underscore
     let ulen = input.username.len();
-    if ulen < 3 || ulen > 30 {
+    if !(3..=30).contains(&ulen) {
         return Err(AuthError::Validation("username harus 3-30 karakter".into()));
     }
     if !input.username.chars().all(|c| c.is_alphanumeric() || c == '_') {

@@ -18,10 +18,10 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/messaging"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/api/idtoken"
 )
 
 const (
-	googleTokenInfoURL    = "https://oauth2.googleapis.com/tokeninfo"
 	googleTokenURL        = "https://oauth2.googleapis.com/token"
 	oauthPasswordSentinel = "OAUTH_NO_PASSWORD" // tidak valid sebagai Argon2id hash
 )
@@ -53,16 +53,14 @@ type googleTokenResponse struct {
 	ErrorDesc   string `json:"error_description"`
 }
 
-// GoogleTokenInfo adalah subset dari response Google tokeninfo endpoint.
+// GoogleTokenInfo adalah subset klaim ID token Google yang dipakai use case.
+// Diisi dari payload yang sudah tervalidasi lokal (idtoken.Validate).
 type GoogleTokenInfo struct {
-	Sub           string `json:"sub"` // Google user ID (unik per Google account)
-	Email         string `json:"email"`
-	EmailVerified string `json:"email_verified"` // "true" / "false"
-	Name          string `json:"name"`
-	GivenName     string `json:"given_name"`
-	Aud           string `json:"aud"` // client ID audience
-	Error         string `json:"error"`
-	ErrorDesc     string `json:"error_description"`
+	Sub           string // Google user ID (unik per Google account)
+	Email         string
+	EmailVerified bool
+	Name          string
+	GivenName     string
 }
 
 // GoogleLoginUseCase mendefinisikan kontrak untuk alur login via Google OAuth.
@@ -167,18 +165,18 @@ func (uc *googleLoginUseCase) exchangeAuthCode(code, redirectURI string) (string
 }
 
 // Execute menjalankan alur login / auto-register via Google ID token:
-//  1. Verifikasi ID token ke Google tokeninfo endpoint
+//  1. Verifikasi ID token secara lokal (signature/iss/aud/exp) via Google JWKS
 //  2. Cari user berdasarkan google_id → jika ada, generate JWT
 //  3. Jika tidak ada → cari berdasarkan email
 //     a. Jika email sudah terdaftar → link google_id, generate JWT
 //     b. Jika email belum terdaftar → auto-register user baru, generate JWT
 func (uc *googleLoginUseCase) Execute(ctx context.Context, input GoogleLoginInput) (*LoginOutput, error) {
-	tokenInfo, err := uc.verifyGoogleToken(input.IDToken)
+	tokenInfo, err := uc.verifyGoogleToken(ctx, input.IDToken)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domainerrors.ErrGoogleAuth, err)
 	}
 
-	if tokenInfo.EmailVerified != "true" {
+	if !tokenInfo.EmailVerified {
 		return nil, fmt.Errorf("%w: email Google belum diverifikasi", domainerrors.ErrGoogleAuth)
 	}
 
@@ -225,33 +223,50 @@ func (uc *googleLoginUseCase) Execute(ctx context.Context, input GoogleLoginInpu
 	return uc.generateTokenPair(ctx, user, input)
 }
 
-// verifyGoogleToken memverifikasi ID token ke Google tokeninfo endpoint.
-func (uc *googleLoginUseCase) verifyGoogleToken(idToken string) (*GoogleTokenInfo, error) {
-	resp, err := uc.httpClient.Get(googleTokenInfoURL + "?id_token=" + idToken)
+// verifyGoogleToken memvalidasi ID token secara lokal terhadap kunci publik Google
+// (JWKS): signature, issuer (accounts.google.com), audience (googleClientID), dan exp.
+// Jika googleClientID kosong (development), audience tidak dicek — di produksi
+// GOOGLE_CLIENT_ID wajib (divalidasi saat startup config).
+func (uc *googleLoginUseCase) verifyGoogleToken(ctx context.Context, idToken string) (*GoogleTokenInfo, error) {
+	payload, err := idtoken.Validate(ctx, idToken, uc.googleClientID)
 	if err != nil {
-		return nil, fmt.Errorf("gagal hubungi Google tokeninfo: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var info GoogleTokenInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("gagal decode tokeninfo response: %w", err)
+		return nil, fmt.Errorf("validasi ID token Google gagal: %w", err)
 	}
 
-	if info.Error != "" {
-		return nil, fmt.Errorf("google token tidak valid: %s", info.ErrorDesc)
+	info := &GoogleTokenInfo{
+		Sub:           payload.Subject,
+		Email:         claimString(payload.Claims, "email"),
+		EmailVerified: claimBool(payload.Claims, "email_verified"),
+		Name:          claimString(payload.Claims, "name"),
+		GivenName:     claimString(payload.Claims, "given_name"),
 	}
 
 	if info.Sub == "" || info.Email == "" {
-		return nil, fmt.Errorf("tokeninfo tidak lengkap: sub atau email kosong")
+		return nil, fmt.Errorf("klaim ID token tidak lengkap: sub atau email kosong")
 	}
 
-	// Verifikasi audience jika Client ID dikonfigurasi
-	if uc.googleClientID != "" && info.Aud != uc.googleClientID {
-		return nil, fmt.Errorf("token audience tidak cocok dengan client ID yang dikonfigurasi")
-	}
+	return info, nil
+}
 
-	return &info, nil
+// claimString mengambil klaim string dari payload; string kosong jika tidak ada.
+func claimString(claims map[string]any, key string) string {
+	if v, ok := claims[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+// claimBool mengambil klaim boolean dari payload. Google mengirim email_verified
+// sebagai bool JSON; sebagian klien lama mengirimnya sebagai string "true".
+func claimBool(claims map[string]any, key string) bool {
+	switch v := claims[key].(type) {
+	case bool:
+		return v
+	case string:
+		return v == "true"
+	default:
+		return false
+	}
 }
 
 // autoRegister membuat user baru dari data Google.

@@ -2,16 +2,38 @@
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
-	import { investmentsRepo, type InvestmentRow } from '$lib/db';
-	import {
-		enqueueCreate,
-		enqueueUpdate,
-		enqueueDelete,
-		syncStatus,
-		triggerManualSync
-	} from '$lib/sync';
 
-	type AssetType = InvestmentRow['asset_type'];
+	type AssetType = 'CRYPTO' | 'STOCK' | 'MUTUAL_FUND' | 'GOLD' | 'OTHER';
+
+	// Model lokal (online). Field diselaraskan dari response backend:
+	// backend `quantity` -> units, `avg_buy_price` -> avg_buy_price_idr.
+	type Asset = {
+		id: string;
+		name: string;
+		asset_type: AssetType;
+		symbol: string | null;
+		units: number;
+		avg_buy_price_idr: number;
+		sort_order: number;
+	};
+
+	// Server dapat mengirim snake_case (default) atau PascalCase — normalisasi defensif.
+	type ServerAsset = {
+		id?: string;
+		ID?: string;
+		name?: string;
+		Name?: string;
+		asset_type?: AssetType;
+		AssetType?: AssetType;
+		symbol?: string;
+		Symbol?: string;
+		quantity?: number;
+		Quantity?: number;
+		avg_buy_price?: number;
+		AvgBuyPrice?: number;
+		sort_order?: number;
+		SortOrder?: number;
+	};
 
 	type HistoryEntry = {
 		id: string;
@@ -23,11 +45,30 @@
 		notes?: string;
 	};
 
-	let assets = $state<InvestmentRow[]>([]);
+	type ServerHistory = {
+		id?: string;
+		ID?: string;
+		transaction_type?: 'BUY' | 'SELL';
+		TransactionType?: 'BUY' | 'SELL';
+		quantity_change?: number;
+		QuantityChange?: number;
+		price_per_unit?: number;
+		PricePerUnit?: number;
+		total_value?: number;
+		TotalValue?: number;
+		transaction_date?: string;
+		TransactionDate?: string;
+		notes?: string;
+		Notes?: string;
+	};
+
+	let assets = $state<Asset[]>([]);
 	let loading = $state(true);
+	let saving = $state(false);
+	let errorMessage = $state('');
 	let showAssetModal = $state(false);
 	let showHistoryModal = $state(false);
-	let selectedAsset = $state<InvestmentRow | null>(null);
+	let selectedAsset = $state<Asset | null>(null);
 	let history = $state<HistoryEntry[]>([]);
 	let historyLoading = $state(false);
 
@@ -36,7 +77,85 @@
 	let priceCache = $state<Record<string, number>>({});
 	let priceFresh = $state<Record<string, boolean>>({});
 
-	async function fetchPrice(asset: InvestmentRow) {
+	async function readApiResult(res: Response) {
+		try {
+			return await res.json();
+		} catch {
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
+		}
+	}
+
+	function normalizeAsset(item: ServerAsset): Asset | null {
+		const id = item.id ?? item.ID;
+		const name = item.name ?? item.Name;
+		const assetType = item.asset_type ?? item.AssetType;
+		if (!id || !name || !assetType) return null;
+
+		const symbol = item.symbol ?? item.Symbol ?? '';
+		return {
+			id,
+			name,
+			asset_type: assetType,
+			symbol: symbol || null,
+			units: Number(item.quantity ?? item.Quantity ?? 0),
+			avg_buy_price_idr: Number(item.avg_buy_price ?? item.AvgBuyPrice ?? 0),
+			sort_order: Number(item.sort_order ?? item.SortOrder ?? 0)
+		};
+	}
+
+	function normalizeAssets(data: unknown): Asset[] {
+		if (!Array.isArray(data)) return [];
+		return data
+			.map((item) => normalizeAsset(item as ServerAsset))
+			.filter((item): item is Asset => item !== null);
+	}
+
+	function normalizeHistory(data: unknown): HistoryEntry[] {
+		if (!Array.isArray(data)) return [];
+		const result: HistoryEntry[] = [];
+		for (const item of data) {
+			const h = item as ServerHistory;
+			const id = h.id ?? h.ID;
+			const type = h.transaction_type ?? h.TransactionType;
+			const date = h.transaction_date ?? h.TransactionDate;
+			if (!id || !type || !date) continue;
+			result.push({
+				id,
+				transaction_type: type,
+				quantity_change: Number(h.quantity_change ?? h.QuantityChange ?? 0),
+				price_per_unit: Number(h.price_per_unit ?? h.PricePerUnit ?? 0),
+				total_value: Number(h.total_value ?? h.TotalValue ?? 0),
+				transaction_date: date,
+				notes: h.notes ?? h.Notes
+			});
+		}
+		return result;
+	}
+
+	async function fetchAssets() {
+		loading = true;
+		errorMessage = '';
+		try {
+			const res = await apiFetch('/investments');
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				assets = normalizeAssets(result.data);
+				void fetchAllPrices(assets);
+			} else {
+				errorMessage = result.error?.message || 'Gagal memuat instrumen investasi.';
+			}
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal memuat instrumen. Periksa koneksi atau service backend.';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function fetchPrice(asset: Asset) {
 		if (!asset.symbol) return;
 		priceLoading[asset.id] = true;
 		try {
@@ -53,7 +172,7 @@
 		}
 	}
 
-	async function fetchAllPrices(list: InvestmentRow[]) {
+	async function fetchAllPrices(list: Asset[]) {
 		await Promise.allSettled(list.filter((a) => a.symbol).map((a) => fetchPrice(a)));
 	}
 
@@ -65,6 +184,7 @@
 		symbol: string;
 		units: number;
 		nilai_pembelian: number; // Nilai total pembelian awal — avg_buy_price_idr dihitung dari ini
+		sort_order: number; // dipertahankan saat edit agar tidak ter-reset ke 0
 	};
 
 	let assetForm = $state<AssetFormState>({
@@ -73,7 +193,8 @@
 		asset_type: 'CRYPTO',
 		symbol: '',
 		units: 0,
-		nilai_pembelian: 0
+		nilai_pembelian: 0,
+		sort_order: 0
 	});
 
 	// Preview avg price di form add
@@ -110,25 +231,13 @@
 		assetTypes.find((t) => t.value === assetForm.asset_type)?.hint ?? ''
 	);
 
-	async function reloadFromLocal() {
-		try {
-			assets = await investmentsRepo.getAll();
-		} catch {
-			// biarkan assets kosong
-		}
-	}
-
-	$effect(() => {
-		void syncStatus.dataVersion;
-		void reloadFromLocal();
-	});
-
 	async function fetchHistory(assetId: string) {
 		historyLoading = true;
 		try {
 			const res = await apiFetch(`/investments/${assetId}/history`);
-			const result = await res.json();
-			if (result.success) history = (result.data ?? []) as HistoryEntry[];
+			const result = await readApiResult(res);
+			if (res.ok && result.success) history = normalizeHistory(result.data);
+			else history = [];
 		} catch {
 			history = [];
 		} finally {
@@ -138,47 +247,80 @@
 
 	async function handleSaveAsset(e: SubmitEvent) {
 		e.preventDefault();
+		errorMessage = '';
 		try {
-			const avg_buy_price_idr =
-				assetForm.units > 0 ? assetForm.nilai_pembelian / assetForm.units : 0;
-
+			saving = true;
+			const symbol = assetForm.symbol.trim();
+			let res: Response;
 			if (assetForm.id) {
-				await enqueueUpdate<InvestmentRow>('investments', assetForm.id, {
-					name: assetForm.name,
-					asset_type: assetForm.asset_type,
-					symbol: assetForm.symbol || undefined
+				res = await apiFetch(`/investments/${assetForm.id}`, {
+					method: 'PUT',
+					body: JSON.stringify({
+						name: assetForm.name.trim(),
+						asset_type: assetForm.asset_type,
+						symbol,
+						currency: 'IDR',
+						sort_order: assetForm.sort_order
+					})
 				});
 			} else {
-				await enqueueCreate<InvestmentRow>('investments', {
-					name: assetForm.name,
-					asset_type: assetForm.asset_type,
-					symbol: assetForm.symbol || undefined,
-					units: assetForm.units,
-					avg_buy_price_idr
+				const avg_buy_price = assetForm.units > 0 ? assetForm.nilai_pembelian / assetForm.units : 0;
+				res = await apiFetch('/investments', {
+					method: 'POST',
+					body: JSON.stringify({
+						name: assetForm.name.trim(),
+						asset_type: assetForm.asset_type,
+						symbol,
+						quantity: assetForm.units,
+						avg_buy_price,
+						currency: 'IDR'
+					})
 				});
 			}
-			showAssetModal = false;
-		} catch {
-			// error ditangani oleh queue
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				showAssetModal = false;
+				await fetchAssets();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menyimpan instrumen.';
+			}
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal menyimpan instrumen. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
 	async function handleDeleteAsset(id: string) {
 		if (!confirm('Hapus instrumen ini? Riwayat transaksi juga akan terhapus.')) return;
+		errorMessage = '';
 		try {
-			await enqueueDelete('investments', id);
-			showAssetModal = false;
-		} catch {
-			// error ditangani oleh queue
+			saving = true;
+			const res = await apiFetch(`/investments/${id}`, { method: 'DELETE' });
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				showAssetModal = false;
+				await fetchAssets();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menghapus instrumen.';
+			}
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal menghapus instrumen. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
 	async function handleRecordHistory(e: SubmitEvent) {
 		e.preventDefault();
 		if (!selectedAsset) return;
+		errorMessage = '';
 		const price_per_unit =
 			historyForm.quantity_change > 0 ? historyForm.nilai_total / historyForm.quantity_change : 0;
 		try {
+			saving = true;
 			const res = await apiFetch(`/investments/${selectedAsset.id}/units`, {
 				method: 'POST',
 				body: JSON.stringify({
@@ -189,8 +331,8 @@
 					notes: historyForm.notes
 				})
 			});
-			const result = await res.json();
-			if (result.success) {
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
 				historyForm = {
 					transaction_type: 'BUY',
 					quantity_change: 0,
@@ -199,38 +341,49 @@
 					notes: ''
 				};
 				await fetchHistory(selectedAsset.id);
-				void triggerManualSync();
+				// Unit berubah → segarkan daftar aset (quantity & avg dihitung ulang server).
+				await fetchAssets();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menyimpan transaksi.';
 			}
-		} catch {
-			// error UI handling bisa ditambahkan
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal menyimpan transaksi. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
 	function openAddModal() {
+		errorMessage = '';
 		assetForm = {
 			id: '',
 			name: '',
 			asset_type: 'CRYPTO',
 			symbol: '',
 			units: 0,
-			nilai_pembelian: 0
+			nilai_pembelian: 0,
+			sort_order: 0
 		};
 		showAssetModal = true;
 	}
 
-	function openEditModal(asset: InvestmentRow) {
+	function openEditModal(asset: Asset) {
+		errorMessage = '';
 		assetForm = {
 			id: asset.id,
 			name: asset.name,
 			asset_type: asset.asset_type,
 			symbol: asset.symbol ?? '',
 			units: asset.units,
-			nilai_pembelian: asset.units * asset.avg_buy_price_idr
+			nilai_pembelian: asset.units * asset.avg_buy_price_idr,
+			sort_order: asset.sort_order
 		};
 		showAssetModal = true;
 	}
 
-	function openHistoryModal(asset: InvestmentRow) {
+	function openHistoryModal(asset: Asset) {
+		errorMessage = '';
 		selectedAsset = asset;
 		history = [];
 		historyForm = {
@@ -244,12 +397,7 @@
 		showHistoryModal = true;
 	}
 
-	onMount(async () => {
-		await reloadFromLocal();
-		loading = false;
-		void triggerManualSync();
-		void fetchAllPrices(assets);
-	});
+	onMount(fetchAssets);
 
 	// Derived totals
 	const totalCurrentValue = $derived(
@@ -319,6 +467,12 @@
 			+ Tambah instrumen
 		</button>
 	</div>
+
+	{#if errorMessage && !showAssetModal && !showHistoryModal}
+		<div class="mt-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
+			{errorMessage}
+		</div>
+	{/if}
 
 	<!-- Assets -->
 	{#if loading}
@@ -691,21 +845,29 @@
 						</div>
 					{/if}
 
+					{#if errorMessage}
+						<div class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-xs text-clay">
+							{errorMessage}
+						</div>
+					{/if}
+
 					<div class="flex gap-3 pt-1">
 						{#if assetForm.id}
 							<button
 								type="button"
 								onclick={() => handleDeleteAsset(assetForm.id)}
-								class="rounded-full border border-ink/15 px-5 py-3 text-[13px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5"
+								disabled={saving}
+								class="rounded-full border border-ink/15 px-5 py-3 text-[13px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5 disabled:opacity-60"
 							>
 								Hapus
 							</button>
 						{/if}
 						<button
 							type="submit"
-							class="flex-1 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
+							disabled={saving}
+							class="flex-1 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
 						>
-							{assetForm.id ? 'Simpan perubahan' : 'Tambah aset'}
+							{saving ? 'Menyimpan…' : assetForm.id ? 'Simpan perubahan' : 'Tambah aset'}
 						</button>
 					</div>
 				</form>
@@ -918,11 +1080,20 @@
 								/>
 							</div>
 
+							{#if errorMessage}
+								<div
+									class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-xs text-clay"
+								>
+									{errorMessage}
+								</div>
+							{/if}
+
 							<button
 								type="submit"
-								class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
+								disabled={saving}
+								class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
 							>
-								Simpan transaksi
+								{saving ? 'Menyimpan…' : 'Simpan transaksi'}
 							</button>
 						</form>
 					</div>

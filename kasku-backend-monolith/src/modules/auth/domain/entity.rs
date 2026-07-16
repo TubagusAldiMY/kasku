@@ -18,7 +18,7 @@ pub struct User {
 
 impl User {
     pub fn is_account_locked(&self, now: DateTime<Utc>) -> bool {
-        self.locked_until.map_or(false, |t| t > now)
+        self.locked_until.is_some_and(|t| t > now)
     }
 }
 

@@ -21,7 +21,7 @@ fn sync_err_to_app(e: SyncError) -> AppError {
             AppError::Forbidden
         }
         SyncError::Unauthorized => AppError::Unauthorized("tidak terautentikasi".into()),
-        SyncError::TenantNotProvisioned(s) => {
+        SyncError::TenantNotProvisioned(_s) => {
             AppError::TenantNotProvisioned
         }
         SyncError::UnsupportedEntityType(t) => {

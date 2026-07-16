@@ -28,8 +28,9 @@ android {
 
     buildTypes {
         debug {
-            // Dev: HP akses backend lokal via `adb reverse tcp:18080 tcp:18080`.
-            buildConfigField("String", "BASE_URL", "\"http://localhost:18080/v1/\"")
+            // Arahkan ke server remote (staging/prod). Untuk backend lokal, ganti ke
+            // "http://localhost:18080/v1/" + `adb reverse tcp:18080 tcp:18080`.
+            buildConfigField("String", "BASE_URL", "\"https://api-kasku.tubsamy.dev/v1/\"")
         }
         release {
             isMinifyEnabled = false

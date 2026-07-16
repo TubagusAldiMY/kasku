@@ -16,6 +16,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/usecase"
 	"github.com/TubagusAldiMY/kasku/auth-service/tests/mocks"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,7 @@ type testDeps struct {
 	forgot    *mocks.MockForgotPasswordUseCase
 	reset     *mocks.MockResetPasswordUseCase
 	changePwd *mocks.MockChangePasswordUseCase
+	validate  *mocks.MockValidateAccessTokenUseCase
 	health    *mockHealthChecker
 }
 
@@ -65,11 +67,14 @@ func newDeps(t *testing.T) (*testDeps, *gin.Engine) {
 		forgot:    mocks.NewMockForgotPasswordUseCase(ctrl),
 		reset:     mocks.NewMockResetPasswordUseCase(ctrl),
 		changePwd: mocks.NewMockChangePasswordUseCase(ctrl),
+		validate:  mocks.NewMockValidateAccessTokenUseCase(ctrl),
 		health:    &mockHealthChecker{},
 	}
+	// Google login tidak dites di sini; endpoint-nya tidak diregister di router test.
+	var googleLogin usecase.GoogleLoginUseCase
 	h := handler.NewAuthHandler(
-		d.register, d.verify, d.resend, d.login, d.refresh, d.logout, d.forgot, d.reset,
-		d.changePwd, d.health, "1.0.0", true, zerolog.Nop(),
+		d.register, d.verify, d.resend, d.login, googleLogin, d.refresh, d.logout, d.forgot, d.reset,
+		d.changePwd, d.validate, d.health, "1.0.0", true, zerolog.Nop(),
 	)
 	r := gin.New()
 	r.POST("/auth/register", h.Register)
@@ -383,17 +388,31 @@ func TestAuthHandler_Health_AllUnhealthy(t *testing.T) {
 
 // ─── ChangePassword ───────────────────────────────────────────────────────────
 
+// bearerHeader membuat header Authorization untuk access token dummy.
+func bearerHeader(token string) map[string]string {
+	return map[string]string{"Authorization": "Bearer " + token}
+}
+
+// expectValidToken menyiapkan mock validasi token yang mengembalikan klaim dengan sub=uid.
+func expectValidToken(d *testDeps, uid uuid.UUID) {
+	d.validate.EXPECT().Execute(gomock.Any(), "valid-token").
+		Return(&usecase.JWTClaims{
+			RegisteredClaims: jwt.RegisteredClaims{Subject: uid.String()},
+		}, nil)
+}
+
 func TestAuthHandler_ChangePassword_Happy(t *testing.T) {
 	t.Parallel()
 	d, r := newDeps(t)
 
 	uid := uuid.New()
+	expectValidToken(d, uid)
 	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "OldPass1", "NewPass1").Return(nil)
 
 	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
 		"current_password": "OldPass1",
 		"new_password":     "NewPass1",
-	}, map[string]string{"X-User-ID": uid.String()})
+	}, bearerHeader("valid-token"))
 
 	require.Equal(t, http.StatusOK, w.Code)
 	body, _ := io.ReadAll(w.Body)
@@ -405,13 +424,14 @@ func TestAuthHandler_ChangePassword_WrongCurrentPassword(t *testing.T) {
 	d, r := newDeps(t)
 
 	uid := uuid.New()
+	expectValidToken(d, uid)
 	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "WrongPass", "NewPass1").
 		Return(domainerrors.ErrInvalidCredentials)
 
 	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
 		"current_password": "WrongPass",
 		"new_password":     "NewPass1",
-	}, map[string]string{"X-User-ID": uid.String()})
+	}, bearerHeader("valid-token"))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	body, _ := io.ReadAll(w.Body)
@@ -423,20 +443,21 @@ func TestAuthHandler_ChangePassword_UserNotFound(t *testing.T) {
 	d, r := newDeps(t)
 
 	uid := uuid.New()
+	expectValidToken(d, uid)
 	d.changePwd.EXPECT().Execute(gomock.Any(), uid, "OldPass1", "NewPass1").
 		Return(domainerrors.ErrUserNotFound)
 
 	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
 		"current_password": "OldPass1",
 		"new_password":     "NewPass1",
-	}, map[string]string{"X-User-ID": uid.String()})
+	}, bearerHeader("valid-token"))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	body, _ := io.ReadAll(w.Body)
 	assert.Contains(t, string(body), "USER_NOT_FOUND")
 }
 
-func TestAuthHandler_ChangePassword_MissingHeader(t *testing.T) {
+func TestAuthHandler_ChangePassword_MissingToken(t *testing.T) {
 	t.Parallel()
 	_, r := newDeps(t)
 
@@ -448,13 +469,29 @@ func TestAuthHandler_ChangePassword_MissingHeader(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
+func TestAuthHandler_ChangePassword_InvalidToken(t *testing.T) {
+	t.Parallel()
+	d, r := newDeps(t)
+
+	d.validate.EXPECT().Execute(gomock.Any(), "bad-token").
+		Return(nil, domainerrors.ErrInvalidToken)
+
+	w := doJSON(r, "PUT", "/auth/change-password", gin.H{
+		"current_password": "OldPass1",
+		"new_password":     "NewPass1",
+	}, bearerHeader("bad-token"))
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
 func TestAuthHandler_ChangePassword_MissingBody(t *testing.T) {
 	t.Parallel()
-	_, r := newDeps(t)
+	d, r := newDeps(t)
 
 	uid := uuid.New()
+	expectValidToken(d, uid)
 	w := doJSON(r, "PUT", "/auth/change-password", gin.H{},
-		map[string]string{"X-User-ID": uid.String()})
+		bearerHeader("valid-token"))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

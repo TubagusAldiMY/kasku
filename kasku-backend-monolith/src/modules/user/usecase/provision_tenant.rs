@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::modules::billing::domain::repository::{SubscriptionPlanRepository, SubscriptionRepository};
 use crate::modules::billing::domain::entity::Subscription;
-use crate::modules::user::domain::{error::UserError, repository::UserProfileRepository};
+use crate::modules::user::domain::repository::UserProfileRepository;
 use crate::shared::tenant::user_id_to_schema;
 
 pub struct ProvisionTenantUseCase {

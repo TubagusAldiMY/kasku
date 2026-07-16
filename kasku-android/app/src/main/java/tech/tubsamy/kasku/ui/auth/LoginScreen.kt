@@ -44,6 +44,7 @@ fun LoginScreen(
     vm: LoginViewModel,
     onLoggedIn: () -> Unit,
     onRegister: () -> Unit,
+    onForgotPassword: () -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -115,6 +116,13 @@ fun LoginScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onForgotPassword) { Text("Lupa password?") }
+        }
 
         if (vm.error != null) {
             Spacer(Modifier.height(12.dp))

@@ -2,8 +2,7 @@ use std::sync::Arc;
 use lapin::{
     Connection, ConnectionProperties,
     options::*,
-    types::{AMQPValue, FieldTable, LongInt, LongString},
-    BasicProperties, ExchangeKind,
+    types::{AMQPValue, FieldTable, LongString}, ExchangeKind,
 };
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};

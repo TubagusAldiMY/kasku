@@ -356,6 +356,7 @@ func (h *BillingHandler) PaymentWebhook(c *gin.Context) {
 	// Orchestrator menggunakan status ("success"/"failed"/"expired") sebagai event key.
 	input := usecase.PaymentWebhookInput{
 		Event:             payload.Status,
+		Type:              payload.Type,
 		ExternalPaymentID: payload.PaymentID,
 		RefID:             payload.RefID,
 		Amount:            payload.Amount,

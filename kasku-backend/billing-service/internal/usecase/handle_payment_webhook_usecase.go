@@ -30,11 +30,17 @@ const (
 
 	// routingKeySubscriptionActivated adalah routing key RabbitMQ untuk event aktivasi.
 	routingKeySubscriptionActivated = "subscription.activated"
+
+	// webhookPayloadTypeDeposit adalah satu-satunya tipe transaksi yang boleh mengaktivasi
+	// subscription. Payload dengan type lain (withdraw, refund, dll) ditolak sebagai
+	// pengaman integritas nilai.
+	webhookPayloadTypeDeposit = "deposit"
 )
 
 // PaymentWebhookInput adalah data yang diparsing dari payload webhook Payment Orchestrator.
 type PaymentWebhookInput struct {
 	Event             string
+	Type              string // kategori transaksi orchestrator ("deposit"); divalidasi sebelum aktivasi
 	ExternalPaymentID string
 	RefID             string
 	Amount            int
@@ -122,12 +128,37 @@ func (uc *handlePaymentWebhookUseCase) Execute(ctx context.Context, input Paymen
 		return nil
 	}
 
-	// Step 4: Update status payment di DB
+	// Step 4: Value-integrity guards untuk pembayaran sukses SEBELUM menyentuh state apa pun.
+	// Signature HMAC hanya menjamin autentisitas pengirim, bukan bahwa nilai payload cocok
+	// dengan payment yang tersimpan. Tolak (tanpa mengubah status) jika:
+	//   (a) tipe transaksi bukan "deposit" — hanya deposit yang mengaktivasi subscription
+	//   (b) amount payload tidak sama dengan amount yang tersimpan saat create
+	if newStatus == entity.PaymentPaid {
+		if input.Type != webhookPayloadTypeDeposit {
+			uc.log.Warn().
+				Str("payment_id", existingPayment.ID.String()).
+				Str("ref_id", input.RefID).
+				Str("payload_type", input.Type).
+				Msg("webhook payment.success ditolak: tipe transaksi bukan deposit")
+			return nil
+		}
+		if input.Amount != existingPayment.AmountIDR {
+			uc.log.Warn().
+				Str("payment_id", existingPayment.ID.String()).
+				Str("ref_id", input.RefID).
+				Int("expected_amount_idr", existingPayment.AmountIDR).
+				Int("webhook_amount_idr", input.Amount).
+				Msg("webhook payment.success ditolak: amount tidak cocok dengan payment tersimpan")
+			return nil
+		}
+	}
+
+	// Step 5: Update status payment di DB
 	if err := uc.paymentRepo.UpdateStatus(ctx, existingPayment.ID, newStatus, input.ExternalPaymentID); err != nil {
 		return fmt.Errorf("gagal update status payment %s ke %s: %w", existingPayment.ID, newStatus, err)
 	}
 
-	// Step 5: Untuk pembayaran sukses, aktifkan subscription
+	// Step 6: Untuk pembayaran sukses, aktifkan subscription
 	if newStatus == entity.PaymentPaid {
 		if err := uc.activateSubscription(ctx, existingPayment); err != nil {
 			return err

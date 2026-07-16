@@ -1,7 +1,6 @@
 use axum::{extract::{Request, State}, middleware::Next, response::Response};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use uuid::Uuid;
 
 use crate::app_error::AppError;
 use crate::app_state::AppState;

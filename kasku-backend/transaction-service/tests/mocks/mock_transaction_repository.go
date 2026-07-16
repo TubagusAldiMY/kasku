@@ -58,17 +58,17 @@ func (mr *MockTransactionRepositoryMockRecorder) CountMonthly(ctx, tenantSchema,
 }
 
 // Create mocks base method.
-func (m *MockTransactionRepository) Create(ctx context.Context, tenantSchema string, tx *entity.Transaction) error {
+func (m *MockTransactionRepository) Create(ctx context.Context, tenantSchema, userID string, tx *entity.Transaction) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, tenantSchema, tx)
+	ret := m.ctrl.Call(m, "Create", ctx, tenantSchema, userID, tx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockTransactionRepositoryMockRecorder) Create(ctx, tenantSchema, tx any) *gomock.Call {
+func (mr *MockTransactionRepositoryMockRecorder) Create(ctx, tenantSchema, userID, tx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockTransactionRepository)(nil).Create), ctx, tenantSchema, tx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockTransactionRepository)(nil).Create), ctx, tenantSchema, userID, tx)
 }
 
 // GetByID mocks base method.

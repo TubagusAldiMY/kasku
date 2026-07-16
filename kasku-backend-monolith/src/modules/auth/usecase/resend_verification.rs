@@ -28,7 +28,7 @@ impl ResendVerificationUseCase {
             return Ok(()); // silent success — don't reveal verification status
         }
 
-        let (raw_token, token_hash) = generate_secure_token().map_err(|e| AuthError::Internal(e))?;
+        let (raw_token, token_hash) = generate_secure_token().map_err(AuthError::Internal)?;
         let now = Utc::now();
 
         let ev = EmailVerification {

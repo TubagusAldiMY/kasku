@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use axum::{
+    body::Bytes,
     extract::{Extension, State},
+    http::HeaderMap,
     response::{IntoResponse, Response},
     Json,
 };
@@ -12,16 +14,15 @@ use crate::shared::response::{no_content, ApiResponse};
 
 use super::dto::*;
 use crate::modules::billing::domain::error::BillingError;
-use crate::modules::billing::usecase::{
-    create_payment::CreatePaymentInput,
-    handle_webhook::{HandleWebhookUseCase, WebhookPayload},
-};
+use crate::modules::billing::usecase::create_payment::CreatePaymentInput;
 
 fn billing_err(e: BillingError) -> AppError {
     match e {
         BillingError::SubscriptionNotFound | BillingError::PlanNotFound | BillingError::PaymentNotFound => AppError::NotFound,
         BillingError::InvalidWebhookSignature => AppError::Unauthorized("invalid webhook signature".into()),
+        BillingError::InvalidWebhookPayload => AppError::Validation("invalid webhook payload".into()),
         BillingError::PaymentAlreadyProcessed => AppError::Conflict("payment already processed".into()),
+        BillingError::PaymentGatewayUnavailable => AppError::ExternalService("payment gateway tidak tersedia".into()),
         BillingError::Internal(inner) => AppError::Internal(inner),
     }
 }
@@ -94,11 +95,25 @@ pub async fn cancel_subscription(
     Ok(no_content())
 }
 
+/// Webhook Payment Orchestrator. Publik (tanpa JWT) — keamanan dari verifikasi
+/// HMAC-SHA256 atas raw body terhadap header `X-Signature` (di dalam use case).
+/// `Bytes` HARUS extractor terakhir (meng-consume body); raw body dipakai untuk HMAC.
 pub async fn handle_webhook(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<WebhookRequest>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Result<Response, AppError> {
-    // Webhook handler uses its own HandleWebhookUseCase wired in AppState
-    // For simplicity, wire through billing_uc
-    Ok(ApiResponse::ok(serde_json::json!({"message": "webhook received"})).into_response())
+    let signature = headers
+        .get("X-Signature")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    state
+        .billing_uc
+        .handle_webhook
+        .execute(&body, signature)
+        .await
+        .map_err(billing_err)?;
+
+    Ok(ApiResponse::ok(serde_json::json!({"received": true})).into_response())
 }
