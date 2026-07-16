@@ -2,22 +2,53 @@
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { apiFetch } from '$lib/api/client';
-	import { budgetsRepo, categoriesRepo, type BudgetRow, type CategoryRow } from '$lib/db';
+
+	type PeriodType = 'MONTHLY' | 'WEEKLY' | 'CUSTOM';
+
+	// Shape rendered by this page — mirrors budgetResponse in the transaction-service handler.
+	type Budget = {
+		id: string;
+		name: string;
+		limit_idr: number;
+		category_id?: string;
+		category_name?: string;
+		period_type: PeriodType;
+		start_date?: string;
+		end_date?: string | null;
+		alert_threshold: number;
+		spent_idr: number;
+		remaining_idr: number;
+		progress_percent: number;
+		is_over_budget: boolean;
+		updated_at: string;
+		daily_limit_enabled: boolean;
+		daily_base_idr?: number;
+		carryover_idr?: number;
+		daily_allowance_today_idr?: number;
+		spent_today_idr?: number;
+		daily_remaining_idr?: number;
+	};
+
+	type Category = {
+		id: string;
+		name: string;
+		category_type: 'INCOME' | 'EXPENSE' | 'BOTH';
+	};
 
 	type BudgetForm = {
 		id: string;
 		name: string;
 		limit_idr: number | string;
 		category_id: string;
-		period_type: 'MONTHLY' | 'WEEKLY' | 'CUSTOM';
+		period_type: PeriodType;
 		start_date: string;
 		end_date: string;
 		alert_threshold: number | string;
 		daily_limit_enabled: boolean;
 	};
 
-	let budgets = $state<BudgetRow[]>([]);
-	let categories = $state<CategoryRow[]>([]);
+	let budgets = $state<Budget[]>([]);
+	let categories = $state<Category[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
 	let errorMessage = $state('');
@@ -51,13 +82,13 @@
 		return 'Kustom';
 	}
 
-	function barColor(b: BudgetRow) {
+	function barColor(b: Budget) {
 		if (b.is_over_budget) return 'bg-clay';
 		if (b.progress_percent > 75) return 'bg-gold';
 		return 'bg-teal';
 	}
 
-	function textColor(b: BudgetRow) {
+	function textColor(b: Budget) {
 		if (b.is_over_budget) return 'text-clay';
 		if (b.progress_percent > 75) return 'text-gold';
 		return 'text-ink';
@@ -74,44 +105,92 @@
 		}
 	}
 
-	async function refreshFromServer() {
+	// Defensive: backend serializes snake_case, but tolerate PascalCase (Go struct) fallbacks.
+	function pick(item: Record<string, unknown>, snake: string, pascal: string): unknown {
+		return item[snake] ?? item[pascal];
+	}
+	function numOrUndef(v: unknown): number | undefined {
+		return v == null ? undefined : Number(v);
+	}
+
+	function normalizeBudget(raw: Record<string, unknown>): Budget | null {
+		const id = pick(raw, 'id', 'ID');
+		const name = pick(raw, 'name', 'Name');
+		const periodType = pick(raw, 'period_type', 'PeriodType');
+		if (typeof id !== 'string' || typeof name !== 'string' || typeof periodType !== 'string') {
+			return null;
+		}
+		const catId = pick(raw, 'category_id', 'CategoryID');
+		const catName = pick(raw, 'category_name', 'CategoryName');
+		const startDate = pick(raw, 'start_date', 'StartDate');
+		const endDate = pick(raw, 'end_date', 'EndDate');
+		return {
+			id,
+			name,
+			limit_idr: Number(pick(raw, 'limit_idr', 'LimitIDR') ?? 0),
+			category_id: typeof catId === 'string' && catId ? catId : undefined,
+			category_name: typeof catName === 'string' ? catName : undefined,
+			period_type: periodType as PeriodType,
+			start_date: typeof startDate === 'string' ? startDate : undefined,
+			end_date: typeof endDate === 'string' ? endDate : null,
+			alert_threshold: Number(pick(raw, 'alert_threshold', 'AlertThreshold') ?? 80),
+			spent_idr: Number(pick(raw, 'spent_idr', 'SpentIDR') ?? 0),
+			remaining_idr: Number(pick(raw, 'remaining_idr', 'RemainingIDR') ?? 0),
+			progress_percent: Number(pick(raw, 'progress_percent', 'ProgressPercent') ?? 0),
+			is_over_budget: Boolean(pick(raw, 'is_over_budget', 'IsOverBudget')),
+			updated_at: String(pick(raw, 'updated_at', 'UpdatedAt') ?? ''),
+			daily_limit_enabled: Boolean(pick(raw, 'daily_limit_enabled', 'DailyLimitEnabled')),
+			daily_base_idr: numOrUndef(pick(raw, 'daily_base_idr', 'DailyBaseIDR')),
+			carryover_idr: numOrUndef(pick(raw, 'carryover_idr', 'CarryoverIDR')),
+			daily_allowance_today_idr: numOrUndef(
+				pick(raw, 'daily_allowance_today_idr', 'DailyAllowanceTodayIDR')
+			),
+			spent_today_idr: numOrUndef(pick(raw, 'spent_today_idr', 'SpentTodayIDR')),
+			daily_remaining_idr: numOrUndef(pick(raw, 'daily_remaining_idr', 'DailyRemainingIDR'))
+		};
+	}
+
+	function normalizeBudgets(data: unknown): Budget[] {
+		if (!Array.isArray(data)) return [];
+		return data
+			.map((item) => normalizeBudget(item as Record<string, unknown>))
+			.filter((b): b is Budget => b !== null);
+	}
+
+	async function fetchBudgets() {
+		loading = true;
+		errorMessage = '';
 		try {
 			const res = await apiFetch('/budgets');
 			const result = await readApiResult(res);
-			if (res.ok && result.success && Array.isArray(result.data)) {
-				budgets = result.data as BudgetRow[];
-				try {
-					await budgetsRepo.clear();
-					await budgetsRepo.putMany(result.data as BudgetRow[]);
-				} catch {
-					// IDB gagal — UI sudah ter-update, biarkan.
-				}
-			} else if (!res.ok) {
+			if (res.ok && result.success) {
+				budgets = normalizeBudgets(result.data);
+			} else {
 				errorMessage = result.error?.message || 'Gagal memuat anggaran.';
 			}
-		} catch {
-			// Offline — tampilkan cache IDB.
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal memuat anggaran. Periksa koneksi atau service backend.';
+		} finally {
+			loading = false;
 		}
 	}
 
 	async function fetchCategories() {
 		try {
-			const cached = await categoriesRepo.getAll();
-			if (cached.length > 0) {
-				categories = cached.filter(
-					(c) => c.category_type === 'EXPENSE' || c.category_type === 'BOTH'
-				);
-				return;
-			}
 			const res = await apiFetch('/categories');
 			const result = await readApiResult(res);
 			if (res.ok && result.success && Array.isArray(result.data)) {
-				categories = (result.data as CategoryRow[]).filter(
-					(c) => c.category_type === 'EXPENSE' || c.category_type === 'BOTH'
-				);
+				categories = (result.data as Record<string, unknown>[])
+					.map((c) => ({
+						id: String(c.id ?? c.ID ?? ''),
+						name: String(c.name ?? c.Name ?? ''),
+						category_type: (c.category_type ?? c.CategoryType) as Category['category_type']
+					}))
+					.filter((c) => c.id && (c.category_type === 'EXPENSE' || c.category_type === 'BOTH'));
 			}
-		} catch {
-			// Ignore
+		} catch (err) {
+			console.error(err);
 		}
 	}
 
@@ -138,7 +217,7 @@
 			const result = await readApiResult(res);
 			if (res.ok && result.success) {
 				showModal = false;
-				await refreshFromServer();
+				await fetchBudgets();
 			} else {
 				errorMessage = result.error?.message || 'Gagal menyimpan anggaran.';
 			}
@@ -158,9 +237,7 @@
 			const result = await readApiResult(res);
 			if (res.ok && result.success) {
 				showModal = false;
-				await budgetsRepo.hardDelete(id);
-				budgets = budgets.filter((b) => b.id !== id);
-				await refreshFromServer();
+				await fetchBudgets();
 			} else {
 				errorMessage = result.error?.message || 'Gagal menghapus anggaran.';
 			}
@@ -178,7 +255,7 @@
 		showModal = true;
 	}
 
-	function openEditModal(b: BudgetRow) {
+	function openEditModal(b: Budget) {
 		errorMessage = '';
 		form = {
 			id: b.id,
@@ -194,7 +271,7 @@
 		showModal = true;
 	}
 
-	function spentTodayPercent(b: BudgetRow): number {
+	function spentTodayPercent(b: Budget): number {
 		const allowance = b.daily_allowance_today_idr ?? 0;
 		if (allowance <= 0) return 100;
 		return Math.round(((b.spent_today_idr ?? 0) / allowance) * 100);
@@ -207,14 +284,8 @@
 	}
 
 	onMount(async () => {
-		try {
-			budgets = await budgetsRepo.getAll();
-		} catch (err) {
-			console.warn('Cache anggaran lokal belum siap, memuat dari server:', err);
-		}
-		loading = false;
 		void fetchCategories();
-		await refreshFromServer();
+		await fetchBudgets();
 	});
 
 	// ── Editorial presentation helper (additive, no logic change) ──

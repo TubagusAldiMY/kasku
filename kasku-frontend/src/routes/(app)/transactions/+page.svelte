@@ -2,23 +2,9 @@
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
-	import {
-		transactionsRepo,
-		accountsRepo,
-		categoriesRepo,
-		budgetsRepo,
-		type TransactionRow,
-		type AccountRow,
-		type CategoryRow,
-		type BudgetRow
-	} from '$lib/db';
-	import {
-		enqueueCreate,
-		enqueueDelete,
-		enqueueUpdate,
-		syncStatus,
-		triggerManualSync
-	} from '$lib/sync';
+
+	type TxType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+	type CategoryType = 'INCOME' | 'EXPENSE' | 'BOTH';
 
 	type Transaction = {
 		id: string;
@@ -29,14 +15,32 @@
 		toAccount: string;
 		budget: string;
 		amount: number;
-		type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+		type: TxType;
 	};
-	type AccountRef = { id: string; name: string };
-	type CategoryRef = { id: string; name: string; category_type: 'INCOME' | 'EXPENSE' | 'BOTH' };
+	type AccountRef = { id: string; name: string; balance: number };
+	type CategoryRef = { id: string; name: string; category_type: CategoryType };
 	type BudgetRef = { id: string; name: string };
 
-	let transactions = $state<Transaction[]>([]);
+	// Raw transaksi (server → normalized snake_case) untuk proyeksi tampilan & edit.
+	type TxRow = {
+		id: string;
+		account_id: string;
+		category_id: string;
+		budget_id: string;
+		transaction_type: TxType;
+		amount_idr: number;
+		transaction_date: string;
+		notes: string;
+		to_account_id: string;
+	};
+
+	// Envelope server bisa snake_case (punya json tag) atau PascalCase (entity tanpa tag).
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- bentuk respons bervariasi (snake_case vs PascalCase)
+	type ServerObj = Record<string, any>;
+
+	let txRows = $state<TxRow[]>([]);
 	let loading = $state(true);
+	let errorMessage = $state('');
 	let showAddModal = $state(false);
 	let editingId = $state('');
 
@@ -47,7 +51,7 @@
 	let newTx = $state({
 		title: '',
 		amount: 0,
-		type: 'EXPENSE' as 'INCOME' | 'EXPENSE' | 'TRANSFER',
+		type: 'EXPENSE' as TxType,
 		category_id: '',
 		budget_id: '',
 		account_id: '',
@@ -59,7 +63,7 @@
 		allCategories.filter((c) => c.category_type === newTx.type || c.category_type === 'BOTH')
 	);
 
-	function firstCategoryId(type: 'INCOME' | 'EXPENSE' | 'TRANSFER') {
+	function firstCategoryId(type: TxType) {
 		if (type === 'TRANSFER') return '';
 		return (
 			allCategories.find((c) => c.category_type === type || c.category_type === 'BOTH')?.id ?? ''
@@ -80,16 +84,13 @@
 		}
 	});
 
-	function projectTransaction(
-		row: TransactionRow,
-		accounts: AccountRow[],
-		categories: CategoryRow[],
-		budgetRows: BudgetRow[]
-	): Transaction {
-		const acc = accounts.find((a) => a.id === row.account_id);
-		const toAcc = row.to_account_id ? accounts.find((a) => a.id === row.to_account_id) : undefined;
-		const cat = categories.find((c) => c.id === row.category_id);
-		const budget = row.budget_id ? budgetRows.find((b) => b.id === row.budget_id) : undefined;
+	function projectTransaction(row: TxRow): Transaction {
+		const acc = myAccounts.find((a) => a.id === row.account_id);
+		const toAcc = row.to_account_id
+			? myAccounts.find((a) => a.id === row.to_account_id)
+			: undefined;
+		const cat = allCategories.find((c) => c.id === row.category_id);
+		const budget = row.budget_id ? budgets.find((b) => b.id === row.budget_id) : undefined;
 		const signed =
 			row.transaction_type === 'EXPENSE' || row.transaction_type === 'TRANSFER'
 				? -row.amount_idr
@@ -97,7 +98,7 @@
 		return {
 			id: row.id,
 			date: row.transaction_date,
-			title: row.notes ?? row.transaction_type,
+			title: row.notes || row.transaction_type,
 			category: cat?.name ?? (row.transaction_type === 'TRANSFER' ? 'Transfer' : 'Umum'),
 			account: acc?.name ?? '—',
 			toAccount: toAcc?.name ?? '',
@@ -107,66 +108,112 @@
 		};
 	}
 
-	async function reloadFromLocal() {
+	const transactions = $derived(
+		txRows.map(projectTransaction).sort((a, b) => (a.date < b.date ? 1 : -1))
+	);
+
+	// ── Normalisasi respons server (snake_case ATAU PascalCase) ──
+	function normalizeAccount(a: ServerObj): AccountRef | null {
+		const id = a.id ?? a.ID;
+		const name = a.name ?? a.Name;
+		if (!id || !name) return null;
+		return { id, name, balance: Number(a.balance ?? a.Balance ?? 0) };
+	}
+
+	function normalizeCategory(c: ServerObj): CategoryRef | null {
+		const id = c.id ?? c.ID;
+		const name = c.name ?? c.Name;
+		const category_type = c.category_type ?? c.CategoryType;
+		if (!id || !name || !category_type) return null;
+		return { id, name, category_type };
+	}
+
+	function normalizeBudget(b: ServerObj): BudgetRef | null {
+		const id = b.id ?? b.ID;
+		const name = b.name ?? b.Name;
+		if (!id || !name) return null;
+		return { id, name };
+	}
+
+	function normalizeTx(t: ServerObj): TxRow | null {
+		const id = t.id ?? t.ID;
+		const account_id = t.account_id ?? t.AccountID;
+		const transaction_type = t.transaction_type ?? t.TransactionType;
+		if (!id || !account_id || !transaction_type) return null;
+		return {
+			id,
+			account_id,
+			category_id: t.category_id ?? t.CategoryID ?? '',
+			budget_id: t.budget_id ?? t.BudgetID ?? '',
+			transaction_type,
+			amount_idr: Number(t.amount_idr ?? t.AmountIDR ?? 0),
+			transaction_date: t.transaction_date ?? t.TransactionDate ?? '',
+			notes: t.notes ?? t.Notes ?? '',
+			to_account_id: t.to_account_id ?? t.ToAccountID ?? ''
+		};
+	}
+
+	async function readApiResult(res: Response) {
 		try {
-			const [txRows, accRows, catRows, budgetRows] = await Promise.all([
-				transactionsRepo.getAll(),
-				accountsRepo.getAll(),
-				categoriesRepo.getAll(),
-				budgetsRepo.getAll().catch(() => [] as BudgetRow[])
+			return await res.json();
+		} catch {
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
+		}
+	}
+
+	function normalizeList<T>(data: unknown, fn: (o: ServerObj) => T | null): T[] {
+		if (!Array.isArray(data)) return [];
+		return data.map((item) => fn(item as ServerObj)).filter((v): v is T => v !== null);
+	}
+
+	async function loadData(showLoading = false) {
+		if (showLoading) loading = true;
+		errorMessage = '';
+		try {
+			const [accRes, catRes, budRes, txRes] = await Promise.all([
+				apiFetch('/accounts'),
+				apiFetch('/categories'),
+				apiFetch('/budgets'),
+				apiFetch('/transactions')
 			]);
-			myAccounts = accRows.map((a) => ({ id: a.id, name: a.name }));
-			allCategories = catRows.map((c) => ({
-				id: c.id,
-				name: c.name,
-				category_type: c.category_type
-			}));
-			budgets = budgetRows.map((b) => ({ id: b.id, name: b.name }));
-			transactions = txRows
-				.map((t) => projectTransaction(t, accRows, catRows, budgetRows))
-				.sort((a, b) => (a.date < b.date ? 1 : -1));
+			const [accR, catR, budR, txR] = await Promise.all([
+				readApiResult(accRes),
+				readApiResult(catRes),
+				readApiResult(budRes),
+				readApiResult(txRes)
+			]);
+
+			if (accRes.ok && accR.success) {
+				myAccounts = normalizeList(accR.data, normalizeAccount);
+			} else {
+				errorMessage = accR.error?.message || 'Gagal memuat rekening.';
+			}
+			if (catRes.ok && catR.success) {
+				allCategories = normalizeList(catR.data, normalizeCategory);
+			} else if (!errorMessage) {
+				errorMessage = catR.error?.message || 'Gagal memuat kategori.';
+			}
+			// Anggaran opsional (tier tertentu) — jangan jadikan error fatal.
+			budgets = budRes.ok && budR.success ? normalizeList(budR.data, normalizeBudget) : [];
+			if (txRes.ok && txR.success) {
+				txRows = normalizeList(txR.data, normalizeTx);
+			} else if (!errorMessage) {
+				errorMessage = txR.error?.message || 'Gagal memuat transaksi.';
+			}
+
 			if (!newTx.account_id && myAccounts.length > 0) newTx.account_id = myAccounts[0].id;
 			if (!newTx.category_id && filteredCategories.length > 0)
 				newTx.category_id = filteredCategories[0].id;
 		} catch (err) {
-			console.error('Gagal membaca transaksi dari penyimpanan lokal:', err);
+			console.error(err);
+			errorMessage = 'Gagal memuat data. Periksa koneksi atau service backend.';
+		} finally {
+			if (showLoading) loading = false;
 		}
 	}
-
-	async function hydrateCategoriesFromServer() {
-		try {
-			const res = await apiFetch('/categories');
-			const result = await res.json();
-			if (result.success && Array.isArray(result.data)) {
-				const rows = result.data as CategoryRow[];
-				await categoriesRepo.clear();
-				await categoriesRepo.putMany(rows);
-				await reloadFromLocal();
-			}
-		} catch {
-			// Offline → tetap pakai cache IDB.
-		}
-	}
-
-	async function hydrateBudgetsFromServer() {
-		try {
-			const res = await apiFetch('/budgets');
-			const result = await res.json();
-			if (result.success && Array.isArray(result.data)) {
-				const rows = result.data as BudgetRow[];
-				await budgetsRepo.clear();
-				await budgetsRepo.putMany(rows);
-				await reloadFromLocal();
-			}
-		} catch {
-			// Offline → tetap pakai cache IDB.
-		}
-	}
-
-	$effect(() => {
-		void syncStatus.dataVersion;
-		void reloadFromLocal();
-	});
 
 	let transferError = $state('');
 
@@ -185,8 +232,8 @@
 		transferError = '';
 	}
 
-	async function openEditTransaction(id: string) {
-		const row = await transactionsRepo.getById(id);
+	function openEditTransaction(id: string) {
+		const row = txRows.find((t) => t.id === id);
 		if (!row) return;
 		newTx = {
 			title: row.notes ?? '',
@@ -196,7 +243,7 @@
 			budget_id: row.transaction_type === 'EXPENSE' ? (row.budget_id ?? '') : '',
 			account_id: row.account_id,
 			to_account_id: row.to_account_id ?? '',
-			date: row.transaction_date
+			date: (row.transaction_date ?? '').split('T')[0]
 		};
 		editingId = id;
 		transferError = '';
@@ -212,7 +259,7 @@
 				transferError = 'Rekening sumber dan tujuan tidak boleh sama.';
 				return;
 			}
-			const sourceAcc = await accountsRepo.getById(newTx.account_id);
+			const sourceAcc = myAccounts.find((a) => a.id === newTx.account_id);
 			const amount = Math.abs(newTx.amount);
 			if (sourceAcc && amount > sourceAcc.balance) {
 				const fmt = new Intl.NumberFormat('id-ID', {
@@ -226,7 +273,7 @@
 		}
 
 		try {
-			const payload: Partial<TransactionRow> = {
+			const payload = {
 				account_id: newTx.account_id,
 				category_id: newTx.category_id,
 				budget_id: newTx.type === 'EXPENSE' ? newTx.budget_id : '',
@@ -236,39 +283,41 @@
 				notes: newTx.title,
 				to_account_id: newTx.type === 'TRANSFER' ? newTx.to_account_id : ''
 			};
-			if (editingId) {
-				await enqueueUpdate<TransactionRow>(
-					'transactions',
-					editingId,
-					payload as Partial<TransactionRow>
-				);
+			const method = editingId ? 'PUT' : 'POST';
+			const url = editingId ? `/transactions/${editingId}` : '/transactions';
+			const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				transferError = '';
+				showAddModal = false;
+				editingId = '';
+				await loadData();
 			} else {
-				await enqueueCreate<TransactionRow>('transactions', payload as TransactionRow);
+				transferError = result.error?.message || 'Gagal menyimpan transaksi.';
 			}
-			transferError = '';
-			showAddModal = false;
-			editingId = '';
 		} catch (err) {
 			console.error('Gagal menyimpan transaksi:', err);
+			transferError = 'Gagal menyimpan transaksi. Periksa koneksi atau service backend.';
 		}
 	}
 
 	async function handleDeleteTransaction(id: string) {
 		if (!confirm('Hapus transaksi ini? Saldo rekening Anda akan disesuaikan kembali.')) return;
 		try {
-			await enqueueDelete('transactions', id);
+			const res = await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				await loadData();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menghapus transaksi.';
+			}
 		} catch (err) {
 			console.error('Gagal menghapus transaksi:', err);
+			errorMessage = 'Gagal menghapus transaksi. Periksa koneksi atau service backend.';
 		}
 	}
 
-	onMount(async () => {
-		await reloadFromLocal();
-		loading = false;
-		void hydrateCategoriesFromServer();
-		void hydrateBudgetsFromServer();
-		void triggerManualSync();
-	});
+	onMount(() => loadData(true));
 
 	// ── Editorial presentation helpers (additive, no logic change) ──
 	// Dense signed money for the table: "−45.000" / "+12.500.000" (no "Rp").
@@ -303,6 +352,12 @@
 			+ Catat
 		</button>
 	</div>
+
+	{#if errorMessage && !showAddModal}
+		<div class="mt-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
+			{errorMessage}
+		</div>
+	{/if}
 
 	<!-- List Transaksi -->
 	{#if loading}

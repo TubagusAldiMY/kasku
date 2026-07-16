@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { apiFetch } from '$lib/api/client';
-	import { initSyncTriggers, teardownSyncTriggers, triggerManualSync, syncStatus } from '$lib/sync';
 
 	let { children } = $props();
 
@@ -18,11 +17,6 @@
 			auth.setToken('mock-jwt-token');
 			auth.setUser({ id: 'mock-uid', email: 'demo@kasku.id', username: 'Juragan Demo' });
 		}
-		initSyncTriggers();
-	});
-
-	onDestroy(() => {
-		teardownSyncTriggers();
 	});
 
 	$effect(() => {
@@ -81,11 +75,6 @@
 
 	function markRead(id: number) {
 		notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-	}
-
-	const syncLoading = $derived(syncStatus.running);
-	async function handleSync() {
-		await triggerManualSync();
 	}
 
 	function isActive(path: string) {
@@ -156,28 +145,6 @@
 	</div>
 {:else}
 	<div class="flex min-h-screen flex-col">
-		{#if !syncStatus.online}
-			<div
-				class="flex items-center justify-center gap-2 bg-ink py-2 text-[11px] font-semibold tracking-wider text-mint uppercase"
-				role="status"
-			>
-				<svg
-					class="h-3.5 w-3.5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2.5"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M18.364 5.636l-12.728 12.728m0-12.728l12.728 12.728"
-					/>
-				</svg>
-				<span>Mode offline · perubahan tersimpan, tersinkron otomatis saat tersambung</span>
-			</div>
-		{/if}
-
 		<!-- ═══════════ Header — editorial top nav ═══════════ -->
 		<header class="sticky top-0 z-40 border-b border-ink/10 bg-paper/90 backdrop-blur-sm">
 			<div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-6 lg:px-10">
@@ -246,22 +213,6 @@
 							aria-expanded={showMenu}
 						>
 							{auth.user?.username?.charAt(0).toUpperCase() ?? 'J'}
-							{#if syncStatus.conflictCount > 0}
-								<span
-									class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-paper bg-clay"
-									aria-hidden="true"
-								></span>
-							{:else if syncStatus.queuedCount > 0}
-								<span
-									class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-paper bg-gold"
-									aria-hidden="true"
-								></span>
-							{:else if syncStatus.error}
-								<span
-									class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-paper bg-clay"
-									aria-hidden="true"
-								></span>
-							{/if}
 						</button>
 
 						{#if showMenu}
@@ -296,50 +247,6 @@
 										</a>
 									{/each}
 								</nav>
-								<div class="border-t border-ink/10 px-3 py-2">
-									<a
-										href={resolve('/sync')}
-										onclick={() => (showMenu = false)}
-										class="flex items-center justify-between rounded-xl px-2 py-2 text-sm text-ink/70 transition-colors hover:bg-ink/5"
-									>
-										<span>Status sinkronisasi</span>
-										{#if syncStatus.conflictCount > 0}
-											<span
-												class="flex h-4 min-w-4 items-center justify-center rounded-full bg-clay px-1 text-[10px] font-semibold text-card"
-											>
-												{syncStatus.conflictCount}
-											</span>
-										{/if}
-									</a>
-									<button
-										onclick={handleSync}
-										disabled={syncLoading}
-										class="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left text-sm text-ink/70 transition-colors hover:bg-ink/5 disabled:opacity-50"
-									>
-										<svg
-											class="h-4 w-4 {syncLoading ? 'animate-spin' : ''}"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-											stroke-width="2"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-											/>
-										</svg>
-										<span class="flex-1">
-											{syncLoading
-												? 'Menyinkronkan…'
-												: syncStatus.error
-													? 'Sinkron gagal — coba lagi'
-													: syncStatus.queuedCount > 0
-														? `Sinkronkan (${syncStatus.queuedCount} menunggu)`
-														: 'Sinkronkan data'}
-										</span>
-									</button>
-								</div>
 								<div class="border-t border-ink/10 p-3">
 									<button
 										onclick={handleLogout}

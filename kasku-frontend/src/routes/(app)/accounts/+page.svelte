@@ -1,30 +1,90 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { apiFetch } from '$lib/api/client';
 	import { fade, fly } from 'svelte/transition';
-	import {
-		accountsRepo,
-		transactionsRepo,
-		categoriesRepo,
-		type AccountRow,
-		type CategoryRow
-	} from '$lib/db';
-	import { enqueueCreate, enqueueDelete, syncStatus, triggerManualSync } from '$lib/sync';
 
-	type AccountDetail = AccountRow & {
+	type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+
+	type Account = {
+		id: string;
+		name: string;
+		account_type: string;
+		balance: number;
+		currency: string;
+		color: string;
+	};
+
+	type AccountDetail = Account & {
 		transactions: {
 			id: string;
 			date: string;
 			title: string;
 			category: string;
 			amount: number;
-			type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+			type: TransactionType;
 			toAccount: string;
 		}[];
 	};
 
-	let accounts = $state<AccountRow[]>([]);
+	// Backend entities carry no JSON tags → PascalCase (ID/Name/...); tolerate both.
+	type ServerAccount = {
+		id?: string;
+		ID?: string;
+		name?: string;
+		Name?: string;
+		account_type?: string;
+		AccountType?: string;
+		balance?: number;
+		Balance?: number;
+		currency?: string;
+		Currency?: string;
+		color?: string;
+		Color?: string;
+	};
+
+	type ServerTransaction = {
+		id?: string;
+		ID?: string;
+		account_id?: string;
+		AccountID?: string;
+		to_account_id?: string | null;
+		ToAccountID?: string | null;
+		category_id?: string | null;
+		CategoryID?: string | null;
+		transaction_type?: TransactionType;
+		TransactionType?: TransactionType;
+		amount_idr?: number;
+		AmountIDR?: number;
+		transaction_date?: string;
+		TransactionDate?: string;
+		notes?: string;
+		Notes?: string;
+	};
+
+	type NormalizedTransaction = {
+		id: string;
+		account_id: string;
+		to_account_id: string;
+		category_id: string;
+		transaction_type: TransactionType;
+		amount_idr: number;
+		transaction_date: string;
+		notes: string;
+	};
+
+	type ServerCategory = {
+		id?: string;
+		ID?: string;
+		name?: string;
+		Name?: string;
+	};
+
+	let accounts = $state<Account[]>([]);
 	let loading = $state(true);
+	let saving = $state(false);
+	let errorMessage = $state('');
 	let showAddModal = $state(false);
+	let editingId = $state<string | null>(null); // null = tambah, else = edit
 
 	// Detail drawer state
 	let selectedAccount = $state<AccountDetail | null>(null);
@@ -38,30 +98,110 @@
 		color: '#217b84'
 	});
 
-	async function reloadFromLocal() {
+	function normalizeAccount(item: ServerAccount): Account | null {
+		const id = item.id ?? item.ID;
+		const name = item.name ?? item.Name;
+		if (!id || !name) return null;
+		return {
+			id,
+			name,
+			account_type: item.account_type ?? item.AccountType ?? 'BANK',
+			balance: item.balance ?? item.Balance ?? 0,
+			currency: item.currency ?? item.Currency ?? 'IDR',
+			color: item.color ?? item.Color ?? '#217b84'
+		};
+	}
+
+	function normalizeAccounts(data: unknown): Account[] {
+		if (!Array.isArray(data)) return [];
+		return data
+			.map((item) => normalizeAccount(item as ServerAccount))
+			.filter((item): item is Account => item !== null);
+	}
+
+	function normalizeTransaction(item: ServerTransaction): NormalizedTransaction | null {
+		const id = item.id ?? item.ID;
+		const accountId = item.account_id ?? item.AccountID;
+		const type = item.transaction_type ?? item.TransactionType;
+		if (!id || !accountId || !type) return null;
+		return {
+			id,
+			account_id: accountId,
+			to_account_id: item.to_account_id ?? item.ToAccountID ?? '',
+			category_id: item.category_id ?? item.CategoryID ?? '',
+			transaction_type: type,
+			amount_idr: item.amount_idr ?? item.AmountIDR ?? 0,
+			transaction_date: item.transaction_date ?? item.TransactionDate ?? '',
+			notes: item.notes ?? item.Notes ?? ''
+		};
+	}
+
+	function normalizeTransactions(data: unknown): NormalizedTransaction[] {
+		if (!Array.isArray(data)) return [];
+		return data
+			.map((item) => normalizeTransaction(item as ServerTransaction))
+			.filter((item): item is NormalizedTransaction => item !== null);
+	}
+
+	function normalizeCategoryNames(data: unknown): Map<string, string> {
+		const map = new Map<string, string>();
+		if (!Array.isArray(data)) return map;
+		for (const raw of data) {
+			const item = raw as ServerCategory;
+			const id = item.id ?? item.ID;
+			const name = item.name ?? item.Name;
+			if (id && name) map.set(id, name);
+		}
+		return map;
+	}
+
+	async function readApiResult(res: Response) {
 		try {
-			accounts = await accountsRepo.getAll();
-		} catch (err) {
-			console.error('Gagal membaca akun dari penyimpanan lokal:', err);
+			return await res.json();
+		} catch {
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
 		}
 	}
 
-	$effect(() => {
-		void syncStatus.dataVersion;
-		void reloadFromLocal();
-	});
+	async function fetchAccounts() {
+		loading = true;
+		errorMessage = '';
+		try {
+			const res = await apiFetch('/accounts');
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				accounts = normalizeAccounts(result.data);
+			} else {
+				errorMessage = result.error?.message || 'Gagal memuat rekening.';
+			}
+		} catch (err) {
+			console.error(err);
+			errorMessage = 'Gagal memuat rekening. Periksa koneksi atau service backend.';
+		} finally {
+			loading = false;
+		}
+	}
 
-	async function openDetail(acc: AccountRow) {
+	async function openDetail(acc: Account) {
 		detailLoading = true;
 		selectedAccount = { ...acc, transactions: [] };
 		try {
-			const [allTx, allCat, allAcc] = await Promise.all([
-				transactionsRepo.getAll(),
-				categoriesRepo.getAll(),
-				accountsRepo.getAll()
+			const [txRes, catRes] = await Promise.all([
+				apiFetch('/transactions'),
+				apiFetch('/categories')
 			]);
-			const catMap = new Map<string, CategoryRow>(allCat.map((c) => [c.id, c]));
-			const accMap = new Map<string, AccountRow>(allAcc.map((a) => [a.id, a]));
+			const txResult = await readApiResult(txRes);
+			const catResult = await readApiResult(catRes);
+
+			const allTx = txRes.ok && txResult.success ? normalizeTransactions(txResult.data) : [];
+			const catMap =
+				catRes.ok && catResult.success
+					? normalizeCategoryNames(catResult.data)
+					: new Map<string, string>();
+			const accMap = new Map<string, string>(accounts.map((a) => [a.id, a.name]));
 
 			const txForAcc = allTx
 				.filter((t) => t.account_id === acc.id || t.to_account_id === acc.id)
@@ -76,13 +216,13 @@
 									? -t.amount_idr
 									: t.amount_idr
 								: -t.amount_idr;
-					const toAcc = t.to_account_id ? (accMap.get(t.to_account_id)?.name ?? '') : '';
+					const toAcc = t.to_account_id ? (accMap.get(t.to_account_id) ?? '') : '';
 					return {
 						id: t.id,
 						date: t.transaction_date,
-						title: t.notes ?? t.transaction_type,
+						title: t.notes || t.transaction_type,
 						category:
-							catMap.get(t.category_id ?? '')?.name ??
+							catMap.get(t.category_id) ??
 							(t.transaction_type === 'TRANSFER' ? 'Transfer' : 'Umum'),
 						amount: signed,
 						type: t.transaction_type,
@@ -102,26 +242,89 @@
 		selectedAccount = null;
 	}
 
-	async function handleAddAccount(e: SubmitEvent) {
+	function resetForm() {
+		newAccount = {
+			name: '',
+			account_type: 'BANK',
+			balance: 0,
+			currency: 'IDR',
+			color: '#217b84'
+		};
+		editingId = null;
+	}
+
+	function openAdd() {
+		errorMessage = '';
+		resetForm();
+		showAddModal = true;
+	}
+
+	function openEdit(acc: Account) {
+		errorMessage = '';
+		newAccount = {
+			name: acc.name,
+			account_type: acc.account_type,
+			balance: acc.balance,
+			currency: acc.currency,
+			color: acc.color ?? '#217b84'
+		};
+		editingId = acc.id;
+		showAddModal = true;
+	}
+
+	function closeModal() {
+		showAddModal = false;
+		resetForm();
+	}
+
+	// Merge server state back into the open drawer after a mutation (keeps its transaction list).
+	function refreshSelectedFromList() {
+		if (!selectedAccount) return;
+		const updated = accounts.find((a) => a.id === selectedAccount!.id);
+		if (updated) {
+			selectedAccount = { ...selectedAccount, ...updated };
+		} else {
+			closeDetail();
+		}
+	}
+
+	async function handleSubmitAccount(e: SubmitEvent) {
 		e.preventDefault();
+		errorMessage = '';
 		try {
-			await enqueueCreate<AccountRow>('accounts', {
-				name: newAccount.name,
-				account_type: newAccount.account_type,
-				balance: newAccount.balance,
-				currency: newAccount.currency,
-				color: newAccount.color
+			saving = true;
+			const isEdit = editingId !== null;
+			// PUT accepts name/account_type/color only; balance & currency are set on create.
+			const body = isEdit
+				? {
+						name: newAccount.name.trim(),
+						account_type: newAccount.account_type,
+						color: newAccount.color
+					}
+				: {
+						name: newAccount.name.trim(),
+						account_type: newAccount.account_type,
+						balance: Number(newAccount.balance),
+						currency: newAccount.currency,
+						color: newAccount.color
+					};
+			const res = await apiFetch(isEdit ? `/accounts/${editingId}` : '/accounts', {
+				method: isEdit ? 'PUT' : 'POST',
+				body: JSON.stringify(body)
 			});
-			showAddModal = false;
-			newAccount = {
-				name: '',
-				account_type: 'BANK',
-				balance: 0,
-				currency: 'IDR',
-				color: '#217b84'
-			};
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				closeModal();
+				await fetchAccounts();
+				refreshSelectedFromList();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menyimpan rekening.';
+			}
 		} catch (err) {
-			console.error('Gagal menambah akun:', err);
+			console.error('Gagal menyimpan akun:', err);
+			errorMessage = 'Gagal menyimpan rekening. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -132,19 +335,26 @@
 			)
 		)
 			return;
+		errorMessage = '';
 		try {
-			await enqueueDelete('accounts', id);
-			if (selectedAccount?.id === id) closeDetail();
+			saving = true;
+			const res = await apiFetch(`/accounts/${id}`, { method: 'DELETE' });
+			const result = await readApiResult(res);
+			if (res.ok && result.success) {
+				if (selectedAccount?.id === id) closeDetail();
+				await fetchAccounts();
+			} else {
+				errorMessage = result.error?.message || 'Gagal menghapus rekening.';
+			}
 		} catch (err) {
 			console.error('Gagal menghapus akun:', err);
+			errorMessage = 'Gagal menghapus rekening. Periksa koneksi atau service backend.';
+		} finally {
+			saving = false;
 		}
 	}
 
-	onMount(async () => {
-		await reloadFromLocal();
-		loading = false;
-		void triggerManualSync();
-	});
+	onMount(fetchAccounts);
 
 	const accountTypes = [
 		{
@@ -201,12 +411,18 @@
 			</p>
 		</div>
 		<button
-			onclick={() => (showAddModal = true)}
+			onclick={openAdd}
 			class="shrink-0 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink"
 		>
 			+ Tambah rekening
 		</button>
 	</div>
+
+	{#if errorMessage && !showAddModal}
+		<div class="mt-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
+			{errorMessage}
+		</div>
+	{/if}
 
 	<!-- Accounts Grid -->
 	{#if loading}
@@ -220,7 +436,7 @@
 			<p class="font-serif text-2xl text-ink">Belum ada rekening</p>
 			<p class="text-sm text-ink/45">Mulai dengan menambahkan rekening pertama Anda.</p>
 			<button
-				onclick={() => (showAddModal = true)}
+				onclick={openAdd}
 				class="mt-1 text-sm font-semibold text-teal transition-colors hover:text-ink"
 				>Tambah sekarang →</button
 			>
@@ -233,13 +449,22 @@
 						<p class="text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase">
 							{acc.account_type}
 						</p>
-						<button
-							onclick={() => handleDeleteAccount(acc.id)}
-							class="text-[11.5px] font-semibold text-ink/40 transition-colors hover:text-clay"
-							aria-label="Hapus rekening"
-						>
-							Hapus
-						</button>
+						<div class="flex items-center gap-3">
+							<button
+								onclick={() => openEdit(acc)}
+								class="text-[11.5px] font-semibold text-ink/40 transition-colors hover:text-teal"
+								aria-label="Ubah rekening"
+							>
+								Ubah
+							</button>
+							<button
+								onclick={() => handleDeleteAccount(acc.id)}
+								class="text-[11.5px] font-semibold text-ink/40 transition-colors hover:text-clay"
+								aria-label="Hapus rekening"
+							>
+								Hapus
+							</button>
+						</div>
 					</div>
 					<p class="mt-3 font-serif text-[22px] leading-tight text-ink">{acc.name}</p>
 					<p class="mt-1 font-serif text-[34px] leading-none tracking-tight text-ink tabular-nums">
@@ -315,12 +540,20 @@
 						{formatCurrency(selectedAccount.balance)}
 					</p>
 				</div>
-				<button
-					onclick={() => handleDeleteAccount(selectedAccount!.id)}
-					class="rounded-full border border-ink/15 px-3.5 py-2 text-[12px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5"
-				>
-					Hapus
-				</button>
+				<div class="flex items-center gap-2">
+					<button
+						onclick={() => openEdit(selectedAccount!)}
+						class="rounded-full border border-ink/15 px-3.5 py-2 text-[12px] font-semibold text-teal transition-colors hover:border-teal/30 hover:bg-teal/5"
+					>
+						Ubah
+					</button>
+					<button
+						onclick={() => handleDeleteAccount(selectedAccount!.id)}
+						class="rounded-full border border-ink/15 px-3.5 py-2 text-[12px] font-semibold text-clay transition-colors hover:border-clay/30 hover:bg-clay/5"
+					>
+						Hapus
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -390,9 +623,11 @@
 
 			<div class="space-y-5 p-5 sm:p-8">
 				<div class="flex items-center justify-between">
-					<h2 class="font-serif text-2xl text-ink">Tambah rekening</h2>
+					<h2 class="font-serif text-2xl text-ink">
+						{editingId ? 'Ubah rekening' : 'Tambah rekening'}
+					</h2>
 					<button
-						onclick={() => (showAddModal = false)}
+						onclick={closeModal}
 						class="rounded-full p-2 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
 						aria-label="Tutup modal"
 					>
@@ -407,7 +642,7 @@
 					</button>
 				</div>
 
-				<form onsubmit={handleAddAccount} class="space-y-4">
+				<form onsubmit={handleSubmitAccount} class="space-y-4">
 					<div>
 						<label
 							for="name"
@@ -467,17 +702,30 @@
 								id="balance"
 								type="number"
 								required
+								disabled={editingId !== null}
 								bind:value={newAccount.balance}
-								class="w-full rounded-[10px] border border-ink/25 bg-field py-3 pr-4 pl-11 text-sm text-ink tabular-nums outline-none focus:border-teal"
+								class="w-full rounded-[10px] border border-ink/25 bg-field py-3 pr-4 pl-11 text-sm text-ink tabular-nums outline-none focus:border-teal disabled:opacity-60"
 							/>
 						</div>
+						{#if editingId !== null}
+							<p class="mt-1.5 text-[11px] text-ink/45">
+								Saldo hanya bisa diubah lewat transaksi, bukan dari sini.
+							</p>
+						{/if}
 					</div>
+
+					{#if errorMessage}
+						<div class="rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-xs text-clay">
+							{errorMessage}
+						</div>
+					{/if}
 
 					<button
 						type="submit"
-						class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
+						disabled={saving}
+						class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
 					>
-						Simpan rekening
+						{saving ? 'Menyimpan…' : editingId ? 'Simpan perubahan' : 'Simpan rekening'}
 					</button>
 				</form>
 			</div>
