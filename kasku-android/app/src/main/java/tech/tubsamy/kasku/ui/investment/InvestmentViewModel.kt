@@ -7,20 +7,23 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.InvestmentItem
+import tech.tubsamy.kasku.data.InvestmentMarketRepository
 import tech.tubsamy.kasku.data.InvestmentsRepository
-import tech.tubsamy.kasku.data.sync.InvestmentMutations
+import tech.tubsamy.kasku.data.MarketPrice
 import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
- * OFFLINE-FIRST: investasi dibaca reaktif dari Room (diisi sync). Masuk layar → picu
- * sync sekali (one-off). Pola sama dengan HomeViewModel.
+ * OFFLINE-FIRST daftar instrumen (Room, diisi sync) + ONLINE harga live (price-service).
+ * Masuk layar → picu sync sekali; setiap kali daftar simbol berubah → fetch harga live.
  */
 class InvestmentViewModel(
-    repo: InvestmentsRepository,
-    private val mutations: InvestmentMutations,
+    private val repo: InvestmentsRepository,
+    private val market: InvestmentMarketRepository,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -31,24 +34,40 @@ class InvestmentViewModel(
             initialValue = emptyList(),
         )
 
+    /** Cache harga live, di-key per simbol. */
+    val prices: StateFlow<Map<String, MarketPrice>> =
+        market.prices.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyMap(),
+        )
+
     init {
         SyncWorker.enqueueOnce(appContext)
+        // Fetch harga tiap kali kumpulan simbol berubah (bukan tiap perubahan Room lain).
+        viewModelScope.launch {
+            investments
+                .map { list -> list.mapNotNull { it.symbol?.takeIf { s -> s.isNotBlank() } }.distinct().sorted() }
+                .distinctUntilChanged()
+                .collect { symbols -> if (symbols.isNotEmpty()) market.fetchPrices(symbols) }
+        }
     }
 
-    fun refresh() = SyncWorker.enqueueOnce(appContext)
-
-    /** Soft-delete lokal + enqueue sync (mutations sudah trigger sync). */
-    fun delete(id: String) {
-        viewModelScope.launch { mutations.delete(id) }
+    /** Segarkan: sync ulang daftar + refetch harga live untuk simbol saat ini. */
+    fun refresh() {
+        SyncWorker.enqueueOnce(appContext)
+        viewModelScope.launch {
+            market.fetchPrices(investments.value.mapNotNull { it.symbol })
+        }
     }
 
     companion object {
         fun factory(
             repo: InvestmentsRepository,
-            mutations: InvestmentMutations,
+            market: InvestmentMarketRepository,
             appContext: Context,
         ) = viewModelFactory {
-            initializer { InvestmentViewModel(repo, mutations, appContext.applicationContext) }
+            initializer { InvestmentViewModel(repo, market, appContext.applicationContext) }
         }
     }
 }

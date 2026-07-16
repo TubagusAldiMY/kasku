@@ -30,17 +30,19 @@ const selectUserCols = `
 `
 
 func (r *postgresUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
-	query := selectUserCols + `WHERE LOWER(email) = LOWER($1) LIMIT 1`
+	// deleted_at IS NULL: soft-deleted (admin-anonymized) users are invisible to auth →
+	// login returns the same not-found/invalid-credentials path, no information leak.
+	query := selectUserCols + `WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL LIMIT 1`
 	return r.scanUser(ctx, query, email)
 }
 
 func (r *postgresUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
-	query := selectUserCols + `WHERE id = $1 LIMIT 1`
+	query := selectUserCols + `WHERE id = $1 AND deleted_at IS NULL LIMIT 1`
 	return r.scanUser(ctx, query, id)
 }
 
 func (r *postgresUserRepository) FindByGoogleID(ctx context.Context, googleID string) (*entity.User, error) {
-	query := selectUserCols + `WHERE google_id = $1 LIMIT 1`
+	query := selectUserCols + `WHERE google_id = $1 AND deleted_at IS NULL LIMIT 1`
 	return r.scanUser(ctx, query, googleID)
 }
 

@@ -33,4 +33,7 @@ type UserReadRepository interface {
 // Saat ini hanya mendukung toggle is_active (suspend/activate).
 type UserWriteRepository interface {
 	SetIsActive(ctx context.Context, userID uuid.UUID, isActive bool) error
+	// SoftDeleteAndAnonymize melakukan soft-delete + anonymisasi PII (email/username)
+	// pada kasku_auth.public.users. Data tenant/billing tetap dipertahankan.
+	SoftDeleteAndAnonymize(ctx context.Context, userID uuid.UUID) error
 }

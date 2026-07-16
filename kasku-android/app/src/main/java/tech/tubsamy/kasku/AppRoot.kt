@@ -65,6 +65,8 @@ import tech.tubsamy.kasku.ui.home.HomeScreen
 import tech.tubsamy.kasku.ui.home.HomeViewModel
 import tech.tubsamy.kasku.ui.investment.AddInvestmentScreen
 import tech.tubsamy.kasku.ui.investment.AddInvestmentViewModel
+import tech.tubsamy.kasku.ui.investment.InvestmentDetailScreen
+import tech.tubsamy.kasku.ui.investment.InvestmentDetailViewModel
 import tech.tubsamy.kasku.ui.investment.InvestmentScreen
 import tech.tubsamy.kasku.ui.investment.InvestmentViewModel
 import tech.tubsamy.kasku.ui.profile.ChangePasswordScreen
@@ -90,6 +92,8 @@ private object Routes {
     const val CATEGORIES = "categories"
     const val INVESTMENTS = "investments"
     const val ADD_INVESTMENT = "add_investment"
+    const val EDIT_INVESTMENT = "edit_investment" // arg: assetId
+    const val INVESTMENT_DETAIL = "investment_detail" // arg: assetId
     const val BUDGETS = "budgets"
     const val ADD_BUDGET = "add_budget"
     const val EDIT_BUDGET = "edit_budget" // arg: budgetId
@@ -437,7 +441,7 @@ fun AppRoot(container: AppContainer) {
             val vm: InvestmentViewModel = viewModel(
                 factory = InvestmentViewModel.factory(
                     container.investmentsRepository,
-                    container.investmentMutations,
+                    container.investmentMarketRepository,
                     appContext,
                 ),
             )
@@ -445,6 +449,31 @@ fun AppRoot(container: AppContainer) {
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onAddInvestment = { nav.navigate(Routes.ADD_INVESTMENT) },
+                onOpenDetail = { id -> nav.navigate("${Routes.INVESTMENT_DETAIL}/$id") },
+            )
+        }
+        composable(
+            route = "${Routes.INVESTMENT_DETAIL}/{assetId}",
+            arguments = listOf(navArgument("assetId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val assetId = backStackEntry.arguments?.getString("assetId")
+            if (assetId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: InvestmentDetailViewModel = viewModel(
+                factory = InvestmentDetailViewModel.factory(
+                    container.investmentsRepository,
+                    container.investmentMarketRepository,
+                    container.investmentMutations,
+                    assetId,
+                    appContext,
+                ),
+            )
+            InvestmentDetailScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onEdit = { id -> nav.navigate("${Routes.EDIT_INVESTMENT}/$id") },
             )
         }
         composable(Routes.BUDGETS) {
@@ -493,6 +522,28 @@ fun AppRoot(container: AppContainer) {
         composable(Routes.ADD_INVESTMENT) {
             val vm: AddInvestmentViewModel = viewModel(
                 factory = AddInvestmentViewModel.factory(container.investmentMutations),
+            )
+            AddInvestmentScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = "${Routes.EDIT_INVESTMENT}/{assetId}",
+            arguments = listOf(navArgument("assetId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val assetId = backStackEntry.arguments?.getString("assetId")
+            if (assetId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: AddInvestmentViewModel = viewModel(
+                factory = AddInvestmentViewModel.factory(
+                    container.investmentMutations,
+                    container.investmentsRepository,
+                    assetId,
+                ),
             )
             AddInvestmentScreen(
                 vm = vm,
