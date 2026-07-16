@@ -8,6 +8,7 @@ import tech.tubsamy.kasku.data.BudgetsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.ConflictsRepository
 import tech.tubsamy.kasku.data.DebtsRepository
+import tech.tubsamy.kasku.data.InvestmentMarketRepository
 import tech.tubsamy.kasku.data.InvestmentsRepository
 import tech.tubsamy.kasku.data.ProfileRepository
 import tech.tubsamy.kasku.data.ReportsRepository
@@ -64,8 +65,9 @@ class AppContainer(context: Context) {
         json = Network.json,
     )
 
-    // Investasi (offline-first)
+    // Investasi (offline-first daftar instrumen; harga live + riwayat + catat txn = online REST)
     val investmentsRepository = InvestmentsRepository(db)
+    val investmentMarketRepository = InvestmentMarketRepository(apis.priceApi, apis.investmentApi)
     val investmentMutations = InvestmentMutations(
         db = db,
         json = Network.json,

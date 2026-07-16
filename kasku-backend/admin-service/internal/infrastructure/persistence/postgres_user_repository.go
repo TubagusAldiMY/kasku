@@ -161,3 +161,25 @@ func (r *postgresUserRepository) SetIsActive(ctx context.Context, userID uuid.UU
 	}
 	return nil
 }
+
+// SoftDeleteAndAnonymize menandai user terhapus + menimpa PII dengan nilai turunan-id
+// yang unik (aman terhadap unique index pada LOWER(email)/LOWER(username)). Idempoten:
+// hanya baris yang belum terhapus (deleted_at IS NULL) yang disentuh.
+func (r *postgresUserRepository) SoftDeleteAndAnonymize(ctx context.Context, userID uuid.UUID) error {
+	const q = `
+		UPDATE public.users
+		SET is_active  = false,
+		    deleted_at = now(),
+		    email      = 'deleted-' || id::text || '@deleted.invalid',
+		    username   = 'deleted_' || substr(id::text, 1, 8),
+		    updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := r.pool.Exec(ctx, q, userID)
+	if err != nil {
+		return fmt.Errorf("gagal soft-delete users: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("user tidak ditemukan atau sudah terhapus")
+	}
+	return nil
+}

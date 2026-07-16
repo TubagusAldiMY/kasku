@@ -15,6 +15,7 @@ const (
 	AuditActionLogout               AuditAction = "LOGOUT"
 	AuditActionSuspendUser          AuditAction = "SUSPEND_USER"
 	AuditActionActivateUser         AuditAction = "ACTIVATE_USER"
+	AuditActionDeleteUser           AuditAction = "DELETE_USER"
 	AuditActionOverrideSubscription AuditAction = "OVERRIDE_SUBSCRIPTION"
 )
 

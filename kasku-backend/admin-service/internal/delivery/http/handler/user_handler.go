@@ -20,6 +20,7 @@ type UserHandler struct {
 	detail    usecase.GetUserDetailUseCase
 	suspend   usecase.SuspendUserUseCase
 	activate  usecase.ActivateUserUseCase
+	delete    usecase.DeleteUserUseCase
 }
 
 // NewUserHandler membuat instance.
@@ -28,8 +29,9 @@ func NewUserHandler(
 	detail usecase.GetUserDetailUseCase,
 	suspend usecase.SuspendUserUseCase,
 	activate usecase.ActivateUserUseCase,
+	delete usecase.DeleteUserUseCase,
 ) *UserHandler {
-	return &UserHandler{list: list, detail: detail, suspend: suspend, activate: activate}
+	return &UserHandler{list: list, detail: detail, suspend: suspend, activate: activate, delete: delete}
 }
 
 // List menangani GET /v1/admin/users.
@@ -182,6 +184,34 @@ func (h *UserHandler) Activate(c *gin.Context) {
 		return
 	}
 	response.OK(c, gin.H{"message": "user diaktifkan"})
+}
+
+// Delete menangani POST /v1/admin/users/:id/delete (soft-delete + anonymize).
+func (h *UserHandler) Delete(c *gin.Context) {
+	targetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Fail(c, 400, domainerrors.ErrValidation.Code, "ID user tidak valid.")
+		return
+	}
+	var req dto.DeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, 400, domainerrors.ErrValidation.Code, domainerrors.ErrValidation.Message)
+		return
+	}
+	adminID, err := adminIDFromContext(c)
+	if err != nil {
+		response.HandleError(c, err)
+		return
+	}
+	if err := h.delete.Execute(c.Request.Context(), usecase.DeleteUserInput{
+		AdminID:      adminID,
+		TargetUserID: targetID,
+		Reason:       req.Reason,
+	}); err != nil {
+		response.HandleError(c, err)
+		return
+	}
+	response.OK(c, gin.H{"message": "user dihapus (soft-delete + anonymize)"})
 }
 
 // Helpers ----------------------------------------------------------------
