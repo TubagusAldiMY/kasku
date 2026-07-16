@@ -1,5 +1,7 @@
 package tech.tubsamy.kasku.ui.investment
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -19,6 +22,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -45,6 +51,24 @@ fun InvestmentScreen(
     modifier: Modifier = Modifier,
 ) {
     val investments by vm.investments.collectAsState()
+    var pendingDelete by remember { mutableStateOf<InvestmentItem?>(null) }
+
+    pendingDelete?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Hapus investasi?") },
+            text = { Text("\"${target.name}\" akan dihapus. Tindakan ini tersinkron ke server.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.delete(target.id)
+                    pendingDelete = null
+                }) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Batal") }
+            },
+        )
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -82,10 +106,16 @@ fun InvestmentScreen(
             } else {
                 LazyColumn {
                     items(investments, key = { it.id }) { inv ->
-                        InvestmentRow(inv)
+                        InvestmentRow(inv, onLongClick = { pendingDelete = inv })
                         Hairline()
                     }
                 }
+                Text(
+                    "Tekan lama sebuah aset untuk menghapus.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
             }
         }
 
@@ -100,11 +130,13 @@ fun InvestmentScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun InvestmentRow(inv: InvestmentItem) {
+private fun InvestmentRow(inv: InvestmentItem, onLongClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onLongClick)
             .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

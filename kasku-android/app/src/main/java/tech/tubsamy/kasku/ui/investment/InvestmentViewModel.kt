@@ -8,8 +8,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.InvestmentItem
 import tech.tubsamy.kasku.data.InvestmentsRepository
+import tech.tubsamy.kasku.data.sync.InvestmentMutations
 import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
@@ -18,6 +20,7 @@ import tech.tubsamy.kasku.data.sync.SyncWorker
  */
 class InvestmentViewModel(
     repo: InvestmentsRepository,
+    private val mutations: InvestmentMutations,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -34,12 +37,18 @@ class InvestmentViewModel(
 
     fun refresh() = SyncWorker.enqueueOnce(appContext)
 
+    /** Soft-delete lokal + enqueue sync (mutations sudah trigger sync). */
+    fun delete(id: String) {
+        viewModelScope.launch { mutations.delete(id) }
+    }
+
     companion object {
         fun factory(
             repo: InvestmentsRepository,
+            mutations: InvestmentMutations,
             appContext: Context,
         ) = viewModelFactory {
-            initializer { InvestmentViewModel(repo, appContext.applicationContext) }
+            initializer { InvestmentViewModel(repo, mutations, appContext.applicationContext) }
         }
     }
 }

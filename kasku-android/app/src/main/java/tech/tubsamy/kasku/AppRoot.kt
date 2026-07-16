@@ -31,10 +31,20 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
+import tech.tubsamy.kasku.ui.account.AddAccountScreen
+import tech.tubsamy.kasku.ui.account.AddAccountViewModel
+import tech.tubsamy.kasku.ui.auth.ForgotPasswordScreen
+import tech.tubsamy.kasku.ui.auth.ForgotPasswordViewModel
 import tech.tubsamy.kasku.ui.auth.LoginScreen
 import tech.tubsamy.kasku.ui.auth.LoginViewModel
 import tech.tubsamy.kasku.ui.auth.RegisterScreen
 import tech.tubsamy.kasku.ui.auth.RegisterViewModel
+import tech.tubsamy.kasku.ui.auth.ResetPasswordScreen
+import tech.tubsamy.kasku.ui.auth.ResetPasswordViewModel
+import tech.tubsamy.kasku.ui.auth.VerifyEmailScreen
+import tech.tubsamy.kasku.ui.auth.VerifyEmailViewModel
+import tech.tubsamy.kasku.ui.billing.BillingScreen
+import tech.tubsamy.kasku.ui.billing.BillingViewModel
 import tech.tubsamy.kasku.ui.budget.AddBudgetScreen
 import tech.tubsamy.kasku.ui.budget.AddBudgetViewModel
 import tech.tubsamy.kasku.ui.budget.BudgetScreen
@@ -45,12 +55,24 @@ import tech.tubsamy.kasku.ui.conflicts.ConflictsScreen
 import tech.tubsamy.kasku.ui.conflicts.ConflictsViewModel
 import tech.tubsamy.kasku.ui.dashboard.DashboardScreen
 import tech.tubsamy.kasku.ui.dashboard.DashboardViewModel
+import tech.tubsamy.kasku.ui.debt.AddDebtScreen
+import tech.tubsamy.kasku.ui.debt.AddDebtViewModel
+import tech.tubsamy.kasku.ui.debt.DebtPaymentsScreen
+import tech.tubsamy.kasku.ui.debt.DebtPaymentsViewModel
+import tech.tubsamy.kasku.ui.debt.DebtsScreen
+import tech.tubsamy.kasku.ui.debt.DebtViewModel
 import tech.tubsamy.kasku.ui.home.HomeScreen
 import tech.tubsamy.kasku.ui.home.HomeViewModel
 import tech.tubsamy.kasku.ui.investment.AddInvestmentScreen
 import tech.tubsamy.kasku.ui.investment.AddInvestmentViewModel
 import tech.tubsamy.kasku.ui.investment.InvestmentScreen
 import tech.tubsamy.kasku.ui.investment.InvestmentViewModel
+import tech.tubsamy.kasku.ui.profile.ChangePasswordScreen
+import tech.tubsamy.kasku.ui.profile.ChangePasswordViewModel
+import tech.tubsamy.kasku.ui.profile.ProfileScreen
+import tech.tubsamy.kasku.ui.profile.ProfileViewModel
+import tech.tubsamy.kasku.ui.report.ReportsScreen
+import tech.tubsamy.kasku.ui.report.ReportsViewModel
 import tech.tubsamy.kasku.ui.transaction.AddTransactionScreen
 import tech.tubsamy.kasku.ui.transaction.AddTransactionViewModel
 import tech.tubsamy.kasku.ui.transaction.TransactionHistoryScreen
@@ -71,6 +93,19 @@ private object Routes {
     const val BUDGETS = "budgets"
     const val ADD_BUDGET = "add_budget"
     const val EDIT_BUDGET = "edit_budget" // arg: budgetId
+    const val ADD_ACCOUNT = "add_account"
+    const val EDIT_ACCOUNT = "edit_account" // arg: accountId
+    const val FORGOT_PASSWORD = "forgot_password"
+    const val RESET_PASSWORD = "reset_password"
+    const val VERIFY_EMAIL = "verify_email"
+    const val DEBTS = "debts"
+    const val ADD_DEBT = "add_debt"
+    const val EDIT_DEBT = "edit_debt" // arg: debtId
+    const val DEBT_PAYMENTS = "debt_payments" // arg: debtId
+    const val REPORTS = "reports"
+    const val PROFILE = "profile"
+    const val CHANGE_PASSWORD = "change_password"
+    const val BILLING = "billing"
 }
 
 @Composable
@@ -112,6 +147,7 @@ fun AppRoot(container: AppContainer) {
                     }
                 },
                 onRegister = { nav.navigate(Routes.REGISTER) },
+                onForgotPassword = { nav.navigate(Routes.FORGOT_PASSWORD) },
             )
         }
         composable(Routes.REGISTER) {
@@ -121,17 +157,55 @@ fun AppRoot(container: AppContainer) {
                 onBackToLogin = { nav.popBackStack(Routes.LOGIN, inclusive = false) },
             )
         }
+        composable(Routes.FORGOT_PASSWORD) {
+            val vm: ForgotPasswordViewModel = viewModel(
+                factory = ForgotPasswordViewModel.factory(container.authRepository),
+            )
+            ForgotPasswordScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onHaveCode = { nav.navigate(Routes.RESET_PASSWORD) },
+                onVerifyEmail = { nav.navigate(Routes.VERIFY_EMAIL) },
+            )
+        }
+        composable(Routes.RESET_PASSWORD) {
+            val vm: ResetPasswordViewModel = viewModel(
+                factory = ResetPasswordViewModel.factory(container.authRepository),
+            )
+            ResetPasswordScreen(
+                vm = vm,
+                onDone = { nav.popBackStack(Routes.LOGIN, inclusive = false) },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.VERIFY_EMAIL) {
+            val vm: VerifyEmailViewModel = viewModel(
+                factory = VerifyEmailViewModel.factory(container.authRepository),
+            )
+            VerifyEmailScreen(
+                vm = vm,
+                onDone = { nav.popBackStack(Routes.LOGIN, inclusive = false) },
+                onBack = { nav.popBackStack() },
+            )
+        }
         composable(Routes.HOME) {
             val vm: HomeViewModel = viewModel(
                 factory = HomeViewModel.factory(
                     container.accountsRepository,
                     container.conflictsRepository,
+                    container.accountMutations,
                     appContext,
                 ),
             )
             HomeScreen(
                 vm = vm,
+                onAddAccount = { nav.navigate(Routes.ADD_ACCOUNT) },
+                onEditAccount = { id -> nav.navigate("${Routes.EDIT_ACCOUNT}/$id") },
                 onConflicts = { nav.navigate(Routes.CONFLICTS) },
+                onDebts = { nav.navigate(Routes.DEBTS) },
+                onReports = { nav.navigate(Routes.REPORTS) },
+                onBilling = { nav.navigate(Routes.BILLING) },
+                onProfile = { nav.navigate(Routes.PROFILE) },
                 onLogout = {
                     scope.launch {
                         container.authRepository.logout()
@@ -141,6 +215,131 @@ fun AppRoot(container: AppContainer) {
                     }
                 },
             )
+        }
+        composable(Routes.ADD_ACCOUNT) {
+            val vm: AddAccountViewModel = viewModel(
+                factory = AddAccountViewModel.factory(container.accountMutations, container.accountsRepository),
+            )
+            AddAccountScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = "${Routes.EDIT_ACCOUNT}/{accountId}",
+            arguments = listOf(navArgument("accountId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val accountId = backStackEntry.arguments?.getString("accountId")
+            if (accountId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: AddAccountViewModel = viewModel(
+                factory = AddAccountViewModel.factory(
+                    container.accountMutations,
+                    container.accountsRepository,
+                    accountId,
+                ),
+            )
+            AddAccountScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.DEBTS) {
+            val vm: DebtViewModel = viewModel(
+                factory = DebtViewModel.factory(container.debtsRepository),
+            )
+            DebtsScreen(
+                vm = vm,
+                onBack = { nav.popBackStack() },
+                onAddDebt = { nav.navigate(Routes.ADD_DEBT) },
+                onEditDebt = { id -> nav.navigate("${Routes.EDIT_DEBT}/$id") },
+                onOpenPayments = { id -> nav.navigate("${Routes.DEBT_PAYMENTS}/$id") },
+            )
+        }
+        composable(Routes.ADD_DEBT) {
+            val vm: AddDebtViewModel = viewModel(
+                factory = AddDebtViewModel.factory(container.debtsRepository),
+            )
+            AddDebtScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = "${Routes.EDIT_DEBT}/{debtId}",
+            arguments = listOf(navArgument("debtId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val debtId = backStackEntry.arguments?.getString("debtId")
+            if (debtId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: AddDebtViewModel = viewModel(
+                factory = AddDebtViewModel.factory(container.debtsRepository, debtId),
+            )
+            AddDebtScreen(
+                vm = vm,
+                onSaved = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = "${Routes.DEBT_PAYMENTS}/{debtId}",
+            arguments = listOf(navArgument("debtId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val debtId = backStackEntry.arguments?.getString("debtId")
+            if (debtId == null) {
+                nav.popBackStack()
+                return@composable
+            }
+            val vm: DebtPaymentsViewModel = viewModel(
+                factory = DebtPaymentsViewModel.factory(container.debtsRepository, debtId),
+            )
+            DebtPaymentsScreen(vm = vm, onBack = { nav.popBackStack() })
+        }
+        composable(Routes.REPORTS) {
+            val vm: ReportsViewModel = viewModel(
+                factory = ReportsViewModel.factory(container.reportsRepository),
+            )
+            ReportsScreen(vm = vm, onBack = { nav.popBackStack() })
+        }
+        composable(Routes.PROFILE) {
+            val vm: ProfileViewModel = viewModel(
+                factory = ProfileViewModel.factory(container.profileRepository),
+            )
+            ProfileScreen(
+                vm = vm,
+                onChangePassword = { nav.navigate(Routes.CHANGE_PASSWORD) },
+                onLogout = {
+                    scope.launch {
+                        container.authRepository.logout()
+                        nav.navigate(Routes.LOGIN) {
+                            popUpTo(nav.graph.findStartDestination().id) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+        composable(Routes.CHANGE_PASSWORD) {
+            val vm: ChangePasswordViewModel = viewModel(
+                factory = ChangePasswordViewModel.factory(container.authRepository),
+            )
+            ChangePasswordScreen(
+                vm = vm,
+                onDone = { nav.popBackStack() },
+                onCancel = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.BILLING) {
+            val vm: BillingViewModel = viewModel(
+                factory = BillingViewModel.factory(container.billingRepository),
+            )
+            BillingScreen(vm = vm, onBack = { nav.popBackStack() })
         }
         composable(Routes.ADD_TRANSACTION) {
             val vm: AddTransactionViewModel = viewModel(
@@ -236,7 +435,11 @@ fun AppRoot(container: AppContainer) {
         }
         composable(Routes.INVESTMENTS) {
             val vm: InvestmentViewModel = viewModel(
-                factory = InvestmentViewModel.factory(container.investmentsRepository, appContext),
+                factory = InvestmentViewModel.factory(
+                    container.investmentsRepository,
+                    container.investmentMutations,
+                    appContext,
+                ),
             )
             InvestmentScreen(
                 vm = vm,

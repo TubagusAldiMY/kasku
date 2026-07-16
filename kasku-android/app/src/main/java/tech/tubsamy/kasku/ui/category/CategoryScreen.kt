@@ -1,5 +1,6 @@
 package tech.tubsamy.kasku.ui.category
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -110,19 +112,73 @@ fun CategoryScreen(
         } else {
             LazyColumn {
                 items(items) { cat ->
-                    CategoryRow(cat)
+                    CategoryRow(cat, onClick = { vm.startEdit(cat) })
                     HorizontalDivider()
                 }
             }
         }
     }
+
+    if (vm.editing != null) {
+        EditCategoryDialog(vm)
+    }
 }
 
 @Composable
-private fun CategoryRow(cat: CategoryItem) {
+private fun EditCategoryDialog(vm: CategoryViewModel) {
+    AlertDialog(
+        onDismissRequest = { vm.cancelEdit() },
+        title = { Text("Ubah kategori") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = vm.editName,
+                    onValueChange = { vm.editName = it },
+                    label = { Text("Nama kategori") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text("Tipe", style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = vm.editType == "EXPENSE", onClick = { vm.editType = "EXPENSE" }, label = { Text("Pengeluaran") })
+                    FilterChip(selected = vm.editType == "INCOME", onClick = { vm.editType = "INCOME" }, label = { Text("Pemasukan") })
+                    FilterChip(selected = vm.editType == "BOTH", onClick = { vm.editType = "BOTH" }, label = { Text("Keduanya") })
+                }
+                if (vm.editError != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(vm.editError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { vm.saveEdit() }, enabled = vm.canSaveEdit) {
+                if (vm.editBusy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text("Simpan")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { vm.deleteEdit() }, enabled = !vm.editBusy) {
+                Text("Hapus", color = MaterialTheme.colorScheme.error)
+            }
+        },
+    )
+}
+
+@Composable
+private fun CategoryRow(cat: CategoryItem, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
