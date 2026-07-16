@@ -26,3 +26,14 @@ data class CreateCategoryRequest(
     val name: String,
     @SerialName("category_type") val categoryType: String,
 )
+
+/**
+ * Request PUT /v1/categories/{id}. Backend WAJIB: name, category_type (oneof INCOME|EXPENSE|BOTH).
+ * icon/color opsional — tak dikirim UI; backend reset ke default ("tag"/"#6366f1") tiap edit
+ * (konsisten dengan CreateCategoryRequest yang juga tak set keduanya — ponytail).
+ */
+@Serializable
+data class UpdateCategoryRequest(
+    val name: String,
+    @SerialName("category_type") val categoryType: String,
+)

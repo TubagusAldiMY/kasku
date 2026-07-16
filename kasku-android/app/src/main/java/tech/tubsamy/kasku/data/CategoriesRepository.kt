@@ -6,6 +6,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import tech.tubsamy.kasku.data.remote.FinanceApi
 import tech.tubsamy.kasku.data.remote.dto.CreateCategoryRequest
+import tech.tubsamy.kasku.data.remote.dto.UpdateCategoryRequest
 
 /** Kategori read-only untuk UI (nama + tipe filter dropdown). */
 data class CategoryItem(
@@ -60,6 +61,24 @@ class CategoriesRepository(
     suspend fun createCategory(name: String, categoryType: String) {
         financeApi.createCategory(CreateCategoryRequest(name = name.trim(), categoryType = categoryType))
         refresh() // re-fetch: cache + version naik → observer layar kelola & dropdown ikut update.
+    }
+
+    /**
+     * Ubah kategori (PUT /v1/categories/{id}) lalu refresh cache. name di-trim; categoryType
+     * harus INCOME|EXPENSE|BOTH (divalidasi caller/backend). Throw bila gagal — VM tampilkan error.
+     */
+    suspend fun updateCategory(id: String, name: String, categoryType: String) {
+        financeApi.updateCategory(id, UpdateCategoryRequest(name = name.trim(), categoryType = categoryType))
+        refresh()
+    }
+
+    /**
+     * Hapus kategori (DELETE /v1/categories/{id}) lalu refresh cache. Throw bila gagal — backend
+     * tolak (409) bila kategori default atau masih dipakai transaksi; VM tampilkan error.
+     */
+    suspend fun deleteCategory(id: String) {
+        financeApi.deleteCategory(id)
+        refresh()
     }
 
     /** Semua kategori aktif untuk layar kelola. Kosong bila cache belum terisi. */

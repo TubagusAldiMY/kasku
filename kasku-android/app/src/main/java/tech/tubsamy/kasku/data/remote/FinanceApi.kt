@@ -36,4 +36,13 @@ interface FinanceApi {
 
     @POST("categories")
     suspend fun createCategory(@Body body: CreateCategoryRequest): ApiEnvelope<CategoryDto>
+
+    @PUT("categories/{id}")
+    suspend fun updateCategory(
+        @Path("id") id: String,
+        @Body body: tech.tubsamy.kasku.data.remote.dto.UpdateCategoryRequest,
+    ): ApiEnvelope<CreatedIdDto>
+
+    @DELETE("categories/{id}")
+    suspend fun deleteCategory(@Path("id") id: String): ApiEnvelope<CreatedIdDto>
 }

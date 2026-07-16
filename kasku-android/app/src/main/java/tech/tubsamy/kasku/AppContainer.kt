@@ -3,10 +3,14 @@ package tech.tubsamy.kasku
 import android.content.Context
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.AuthRepository
+import tech.tubsamy.kasku.data.BillingRepository
 import tech.tubsamy.kasku.data.BudgetsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.ConflictsRepository
+import tech.tubsamy.kasku.data.DebtsRepository
 import tech.tubsamy.kasku.data.InvestmentsRepository
+import tech.tubsamy.kasku.data.ProfileRepository
+import tech.tubsamy.kasku.data.ReportsRepository
 import tech.tubsamy.kasku.data.TokenStore
 import tech.tubsamy.kasku.data.TransactionsRepository
 import tech.tubsamy.kasku.data.local.KasKuDatabase
@@ -67,4 +71,10 @@ class AppContainer(context: Context) {
         json = Network.json,
         fireSync = { SyncWorker.enqueueOnce(appContext) },
     )
+
+    // Hutang & Piutang / Laporan / Profil / Langganan — read-oriented, online-only.
+    val debtsRepository = DebtsRepository(apis.debtApi)
+    val reportsRepository = ReportsRepository(apis.reportApi)
+    val profileRepository = ProfileRepository(apis.userApi)
+    val billingRepository = BillingRepository(apis.billingApi)
 }

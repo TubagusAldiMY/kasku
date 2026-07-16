@@ -8,9 +8,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.AccountItem
 import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.ConflictsRepository
+import tech.tubsamy.kasku.data.sync.AccountMutations
 import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
@@ -22,6 +24,7 @@ import tech.tubsamy.kasku.data.sync.SyncWorker
 class HomeViewModel(
     repo: AccountsRepository,
     conflicts: ConflictsRepository,
+    private val accountMutations: AccountMutations,
     private val appContext: Context,
 ) : ViewModel() {
 
@@ -47,13 +50,19 @@ class HomeViewModel(
     /** Retry manual = picu sync sekali lagi. */
     fun refresh() = SyncWorker.enqueueOnce(appContext)
 
+    /** Hapus akun (soft-delete optimistic + antre sync). */
+    fun deleteAccount(id: String) {
+        viewModelScope.launch { accountMutations.delete(id) }
+    }
+
     companion object {
         fun factory(
             repo: AccountsRepository,
             conflicts: ConflictsRepository,
+            accountMutations: AccountMutations,
             appContext: Context,
         ) = viewModelFactory {
-            initializer { HomeViewModel(repo, conflicts, appContext.applicationContext) }
+            initializer { HomeViewModel(repo, conflicts, accountMutations, appContext.applicationContext) }
         }
     }
 }

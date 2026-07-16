@@ -71,6 +71,73 @@ class CategoryViewModel(
         }
     }
 
+    // ─── Edit / Hapus (dialog) ──────────────────────────────────────────────────
+    // editing != null → dialog terbuka. editBusy dipakai save & hapus (satu tombol aktif).
+
+    var editing by mutableStateOf<CategoryItem?>(null)
+        private set
+    var editName by mutableStateOf("")
+    var editType by mutableStateOf("EXPENSE")
+    var editBusy by mutableStateOf(false)
+        private set
+    var editError by mutableStateOf<String?>(null)
+        private set
+
+    val canSaveEdit: Boolean
+        get() = !editBusy && editName.isNotBlank() && editType in validType
+
+    fun startEdit(cat: CategoryItem) {
+        editing = cat
+        editName = cat.name
+        editType = cat.categoryType
+        editError = null
+    }
+
+    fun cancelEdit() {
+        if (editBusy) return
+        editing = null
+        editError = null
+    }
+
+    fun saveEdit() {
+        val cat = editing ?: return
+        val trimmed = editName.trim()
+        if (editBusy || trimmed.isBlank() || editType !in validType) {
+            editError = "Isi nama & pilih tipe."
+            return
+        }
+        editBusy = true
+        editError = null
+        viewModelScope.launch {
+            try {
+                categories.updateCategory(id = cat.id, name = trimmed, categoryType = editType)
+                editBusy = false
+                editing = null // list ikut ter-refresh oleh updateCategory().
+            } catch (e: Exception) {
+                editBusy = false
+                editError = "Gagal memperbarui kategori."
+            }
+        }
+    }
+
+    fun deleteEdit() {
+        val cat = editing ?: return
+        if (editBusy) return
+        editBusy = true
+        editError = null
+        viewModelScope.launch {
+            try {
+                categories.deleteCategory(cat.id)
+                editBusy = false
+                editing = null
+            } catch (e: Exception) {
+                editBusy = false
+                // Backend tolak 409 bila kategori default / masih dipakai transaksi.
+                editError = "Gagal menghapus. Kategori mungkin bawaan atau masih dipakai transaksi."
+            }
+        }
+    }
+
     companion object {
         fun factory(categories: CategoriesRepository) = viewModelFactory {
             initializer { CategoryViewModel(categories) }

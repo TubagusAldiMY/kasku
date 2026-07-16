@@ -15,6 +15,10 @@ class NetworkApis(
     val authApi: AuthApi,
     val financeApi: FinanceApi,
     val syncApi: SyncApi,
+    val debtApi: DebtApi,
+    val reportApi: ReportApi,
+    val userApi: UserApi,
+    val billingApi: BillingApi,
     val cookieJar: PersistentCookieJar,
 )
 
@@ -73,6 +77,10 @@ object Network {
             authApi = mainRetrofit.create(AuthApi::class.java),
             financeApi = mainRetrofit.create(FinanceApi::class.java),
             syncApi = mainRetrofit.create(SyncApi::class.java),
+            debtApi = mainRetrofit.create(DebtApi::class.java),
+            reportApi = mainRetrofit.create(ReportApi::class.java),
+            userApi = mainRetrofit.create(UserApi::class.java),
+            billingApi = mainRetrofit.create(BillingApi::class.java),
             cookieJar = cookieJar,
         )
     }
