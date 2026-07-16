@@ -3,18 +3,79 @@
 	import { apiFetch } from '$lib/api/client';
 	import { resolve } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
-	import {
-		accountsRepo,
-		transactionsRepo,
-		categoriesRepo,
-		budgetsRepo,
-		investmentsRepo,
-		type AccountRow,
-		type TransactionRow,
-		type CategoryRow,
-		type BudgetRow
-	} from '$lib/db';
-	import { syncStatus, triggerManualSync } from '$lib/sync';
+
+	// ── Local view models (online-only; no IndexedDB rows) ──
+	type Account = { name: string; balance: number };
+	type Transaction = {
+		id: string;
+		transaction_type: string;
+		amount_idr: number;
+		transaction_date: string;
+		category_id: string;
+		notes: string;
+	};
+	type Category = { id: string; name: string };
+	type Budget = {
+		id: string;
+		name: string;
+		progress_percent: number;
+		is_over_budget: boolean;
+	};
+
+	// Server payloads vary between snake_case (json tags) and PascalCase
+	// (entities without tags), so every field read is defensive.
+	type Raw = Record<string, unknown>;
+	type ApiResult = { success?: boolean; data?: unknown; error?: { message?: string } };
+
+	function asArray(data: unknown): Raw[] {
+		return Array.isArray(data) ? (data as Raw[]) : [];
+	}
+	function pick(o: Raw, ...keys: string[]): unknown {
+		for (const k of keys) if (o[k] != null) return o[k];
+		return undefined;
+	}
+	function num(v: unknown): number {
+		return typeof v === 'number' ? v : 0;
+	}
+	function str(v: unknown): string {
+		return typeof v === 'string' ? v : '';
+	}
+
+	async function readApiResult(res: Response): Promise<ApiResult> {
+		try {
+			return (await res.json()) as ApiResult;
+		} catch {
+			return {
+				success: false,
+				error: { message: `Response API tidak valid (HTTP ${res.status})` }
+			};
+		}
+	}
+
+	function normAccount(o: Raw): Account {
+		return { name: str(pick(o, 'name', 'Name')), balance: num(pick(o, 'balance', 'Balance')) };
+	}
+	function normTransaction(o: Raw): Transaction {
+		return {
+			id: str(pick(o, 'id', 'ID')),
+			transaction_type: str(pick(o, 'transaction_type', 'TransactionType')),
+			amount_idr: num(pick(o, 'amount_idr', 'AmountIDR')),
+			transaction_date: str(pick(o, 'transaction_date', 'TransactionDate')),
+			category_id: str(pick(o, 'category_id', 'CategoryID')),
+			notes: str(pick(o, 'notes', 'Notes'))
+		};
+	}
+	function normCategory(o: Raw): Category {
+		return { id: str(pick(o, 'id', 'ID')), name: str(pick(o, 'name', 'Name')) };
+	}
+	function normBudget(o: Raw): Budget {
+		return {
+			id: str(pick(o, 'id', 'ID')),
+			name: str(pick(o, 'name', 'Name')),
+			progress_percent: num(pick(o, 'progress_percent', 'ProgressPercent')),
+			is_over_budget: Boolean(pick(o, 'is_over_budget', 'IsOverBudget'))
+		};
+	}
 
 	type RecentTransaction = {
 		id: string;
@@ -45,8 +106,9 @@
 	});
 
 	let recentTransactions = $state<RecentTransaction[]>([]);
-	let budgets = $state<BudgetRow[]>([]);
+	let budgets = $state<Budget[]>([]);
 	let loading = $state(true);
+	let errorMessage = $state('');
 	let balanceHidden = $state(false);
 
 	let investmentCostBasis = $state(0);
@@ -112,7 +174,7 @@
 		return sign + new Intl.NumberFormat('id-ID').format(Math.abs(amount));
 	}
 
-	function projectAccounts(rows: AccountRow[]): { summaries: AccountSummary[]; total: number } {
+	function projectAccounts(rows: Account[]): { summaries: AccountSummary[]; total: number } {
 		let total = 0;
 		const summaries = rows.map((a, i) => {
 			total += a.balance;
@@ -125,11 +187,7 @@
 		return { summaries, total };
 	}
 
-	function projectDashboard(
-		accRows: AccountRow[],
-		txRows: TransactionRow[],
-		catRows: CategoryRow[]
-	) {
+	function projectDashboard(accRows: Account[], txRows: Transaction[], catRows: Category[]) {
 		const categoryMap = new Map(catRows.map((c) => [c.id, c.name]));
 
 		const { total } = projectAccounts(accRows);
@@ -191,25 +249,56 @@
 		};
 	}
 
-	async function reloadFromLocal() {
+	// Core summary: accounts + transactions + categories. Failure here is surfaced.
+	async function loadCore() {
 		try {
-			const [accRows, txRows, catRows] = await Promise.all([
-				accountsRepo.getAll(),
-				transactionsRepo.getAll(),
-				categoriesRepo.getAll()
+			const [accRes, txRes, catRes] = await Promise.all([
+				apiFetch('/accounts'),
+				apiFetch('/transactions'),
+				apiFetch('/categories')
 			]);
-			projectDashboard(accRows, txRows, catRows);
+			const [accJson, txJson, catJson] = await Promise.all([
+				readApiResult(accRes),
+				readApiResult(txRes),
+				readApiResult(catRes)
+			]);
+			if (
+				!accRes.ok ||
+				!accJson.success ||
+				!txRes.ok ||
+				!txJson.success ||
+				!catRes.ok ||
+				!catJson.success
+			) {
+				errorMessage =
+					accJson.error?.message ||
+					txJson.error?.message ||
+					catJson.error?.message ||
+					'Gagal memuat ringkasan dashboard.';
+				return;
+			}
+			projectDashboard(
+				asArray(accJson.data).map(normAccount),
+				asArray(txJson.data).map(normTransaction),
+				asArray(catJson.data).map(normCategory)
+			);
 		} catch (err) {
-			console.error('Gagal memuat dashboard dari penyimpanan lokal:', err);
+			console.error(err);
+			errorMessage = 'Gagal memuat dashboard. Periksa koneksi atau service backend.';
 		}
 	}
 
 	async function loadInvestmentValue() {
 		try {
-			const rows = await investmentsRepo.getAll();
-			investmentCostBasis = rows
-				.filter((r) => !r._deleted)
-				.reduce((sum, r) => sum + r.units * r.avg_buy_price_idr, 0);
+			const res = await apiFetch('/investments');
+			const json = await readApiResult(res);
+			if (!res.ok || !json.success) return;
+			// Cost basis = quantity × avg_buy_price (online source of truth).
+			investmentCostBasis = asArray(json.data).reduce(
+				(sum, r) =>
+					sum + num(pick(r, 'quantity', 'Quantity')) * num(pick(r, 'avg_buy_price', 'AvgBuyPrice')),
+				0
+			);
 		} catch {
 			// Tidak fatal — tampilkan 0
 		}
@@ -243,40 +332,17 @@
 		}
 	}
 
-	async function hydrateBudgetsFromServer() {
+	async function loadBudgets() {
 		try {
 			const res = await apiFetch('/budgets');
-			const result = await res.json();
-			if (result.success && Array.isArray(result.data)) {
-				await budgetsRepo.clear();
-				await budgetsRepo.putMany(result.data as BudgetRow[]);
-				budgets = result.data as BudgetRow[];
+			const json = await readApiResult(res);
+			if (res.ok && json.success) {
+				budgets = asArray(json.data).map(normBudget);
 			}
 		} catch {
-			// Offline — pakai cache IDB.
+			// Non-fatal — seksi anggaran cukup kosong.
 		}
 	}
-
-	async function hydrateCategoriesFromServer() {
-		// Categories belum ikut sync engine — fetch on-demand & cache ke IDB.
-		// TODO(sync): integrasikan categories ke SyncableResource saat siap.
-		try {
-			const res = await apiFetch('/categories');
-			const result = await res.json();
-			if (result.success && Array.isArray(result.data)) {
-				await categoriesRepo.clear();
-				await categoriesRepo.putMany(result.data as CategoryRow[]);
-				await reloadFromLocal();
-			}
-		} catch {
-			// Offline → cukup pakai cache IDB.
-		}
-	}
-
-	$effect(() => {
-		void syncStatus.dataVersion;
-		void reloadFromLocal();
-	});
 
 	function formatCurrency(val: number) {
 		return new Intl.NumberFormat('id-ID', {
@@ -288,18 +354,8 @@
 
 	onMount(async () => {
 		balanceHidden = localStorage.getItem('kasku_balance_hidden') === 'true';
-		try {
-			budgets = await budgetsRepo.getAll();
-		} catch (err) {
-			console.warn('Cache anggaran lokal belum siap, memuat dari server:', err);
-		}
-		await reloadFromLocal();
+		await Promise.all([loadCore(), loadBudgets(), loadInvestmentValue(), loadDebtSummary()]);
 		loading = false;
-		void hydrateCategoriesFromServer();
-		void hydrateBudgetsFromServer();
-		void loadInvestmentValue();
-		void loadDebtSummary();
-		void triggerManualSync();
 	});
 
 	const statCells = $derived([
@@ -311,6 +367,12 @@
 </script>
 
 <div class="pb-4">
+	{#if errorMessage}
+		<div class="mb-6 rounded-[10px] border border-clay/25 bg-clay/5 px-4 py-3 text-sm text-clay">
+			{errorMessage}
+		</div>
+	{/if}
+
 	<!-- ═══════════ Hero: net worth + breakdown ═══════════ -->
 	<section
 		class="grid gap-10 border-b border-ink/10 pb-10 lg:grid-cols-[1.4fr_1fr] lg:items-end lg:gap-16"
