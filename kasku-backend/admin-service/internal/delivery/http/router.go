@@ -81,6 +81,7 @@ func NewRouter(deps RouterDeps) *gin.Engine {
 	{
 		superAdmin.POST("/users/:id/suspend", deps.UserHandler.Suspend)
 		superAdmin.POST("/users/:id/activate", deps.UserHandler.Activate)
+		superAdmin.POST("/users/:id/delete", deps.UserHandler.Delete)
 		superAdmin.POST("/users/:id/override-subscription", deps.SubHandler.Override)
 
 		superAdmin.GET("/audit-log", deps.AuditLogHandler.List)

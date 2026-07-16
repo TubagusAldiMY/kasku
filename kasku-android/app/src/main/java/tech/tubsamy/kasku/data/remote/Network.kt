@@ -19,6 +19,8 @@ class NetworkApis(
     val reportApi: ReportApi,
     val userApi: UserApi,
     val billingApi: BillingApi,
+    val priceApi: PriceApi,
+    val investmentApi: InvestmentApi,
     val cookieJar: PersistentCookieJar,
 )
 
@@ -81,6 +83,8 @@ object Network {
             reportApi = mainRetrofit.create(ReportApi::class.java),
             userApi = mainRetrofit.create(UserApi::class.java),
             billingApi = mainRetrofit.create(BillingApi::class.java),
+            priceApi = mainRetrofit.create(PriceApi::class.java),
+            investmentApi = mainRetrofit.create(InvestmentApi::class.java),
             cookieJar = cookieJar,
         )
     }

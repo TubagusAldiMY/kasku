@@ -172,6 +172,7 @@ func main() {
 
 	suspendUC := usecase.NewSuspendUserUseCase(userRepo, userRepo, auditLogger)
 	activateUC := usecase.NewActivateUserUseCase(userRepo, userRepo, auditLogger)
+	deleteUC := usecase.NewDeleteUserUseCase(userRepo, userRepo, auditLogger)
 	overrideUC := usecase.NewOverrideSubscriptionUseCase(subRepo, auditLogger)
 
 	// ── Handlers ────────────────────────────────────────────────────────
@@ -183,7 +184,7 @@ func main() {
 	}
 	healthHandler := handler.NewHealthHandler(cfg.App.ServiceVersion, healthChecker)
 	authHandler := handler.NewAuthHandler(loginUC, logoutUC, currentUC)
-	userHandler := handler.NewUserHandler(listUsersUC, getUserDetailUC, suspendUC, activateUC)
+	userHandler := handler.NewUserHandler(listUsersUC, getUserDetailUC, suspendUC, activateUC, deleteUC)
 	subHandler := handler.NewSubscriptionHandler(overrideUC)
 	paymentHandler := handler.NewPaymentHandler(listPaymentsUC)
 	statsHandler := handler.NewStatsHandler(statsUC)

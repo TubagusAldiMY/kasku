@@ -34,6 +34,11 @@ type ActivateRequest struct {
 	Reason string `json:"reason" binding:"required,min=3,max=500"`
 }
 
+// DeleteRequest body untuk POST /v1/admin/users/:id/delete.
+type DeleteRequest struct {
+	Reason string `json:"reason" binding:"required,min=3,max=500"`
+}
+
 // OverrideSubscriptionRequest body untuk POST /v1/admin/users/:id/override-subscription.
 type OverrideSubscriptionRequest struct {
 	PlanName string `json:"plan_name" binding:"required,oneof=FREE BASIC PRO"`

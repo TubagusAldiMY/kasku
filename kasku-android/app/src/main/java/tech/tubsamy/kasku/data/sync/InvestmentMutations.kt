@@ -52,6 +52,33 @@ class InvestmentMutations(
         return id
     }
 
+    /**
+     * Edit instrumen (name/asset_type/symbol) — units & avg dipertahankan apa adanya.
+     * Perubahan units/avg terjadi lewat pencatatan transaksi (POST units), bukan di sini.
+     * Pola sama AccountMutations.update.
+     */
+    suspend fun update(
+        id: String,
+        name: String? = null,
+        assetType: String? = null,
+        symbol: String? = null,
+    ) {
+        val existing = investmentDao.findById(id) ?: return
+        val syncId = UUID.randomUUID().toString()
+        val now = clock()
+        val row = existing.copy(
+            sync_id = syncId,
+            updated_at = now,
+            local_dirty = true,
+            name = name ?: existing.name,
+            asset_type = assetType ?: existing.asset_type,
+            symbol = (symbol ?: existing.symbol)?.takeIf { it.isNotBlank() },
+        )
+        investmentDao.upsert(row)
+        enqueue(syncId, "UPDATE", id, payload(row))
+        fireSync()
+    }
+
     /** Soft-delete: tombstone tetap ada untuk sinkronisasi (pola AccountMutations.delete). */
     suspend fun delete(id: String) {
         val existing = investmentDao.findById(id) ?: return

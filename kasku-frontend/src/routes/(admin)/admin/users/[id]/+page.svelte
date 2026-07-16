@@ -4,6 +4,9 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { adminApiFetch } from '$lib/api/admin_client';
+	import { adminAuth } from '$lib/stores/admin_auth.svelte';
+
+	const isSuperAdmin = $derived(adminAuth.admin?.role === 'SUPER_ADMIN');
 
 	type UserDetail = {
 		id: string;
@@ -13,7 +16,7 @@
 		email_verified: boolean;
 		subscription_tier: string;
 		subscription_status: string;
-		subscription_expires_at: string | null;
+		subscription_ends_at: string | null;
 		created_at: string;
 		last_login_at: string | null;
 	};
@@ -28,6 +31,11 @@
 	let activateReason = $state('');
 	let overridePlanName = $state('PRO');
 	let overrideReason = $state('');
+	let deleteConfirm = $state('');
+	let deleteReason = $state('');
+	let deleted = $state(false);
+
+	const DELETE_PHRASE = 'HAPUS';
 
 	const tierOptions = ['FREE', 'BASIC', 'PRO'];
 
@@ -132,6 +140,27 @@
 		}
 	}
 
+	async function deleteUser() {
+		if (deleteReason.trim().length < 3) {
+			error = 'Alasan penghapusan minimal 3 karakter.';
+			return;
+		}
+		if (deleteConfirm.trim() !== DELETE_PHRASE) {
+			error = `Ketik "${DELETE_PHRASE}" untuk konfirmasi.`;
+			return;
+		}
+		if (
+			!confirm(
+				'Hapus permanen pengguna ini? Data akan di-anonimkan dan akun tidak bisa dipulihkan.'
+			)
+		)
+			return;
+		if (await postAction('delete', { reason: deleteReason.trim() })) {
+			deleted = true;
+			setTimeout(() => goto(resolve('/admin/users')), 1200);
+		}
+	}
+
 	onMount(loadUser);
 </script>
 
@@ -216,7 +245,7 @@
 						Aktif hingga
 					</p>
 					<p class="mt-1 text-sm font-medium text-ink">
-						{formatDate(user.subscription_expires_at)}
+						{formatDate(user.subscription_ends_at)}
 					</p>
 				</div>
 				<div>
@@ -239,6 +268,7 @@
 		</div>
 
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+			{#if isSuperAdmin}
 			<div class="rounded-2xl border border-ink/12 bg-card p-6">
 				<h3 class="text-[13px] font-semibold text-ink">Status akun</h3>
 				<p class="mt-1.5 text-[13px] text-ink/55">
@@ -286,7 +316,9 @@
 					</button>
 				{/if}
 			</div>
+			{/if}
 
+			{#if isSuperAdmin}
 			<div class="rounded-2xl border border-ink/12 bg-card p-6">
 				<h3 class="text-[13px] font-semibold text-ink">Override subscription</h3>
 				<p class="mt-1.5 text-[13px] text-ink/55">
@@ -323,6 +355,52 @@
 					Override sekarang
 				</button>
 			</div>
+			{/if}
 		</div>
+
+		{#if isSuperAdmin}
+			<div class="rounded-2xl border border-clay/30 bg-clay/[0.03] p-6">
+				<h3 class="text-[13px] font-semibold text-clay">Zona berbahaya</h3>
+				<p class="mt-1.5 text-[13px] text-ink/55">
+					Menghapus pengguna akan meng-anonimkan seluruh data pribadinya secara permanen. Aksi ini
+					tidak bisa dibatalkan dan tercatat di audit log.
+				</p>
+				{#if deleted}
+					<p class="mt-4 text-[13px] font-semibold text-teal">
+						Pengguna dihapus. Mengalihkan ke daftar…
+					</p>
+				{:else}
+					<label class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+						Alasan penghapusan
+						<input
+							type="text"
+							bind:value={deleteReason}
+							placeholder="Contoh: Permintaan penghapusan data (UU PDP)"
+							class="mt-2 w-full rounded-[10px] border border-clay/30 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
+						/>
+					</label>
+					<label class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+						Ketik <span class="font-mono text-clay">{DELETE_PHRASE}</span> untuk konfirmasi
+						<input
+							type="text"
+							bind:value={deleteConfirm}
+							placeholder={DELETE_PHRASE}
+							autocomplete="off"
+							class="mt-2 w-full max-w-xs rounded-[10px] border border-clay/30 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
+						/>
+					</label>
+					<button
+						type="button"
+						onclick={deleteUser}
+						disabled={actionBusy ||
+							deleteConfirm.trim() !== DELETE_PHRASE ||
+							deleteReason.trim().length < 3}
+						class="mt-4 rounded-full bg-clay px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
+					>
+						{actionBusy ? 'Menghapus…' : 'Hapus user'}
+					</button>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 </div>

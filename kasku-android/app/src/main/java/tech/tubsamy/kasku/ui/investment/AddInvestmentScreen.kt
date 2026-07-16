@@ -56,7 +56,10 @@ fun AddInvestmentScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Tambah investasi", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                if (vm.isEdit) "Edit instrumen" else "Tambah investasi",
+                style = MaterialTheme.typography.headlineSmall,
+            )
             TextButton(onClick = onCancel) { Text("Batal") }
         }
 
@@ -102,31 +105,35 @@ fun AddInvestmentScreen(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(Modifier.height(16.dp))
+        // Pembelian awal hanya saat tambah — di mode edit units & avg dikelola lewat
+        // pencatatan transaksi BUY/SELL (layar Rincian), sama seperti web.
+        if (!vm.isEdit) {
+            Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = vm.units,
-            // Izinkan digit + satu titik desimal.
-            onValueChange = { input ->
-                val filtered = input.filter { it.isDigit() || it == '.' }
-                vm.units = if (filtered.count { it == '.' } <= 1) filtered else vm.units
-            },
-            label = { Text("Jumlah unit") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            OutlinedTextField(
+                value = vm.units,
+                // Izinkan digit + satu titik desimal.
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() || it == '.' }
+                    vm.units = if (filtered.count { it == '.' } <= 1) filtered else vm.units
+                },
+                label = { Text("Jumlah unit") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = vm.avgBuyPrice,
-            onValueChange = { vm.avgBuyPrice = it.filter { c -> c.isDigit() } },
-            label = { Text("Harga beli rata-rata / unit (Rp)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            OutlinedTextField(
+                value = vm.avgBuyPrice,
+                onValueChange = { vm.avgBuyPrice = it.filter { c -> c.isDigit() } },
+                label = { Text("Harga beli rata-rata / unit (Rp)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         if (vm.error != null) {
             Spacer(Modifier.height(12.dp))
