@@ -611,10 +611,13 @@
 	<div
 		class="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 backdrop-blur-sm sm:items-center sm:p-4"
 		in:fade={{ duration: 200 }}
+		out:fade={{ duration: 150 }}
 	>
 		<div
 			class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-ink/10 bg-card shadow-xl sm:max-w-md sm:rounded-2xl"
+			style="padding-bottom: env(safe-area-inset-bottom);"
 			in:fly={{ y: 40, duration: 350 }}
+			out:fly={{ y: 40, duration: 250 }}
 		>
 			<!-- Handle (mobile) -->
 			<div class="flex justify-center pt-3 pb-1 sm:hidden">
