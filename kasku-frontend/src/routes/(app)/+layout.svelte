@@ -343,8 +343,9 @@
 		</main>
 
 		<!-- ═══════════ Mobile bottom nav ═══════════ -->
+		<!-- z-30: harus di bawah modal halaman (z-50) supaya bottom sheet tidak ketutupan nav/FAB -->
 		<nav
-			class="fixed right-0 bottom-0 left-0 z-50 border-t border-ink/10 bg-card lg:hidden"
+			class="fixed right-0 bottom-0 left-0 z-30 border-t border-ink/10 bg-card lg:hidden"
 			style="padding-bottom: env(safe-area-inset-bottom);"
 		>
 			<div class="flex items-stretch">
@@ -377,7 +378,7 @@
 		<!-- Mobile quick-add FAB -->
 		<a
 			href={resolve('/transactions')}
-			class="fixed right-5 bottom-20 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-teal text-3xl font-light text-card shadow-lg shadow-ink/30 transition-transform hover:scale-105 lg:hidden"
+			class="fixed right-5 bottom-20 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-teal text-3xl font-light text-card shadow-lg shadow-ink/30 transition-transform hover:scale-105 active:scale-95 lg:hidden"
 			style="margin-bottom: env(safe-area-inset-bottom);"
 			aria-label="Catat transaksi"
 		>
