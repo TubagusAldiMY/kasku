@@ -374,10 +374,10 @@
 	{:else}
 		<!-- Mobile: editorial list -->
 		<div class="pt-4 lg:hidden">
-			{#each transactions as tx (tx.id)}
+			{#each transactions as tx, i (tx.id)}
 				<div
 					class="group flex items-baseline justify-between gap-3 border-b border-ink/8 py-4"
-					in:fly={{ y: 8, duration: 200 }}
+					in:fly={{ y: 8, duration: 200, delay: Math.min(i * 30, 300) }}
 				>
 					<div class="min-w-0 flex-1">
 						<div class="flex items-baseline gap-2.5">
@@ -543,10 +543,13 @@
 	<div
 		class="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 backdrop-blur-sm sm:items-center sm:p-4"
 		in:fade={{ duration: 200 }}
+		out:fade={{ duration: 150 }}
 	>
 		<div
 			class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-ink/10 bg-card shadow-xl sm:max-w-lg sm:rounded-2xl"
+			style="padding-bottom: env(safe-area-inset-bottom);"
 			in:fly={{ y: 40, duration: 350 }}
+			out:fly={{ y: 40, duration: 250 }}
 		>
 			<!-- Handle bar mobile -->
 			<div class="flex justify-center pt-3 pb-1 sm:hidden">
@@ -754,7 +757,7 @@
 
 					<button
 						type="submit"
-						class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
+						class="w-full rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-[background-color,transform] hover:bg-ink active:scale-[0.98]"
 					>
 						{editingId ? 'Perbarui transaksi' : 'Simpan transaksi'}
 					</button>
