@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client';
 	import { SvelteDate } from 'svelte/reactivity';
+	import { AreaChart, Area, LinearGradient } from 'layerchart';
+	import { curveMonotoneX } from 'd3-shape';
 
 	type MonthlyPoint = { month: string; income: number; expense: number };
 	type CategoryItem = {
@@ -37,73 +39,22 @@
 	let activePreset = $state<string>('6B');
 	let csvExporting = $state(false);
 
-	// ── SVG Bar Chart constants ─────────────────────────────────────────────────
-	const SVG_W = 520,
-		SVG_H = 240;
-	const PAD_L = 8,
-		PAD_R = 8,
-		PAD_T = 20,
-		PAD_B = 40;
-	const CHART_W = SVG_W - PAD_L - PAD_R;
-	const CHART_H = SVG_H - PAD_T - PAD_B;
-
-	// ── Derived bar chart data ──────────────────────────────────────────────────
-	type BarSegment = { x: number; y: number; h: number; fill: string; w: number };
-	type BarMonth = { label: string; bars: BarSegment[]; labelX: number };
-
-	let barMonths = $derived.by((): BarMonth[] => {
-		const trend = report?.monthly_trend;
-		if (!trend?.length) return [];
-		const maxVal = Math.max(...trend.map((p) => Math.max(p.income, p.expense)), 1);
-		const n = trend.length;
-		const slotW = CHART_W / n;
-		const barW = Math.min(slotW * 0.28, 22);
-		const gap = 4;
-
-		return trend.map((p, i) => {
-			const slotX = PAD_L + i * slotW;
-			const center = slotX + slotW / 2;
-			const incH = Math.max((p.income / maxVal) * CHART_H, p.income > 0 ? 2 : 0);
-			const expH = Math.max((p.expense / maxVal) * CHART_H, p.expense > 0 ? 2 : 0);
-			return {
-				label: fmtMonth(p.month),
-				labelX: center,
-				bars: [
-					{
-						x: center - barW - gap / 2,
-						y: PAD_T + CHART_H - incH,
-						h: incH,
-						fill: '#2dd4bf',
-						w: barW
-					},
-					{
-						x: center + gap / 2,
-						y: PAD_T + CHART_H - expH,
-						h: expH,
-						fill: 'rgba(244,121,91,0.75)',
-						w: barW
-					}
-				]
-			};
+	// ── Tren bulanan (LayerChart AreaChart) ─────────────────────────────────────
+	// Pemasukan & pengeluaran = ukuran independen → overlap (bukan stack).
+	type TrendPoint = { date: Date; income: number; expense: number };
+	const trendData = $derived.by((): TrendPoint[] => {
+		return (report?.monthly_trend ?? []).map((p) => {
+			const [year, month] = p.month.split('-');
+			return { date: new Date(+year, +month - 1, 1), income: p.income, expense: p.expense };
 		});
 	});
 
-	let yGrid = $derived.by((): { y: number; label: string }[] => {
-		const trend = report?.monthly_trend;
-		if (!trend?.length) return [];
-		const maxVal = Math.max(...trend.map((p) => Math.max(p.income, p.expense)), 1);
-		return [0.5, 1].map((f) => ({
-			y: PAD_T + CHART_H * (1 - f),
-			label: fmtShort(Math.round(maxVal * f))
-		}));
-	});
+	const trendSeries = [
+		{ key: 'income', label: 'Pemasukan', color: 'var(--color-teal)' },
+		{ key: 'expense', label: 'Pengeluaran', color: 'var(--color-clay)' }
+	];
 
 	// ── Helpers ─────────────────────────────────────────────────────────────────
-	function fmtMonth(m: string): string {
-		const [year, month] = m.split('-');
-		return new Date(+year, +month - 1, 1).toLocaleDateString('id-ID', { month: 'short' });
-	}
-
 	function fmtShort(v: number): string {
 		if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}M`;
 		if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}jt`;
@@ -294,63 +245,70 @@
 				{/if}
 			</div>
 
-			<!-- ── Bar Chart (monthly trend) ──────────────────────────────────── -->
+			<!-- ── Area chart gradient (tren bulanan) ─────────────────────────── -->
 			<div>
 				<p class="mb-5 text-[13px] font-semibold text-ink">
 					Arus kas {PRESETS.find((p) => p.label === activePreset)?.months ?? 6} bulan terakhir
 				</p>
-				{#if !barMonths.length}
+				{#if !trendData.length}
 					<p class="py-16 text-sm text-ink/45">Belum ada data transaksi untuk periode ini.</p>
+				{:else if trendData.length < 2}
+					<p class="py-16 text-sm text-ink/45">
+						Grafik tren butuh minimal 2 bulan data — pilih rentang 3B, 6B, atau 12B.
+					</p>
 				{:else}
-					<svg
-						viewBox="0 0 {SVG_W} {SVG_H}"
-						class="block h-60 w-full"
-						aria-label="Grafik arus kas bulanan pemasukan dan pengeluaran"
+					<div
+						class="h-60 w-full text-[11px]"
+						role="img"
+						aria-label="Grafik tren arus kas bulanan pemasukan dan pengeluaran"
 					>
-						<!-- Y-axis grid lines -->
-						{#each yGrid as g (g.y)}
-							<line
-								x1={PAD_L}
-								y1={g.y}
-								x2={SVG_W - PAD_R}
-								y2={g.y}
-								stroke="rgba(233,237,244,0.06)"
-								stroke-width="1"
-							/>
-						{/each}
-						<!-- Baseline -->
-						<line
-							x1={PAD_L}
-							y1={PAD_T + CHART_H}
-							x2={SVG_W - PAD_R}
-							y2={PAD_T + CHART_H}
-							stroke="rgba(233,237,244,0.15)"
-							stroke-width="1"
-						/>
-						<!-- Bars & labels -->
-						{#each barMonths as bm, i (i)}
-							{#each bm.bars as bar, j (j)}
-								{#if bar.h > 0}
-									<rect x={bar.x} y={bar.y} width={bar.w} height={bar.h} fill={bar.fill} />
-								{/if}
-							{/each}
-							<text
-								x={bm.labelX}
-								y={SVG_H - PAD_B + 20}
-								text-anchor="middle"
-								font-size="11"
-								fill="rgba(233,237,244,0.45)"
-								font-weight="500"
-								font-family="sans-serif">{bm.label}</text
-							>
-						{/each}
-					</svg>
+						<AreaChart
+							data={trendData}
+							x="date"
+							series={trendSeries}
+							props={{
+								xAxis: {
+									format: (v: Date) => v.toLocaleDateString('id-ID', { month: 'short' })
+								},
+								yAxis: { format: (v: number) => fmtShort(v) },
+								tooltip: {
+									hideTotal: true,
+									header: {
+										format: (v: Date) =>
+											v.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+									},
+									item: { format: (v: number) => fmtIDR(v) }
+								}
+							}}
+						>
+							{#snippet marks({ context })}
+								{#each context.series.visibleSeries as s (s.key)}
+									<LinearGradient
+										stops={[s.color ?? '', 'color-mix(in lch, ' + s.color + ' 8%, transparent)']}
+										vertical
+									>
+										{#snippet children({ gradient })}
+											<Area
+												seriesKey={s.key}
+												curve={curveMonotoneX}
+												fillOpacity={0.35}
+												line={{ class: 'stroke-[1.5]' }}
+												motion="tween"
+												{...s.props}
+												fill={gradient}
+											/>
+										{/snippet}
+									</LinearGradient>
+								{/each}
+							{/snippet}
+						</AreaChart>
+					</div>
 					<div class="mt-4 flex gap-5 text-xs text-ink/60">
 						<span class="flex items-center gap-1.5"
-							><span class="inline-block h-2.5 w-2.5 bg-teal"></span>Pemasukan</span
+							><span class="inline-block h-2.5 w-2.5 rounded-sm bg-teal"></span>Pemasukan</span
 						>
 						<span class="flex items-center gap-1.5"
-							><span class="inline-block h-2.5 w-2.5 bg-clay/75"></span>Pengeluaran</span
+							><span class="inline-block h-2.5 w-2.5 rounded-sm bg-clay"></span>Pengeluaran</span
 						>
 					</div>
 				{/if}
