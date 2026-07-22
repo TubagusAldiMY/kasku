@@ -122,13 +122,13 @@
 	}
 
 	let weeklyData = $state([
-		{ day: 'Sen', amount: 0 },
-		{ day: 'Sel', amount: 0 },
-		{ day: 'Rab', amount: 0 },
-		{ day: 'Kam', amount: 0 },
-		{ day: 'Jum', amount: 0 },
-		{ day: 'Sab', amount: 0 },
-		{ day: 'Min', amount: 0 }
+		{ day: 'Sen', dateLabel: '', amount: 0 },
+		{ day: 'Sel', dateLabel: '', amount: 0 },
+		{ day: 'Rab', dateLabel: '', amount: 0 },
+		{ day: 'Kam', dateLabel: '', amount: 0 },
+		{ day: 'Jum', dateLabel: '', amount: 0 },
+		{ day: 'Sab', dateLabel: '', amount: 0 },
+		{ day: 'Min', dateLabel: '', amount: 0 }
 	]);
 
 	const topBudgets = $derived(
@@ -143,24 +143,9 @@
 
 	const monthlySavings = $derived(stats.monthlyIncome - stats.monthlyExpense);
 
-	// Line chart in the mockup's 1128×180 viewBox, derived from weeklyData.
-	const CHART_W = 1128;
-	const CHART_H = 180;
-	const chartPoints = $derived.by(() => {
-		const max = Math.max(1, ...weeklyData.map((d) => d.amount));
-		const n = weeklyData.length;
-		const padX = 40;
-		return weeklyData.map((d, i) => ({
-			...d,
-			x: n === 1 ? CHART_W / 2 : padX + (i / (n - 1)) * (CHART_W - padX * 2),
-			y: CHART_H - 20 - (d.amount / max) * (CHART_H - 40)
-		}));
-	});
-	const chartPath = $derived(
-		chartPoints
-			.map((p, i) => `${i === 0 ? 'M' : 'L'}${Math.round(p.x)} ${Math.round(p.y)}`)
-			.join(' ')
-	);
+	// Bar chart harian: bar = besaran per hari diskrit; tooltip per bar untuk detail.
+	const maxWeekly = $derived(Math.max(...weeklyData.map((d) => d.amount)));
+	const totalWeekly = $derived(weeklyData.reduce((sum, d) => sum + d.amount, 0));
 	const peakIndex = $derived.by(() => {
 		let idx = 0;
 		weeklyData.forEach((d, i) => {
@@ -168,6 +153,14 @@
 		});
 		return idx;
 	});
+
+	// Format ringkas untuk label di atas bar (tooltip tetap pakai nilai penuh).
+	function fmtCompact(n: number) {
+		if (n >= 1_000_000)
+			return 'Rp ' + (n / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
+		if (n >= 1_000) return 'Rp ' + Math.round(n / 1_000) + ' rb';
+		return 'Rp ' + n;
+	}
 
 	function fmtSigned(amount: number) {
 		const sign = amount < 0 ? '−' : '+';
@@ -235,7 +228,11 @@
 					return td.getTime() === date.getTime() && t.transaction_type === 'EXPENSE';
 				})
 				.reduce((sum, t) => sum + t.amount_idr, 0);
-			return { day: days[date.getDay()], amount: dayAmount };
+			return {
+				day: days[date.getDay()],
+				dateLabel: date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+				amount: dayAmount
+			};
 		});
 
 		const savings = mIncome - mExpense;
@@ -457,44 +454,89 @@
 		</div>
 	</section>
 
-	<!-- ═══════════ Weekly spending line chart ═══════════ -->
+	<!-- ═══════════ Weekly spending bar chart ═══════════ -->
 	<section class="border-b border-ink/10 py-10">
-		<div class="mb-4 flex items-baseline justify-between">
+		<div class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
 			<p class="text-[13px] font-semibold text-ink">Pengeluaran 7 hari terakhir</p>
 			<p class="text-xs text-ink/50">
-				Puncak {weeklyData[peakIndex].day} · {formatCurrency(weeklyData[peakIndex].amount)}
+				Total <span class="font-semibold text-ink/70 tabular-nums"
+					>{loading || balanceHidden ? 'Rp •••' : formatCurrency(totalWeekly)}</span
+				>
 			</p>
 		</div>
-		<svg
-			viewBox="0 0 {CHART_W} {CHART_H}"
-			class="block h-[180px] w-full"
-			preserveAspectRatio="none"
-		>
-			<line x1="0" y1="60" x2={CHART_W} y2="60" stroke="rgba(233,237,244,0.07)" stroke-width="1" />
-			<line x1="0" y1="110" x2={CHART_W} y2="110" stroke="rgba(233,237,244,0.07)" stroke-width="1" />
-			<line x1="0" y1="160" x2={CHART_W} y2="160" stroke="rgba(233,237,244,0.12)" stroke-width="1" />
-			<path
-				d={chartPath}
-				fill="none"
-				stroke="var(--color-teal)"
-				stroke-width="2.5"
-				stroke-linejoin="round"
-				stroke-linecap="round"
-				vector-effect="non-scaling-stroke"
-			/>
-			{#each chartPoints as p, i (p.day + i)}
-				{#if i === peakIndex && p.amount > 0}
-					<circle cx={p.x} cy={p.y} r="5" fill="var(--color-teal)" />
-				{:else}
-					<circle cx={p.x} cy={p.y} r="4" fill="#f7f6f2" stroke="var(--color-teal)" stroke-width="2.5" />
-				{/if}
-			{/each}
-		</svg>
-		<div class="flex justify-between px-4 pt-2 text-[11px] font-medium text-ink/45">
-			{#each weeklyData as d, i (d.day + i)}
-				<span>{d.day}</span>
-			{/each}
-		</div>
+
+		{#if !loading && maxWeekly === 0}
+			<!-- Empty state: jangan tampilkan sumbu kosong tanpa penjelasan -->
+			<div
+				class="flex h-44 items-center justify-center rounded-2xl border border-dashed border-ink/15 text-sm text-ink/45"
+			>
+				Belum ada pengeluaran dalam 7 hari terakhir.
+			</div>
+		{:else}
+			<div class="flex h-48 items-end gap-2 border-b border-ink/15 sm:gap-4">
+				{#each weeklyData as d, i (d.day + i)}
+					{@const isToday = i === weeklyData.length - 1}
+					{@const isPeak = i === peakIndex && d.amount > 0}
+					<!-- Satu tombol per hari: hit area penuh (lebih besar dari bar),
+					     tooltip muncul via hover ATAU fokus keyboard -->
+					<button
+						type="button"
+						class="group relative flex h-full flex-1 cursor-default flex-col items-center justify-end rounded-t-lg outline-none focus-visible:bg-ink/4"
+						aria-label="{d.day} {d.dateLabel}: {balanceHidden
+							? 'nilai disembunyikan'
+							: formatCurrency(d.amount)}"
+					>
+						<div
+							class="pointer-events-none absolute bottom-full z-10 mb-2 hidden flex-col rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 whitespace-nowrap shadow-xl shadow-black/40 group-hover:flex group-focus-visible:flex {i ===
+							0
+								? 'left-0 items-start'
+								: i === weeklyData.length - 1
+									? 'right-0 items-end'
+									: 'left-1/2 -translate-x-1/2 items-center'}"
+						>
+							<p class="text-[10px] font-semibold tracking-widest text-ink/45 uppercase">
+								{d.day}, {d.dateLabel}
+							</p>
+							<p class="mt-0.5 text-sm font-semibold text-ink tabular-nums">
+								{balanceHidden ? 'Rp •••' : formatCurrency(d.amount)}
+							</p>
+						</div>
+
+						{#if isPeak && !balanceHidden}
+							<!-- Label langsung hanya di puncak (selektif, bukan semua bar) -->
+							<span class="mb-1.5 text-[11px] font-semibold whitespace-nowrap text-ink tabular-nums"
+								>{fmtCompact(d.amount)}</span
+							>
+						{/if}
+
+						{#if d.amount > 0}
+							<div
+								class="w-full max-w-12 rounded-t transition-colors duration-200 group-hover:bg-teal {isToday
+									? 'bg-teal'
+									: 'bg-teal/45'}"
+								style="height: max({(d.amount / Math.max(1, maxWeekly)) * 85}%, 4px)"
+							></div>
+						{:else}
+							<div class="h-1 w-full max-w-12 rounded-t bg-ink/15"></div>
+						{/if}
+					</button>
+				{/each}
+			</div>
+			<div class="flex gap-2 pt-2 sm:gap-4">
+				{#each weeklyData as d, i (d.day + i)}
+					<div class="flex-1 text-center">
+						<p
+							class="text-[11px] font-semibold {i === weeklyData.length - 1
+								? 'text-ink'
+								: 'text-ink/45'}"
+						>
+							{d.day}
+						</p>
+						<p class="text-[10px] text-ink/30">{d.dateLabel}</p>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</section>
 
 	<!-- ═══════════ Activity + budget/debt ═══════════ -->
