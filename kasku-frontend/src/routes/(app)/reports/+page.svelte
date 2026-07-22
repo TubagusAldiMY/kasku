@@ -29,7 +29,7 @@
 	] as const;
 
 	// Editorial category palette (mockup "Pengeluaran per kategori" bars).
-	const CAT_COLORS = ['#12312e', '#1a5f66', '#2e7d72', '#8a6a1f', '#7c9885', '#a4502f', '#2f5583'];
+	const CAT_COLORS = ['#2dd4bf', '#85aee7', '#e0b357', '#f4795b', '#8fd18a', '#b8a7e9', '#94a3b8'];
 
 	let loading = $state(true);
 	let errorMsg = $state<string | null>(null);
@@ -73,14 +73,14 @@
 						x: center - barW - gap / 2,
 						y: PAD_T + CHART_H - incH,
 						h: incH,
-						fill: '#1a5f66',
+						fill: '#2dd4bf',
 						w: barW
 					},
 					{
 						x: center + gap / 2,
 						y: PAD_T + CHART_H - expH,
 						h: expH,
-						fill: 'rgba(164,80,47,0.75)',
+						fill: 'rgba(244,121,91,0.75)',
 						w: barW
 					}
 				]
@@ -314,7 +314,7 @@
 								y1={g.y}
 								x2={SVG_W - PAD_R}
 								y2={g.y}
-								stroke="rgba(18,49,46,0.06)"
+								stroke="rgba(233,237,244,0.06)"
 								stroke-width="1"
 							/>
 						{/each}
@@ -324,7 +324,7 @@
 							y1={PAD_T + CHART_H}
 							x2={SVG_W - PAD_R}
 							y2={PAD_T + CHART_H}
-							stroke="rgba(18,49,46,0.15)"
+							stroke="rgba(233,237,244,0.15)"
 							stroke-width="1"
 						/>
 						<!-- Bars & labels -->
@@ -339,7 +339,7 @@
 								y={SVG_H - PAD_B + 20}
 								text-anchor="middle"
 								font-size="11"
-								fill="rgba(18,49,46,0.45)"
+								fill="rgba(233,237,244,0.45)"
 								font-weight="500"
 								font-family="sans-serif">{bm.label}</text
 							>

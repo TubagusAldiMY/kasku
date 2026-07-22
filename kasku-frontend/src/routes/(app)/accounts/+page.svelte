@@ -490,7 +490,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 z-50 bg-ink/25 backdrop-blur-sm"
+		class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 		onclick={closeDetail}
 	></div>
@@ -609,7 +609,7 @@
      ============================================ -->
 {#if showAddModal}
 	<div
-		class="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 backdrop-blur-sm sm:items-center sm:p-4"
+		class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 150 }}
 	>
