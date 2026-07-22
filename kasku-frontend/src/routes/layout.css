@@ -1,33 +1,42 @@
 @import 'tailwindcss';
 
 /*
- * KasKu editorial design system — tokens from the ReDesign handoff mockup.
- * Fonts are imported in +layout.svelte (self-hosted via @fontsource, offline-first).
- * Opacity idiom: the mockup's rgba(18,49,46,α) === ink/α (e.g. ink/10, ink/45, ink/60).
+ * KasKu dark SaaS design system — redesign 2026-07 (Modern Dark / cinematic).
+ * Fonts di-import di +layout.svelte (self-hosted via @fontsource, tanpa CDN).
+ *
+ * Token bersifat SEMANTIK dan nilainya di-invert dari tema editorial lama:
+ *   - `ink`  = teks utama (terang) SEKALIGUS panel/button "inverted" (bg-ink = panel terang).
+ *   - `card` = permukaan gelap SEKALIGUS warna teks di atas tombol berwarna (bg-teal text-card).
+ *   - `mint` = aksen teal GELAP untuk dipakai di atas panel terang (bg-ink).
+ * Idiom opacity lama tetap jalan: ink/10 = border putih tipis, bg-ink/5 = permukaan glass.
  */
 @theme {
-	/* Surfaces */
-	--color-paper: #eceae4; /* app canvas / desk */
-	--color-card: #f7f6f2; /* cards, panels */
-	--color-field: #fdfcfa; /* inputs, bright insets */
+	/* Surfaces (gelap — hindari #000 murni) */
+	--color-paper: #0a0e14; /* app canvas */
+	--color-card: #10161f; /* kartu, panel, teks di tombol terang */
+	--color-field: #161e29; /* input, inset */
 
-	/* Ink + accents */
-	--color-ink: #12312e; /* primary text, dark panels */
-	--color-teal: #1a5f66; /* primary action, links, positive */
-	--color-mint: #7fc7bd; /* light teal on dark backgrounds */
-	--color-clay: #a4502f; /* danger, over-budget, negative emphasis */
-	--color-gold: #8a6a1f; /* caution, budget/category tags */
-	--color-steel: #2f5583; /* transfer blue */
+	/* Ink + accents (kontras AA di atas paper/card) */
+	--color-ink: #e9edf4; /* teks utama; bg-ink = panel terang inverted */
+	--color-teal: #2dd4bf; /* aksi utama, link, positif */
+	--color-mint: #0f766e; /* teal gelap di atas panel terang (bg-ink) */
+	--color-clay: #f4795b; /* danger, over-budget, negatif */
+	--color-gold: #e0b357; /* caution, tag anggaran/kategori */
+	--color-steel: #85aee7; /* transfer blue */
 
 	/* Type */
 	--font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
 	--font-serif: 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
+
+	/* Motion — satu ritme untuk semua animasi entrance */
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
 	html {
 		font-family: var(--font-sans);
 		-webkit-text-size-adjust: 100%;
+		color-scheme: dark;
 	}
 
 	body {
@@ -37,5 +46,65 @@
 		text-rendering: optimizeLegibility;
 	}
 
+	::selection {
+		background: color-mix(in srgb, var(--color-teal) 30%, transparent);
+	}
+
 	/* Money & figures line up when using .tabular-nums / font-variant-numeric utilities. */
+}
+
+@layer utilities {
+	/* Entrance: fade + naik pelan. Set style="animation-delay:..." untuk stagger. */
+	.animate-fade-up {
+		opacity: 0;
+		animation: kasku-fade-up 0.7s var(--ease-out-expo) forwards;
+	}
+
+	/* Headline gradient ala SaaS gelap: terang → terang pudar. */
+	.text-gradient-hero {
+		background: linear-gradient(
+			to bottom,
+			var(--color-ink),
+			var(--color-ink) 55%,
+			color-mix(in srgb, var(--color-ink) 45%, transparent)
+		);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+}
+
+@keyframes kasku-fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Blob glow ambient — osilasi sangat pelan, transform-only (murah). */
+@keyframes kasku-drift {
+	0%,
+	100% {
+		transform: translate(0, 0) scale(1);
+	}
+	50% {
+		transform: translate(4%, 6%) scale(1.08);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-fade-up {
+		animation: none;
+		opacity: 1;
+	}
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
 }

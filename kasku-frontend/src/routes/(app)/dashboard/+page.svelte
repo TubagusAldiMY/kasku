@@ -470,13 +470,13 @@
 			class="block h-[180px] w-full"
 			preserveAspectRatio="none"
 		>
-			<line x1="0" y1="60" x2={CHART_W} y2="60" stroke="rgba(18,49,46,0.07)" stroke-width="1" />
-			<line x1="0" y1="110" x2={CHART_W} y2="110" stroke="rgba(18,49,46,0.07)" stroke-width="1" />
-			<line x1="0" y1="160" x2={CHART_W} y2="160" stroke="rgba(18,49,46,0.12)" stroke-width="1" />
+			<line x1="0" y1="60" x2={CHART_W} y2="60" stroke="rgba(233,237,244,0.07)" stroke-width="1" />
+			<line x1="0" y1="110" x2={CHART_W} y2="110" stroke="rgba(233,237,244,0.07)" stroke-width="1" />
+			<line x1="0" y1="160" x2={CHART_W} y2="160" stroke="rgba(233,237,244,0.12)" stroke-width="1" />
 			<path
 				d={chartPath}
 				fill="none"
-				stroke="#1a5f66"
+				stroke="var(--color-teal)"
 				stroke-width="2.5"
 				stroke-linejoin="round"
 				stroke-linecap="round"
@@ -484,9 +484,9 @@
 			/>
 			{#each chartPoints as p, i (p.day + i)}
 				{#if i === peakIndex && p.amount > 0}
-					<circle cx={p.x} cy={p.y} r="5" fill="#1a5f66" />
+					<circle cx={p.x} cy={p.y} r="5" fill="var(--color-teal)" />
 				{:else}
-					<circle cx={p.x} cy={p.y} r="4" fill="#f7f6f2" stroke="#1a5f66" stroke-width="2.5" />
+					<circle cx={p.x} cy={p.y} r="4" fill="#f7f6f2" stroke="var(--color-teal)" stroke-width="2.5" />
 				{/if}
 			{/each}
 		</svg>

@@ -698,7 +698,7 @@
 <!-- Modal Tambah / Edit Instrumen -->
 {#if showAssetModal}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
@@ -879,7 +879,7 @@
 <!-- Modal Riwayat & Transaksi -->
 {#if showHistoryModal && selectedAsset}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		in:fade={{ duration: 200 }}
 	>
 		<div
@@ -1111,10 +1111,10 @@
 		background: transparent;
 	}
 	::-webkit-scrollbar-thumb {
-		background: rgba(18, 49, 46, 0.15);
+		background: rgba(233, 237, 244, 0.15);
 		border-radius: 10px;
 	}
 	::-webkit-scrollbar-thumb:hover {
-		background: rgba(18, 49, 46, 0.3);
+		background: rgba(233, 237, 244, 0.3);
 	}
 </style>
