@@ -25,7 +25,7 @@
 	--color-steel: #85aee7; /* transfer blue */
 
 	/* Type */
-	--font-sans: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
+	--font-sans: 'Poppins', system-ui, sans-serif;
 	--font-serif: 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
 
 	/* Motion — satu ritme untuk semua animasi entrance */
@@ -72,6 +72,20 @@
 		background-clip: text;
 		color: transparent;
 	}
+}
+
+/* Scroll-reveal (dipasangkan dengan action `reveal` di landing).
+   Kelas hidden ditambah dari JS, jadi tanpa JS konten tetap terlihat. */
+.reveal-hidden {
+	opacity: 0;
+	transform: translateY(18px);
+}
+.reveal-visible {
+	opacity: 1;
+	transform: none;
+	transition:
+		opacity 0.7s var(--ease-out-expo),
+		transform 0.7s var(--ease-out-expo);
 }
 
 @keyframes kasku-fade-up {

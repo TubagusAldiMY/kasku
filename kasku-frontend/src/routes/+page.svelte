@@ -22,6 +22,25 @@
 	// Menu mobile (hamburger) — hanya untuk landing.
 	let mobileOpen = $state(false);
 
+	// Scroll-reveal: elemen fade-up saat masuk viewport (sekali saja).
+	// Kelas hidden ditambah DARI action, jadi tanpa JS konten tetap terlihat (SSR aman).
+	function reveal(node: HTMLElement, delay = 0) {
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		node.classList.add('reveal-hidden');
+		node.style.transitionDelay = `${delay}ms`;
+		const io = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting) {
+					node.classList.replace('reveal-hidden', 'reveal-visible');
+					io.disconnect();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+		io.observe(node);
+		return { destroy: () => io.disconnect() };
+	}
+
 	const navLinks = [
 		{ href: '#fitur', label: 'Fitur' },
 		{ href: '#harga', label: 'Harga' },
@@ -424,7 +443,7 @@
 	<div class="mx-auto max-w-6xl px-6 lg:px-10">
 		<!-- ═══════════ Fitur ═══════════ -->
 		<section id="fitur" class="scroll-mt-24 border-t border-ink/10 py-20">
-			<div class="mb-12 max-w-2xl">
+			<div class="mb-12 max-w-2xl" use:reveal>
 				<p class="mb-3 text-[12px] font-semibold tracking-[0.16em] text-teal uppercase">Fitur</p>
 				<h2 class="font-serif text-4xl leading-tight tracking-tight text-ink sm:text-5xl">
 					Semua sisi keuanganmu, satu aplikasi.
@@ -434,8 +453,9 @@
 				</p>
 			</div>
 			<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-				{#each features as f (f.title)}
+				{#each features as f, i (f.title)}
 					<div
+						use:reveal={i * 60}
 						class="group rounded-2xl border border-ink/10 bg-ink/4 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-teal/30 hover:bg-ink/6"
 					>
 						<div
@@ -460,7 +480,7 @@
 
 		<!-- ═══════════ Harga ═══════════ -->
 		<section id="harga" class="scroll-mt-24 border-t border-ink/10 py-20">
-			<div class="mb-12 max-w-2xl">
+			<div class="mb-12 max-w-2xl" use:reveal>
 				<p class="mb-3 text-[12px] font-semibold tracking-[0.16em] text-teal uppercase">Harga</p>
 				<h2 class="font-serif text-4xl leading-tight tracking-tight text-ink sm:text-5xl">
 					Mulai gratis. Upgrade saat siap.
@@ -470,8 +490,9 @@
 				</p>
 			</div>
 			<div class="grid gap-6 lg:grid-cols-3">
-				{#each plans as p (p.name)}
+				{#each plans as p, i (p.name)}
 					<div
+						use:reveal={i * 80}
 						class="flex flex-col rounded-2xl border p-8 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 {p.popular
 							? 'border-teal/50 bg-ink/6 shadow-[0_0_60px_-15px] shadow-teal/25'
 							: 'border-ink/10 bg-ink/4 hover:border-ink/20'}"
@@ -542,7 +563,7 @@
 		<!-- ═══════════ Tentang ═══════════ -->
 		<section id="tentang" class="scroll-mt-24 border-t border-ink/10 py-20">
 			<div class="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
-				<div>
+				<div use:reveal>
 					<p class="mb-3 text-[12px] font-semibold tracking-[0.16em] text-teal uppercase">
 						Tentang
 					</p>
@@ -550,7 +571,7 @@
 						Tertib dulu, kaya kemudian.
 					</h2>
 				</div>
-				<div class="space-y-5 text-base leading-relaxed text-ink/65">
+				<div class="space-y-5 text-base leading-relaxed text-ink/65" use:reveal={100}>
 					<p>
 						KasKu lahir dari keyakinan sederhana: kamu tidak perlu jadi kaya untuk mulai tertib —
 						kamu perlu tertib untuk mulai kaya. Kami membuat pencatatan keuangan terasa ringan,
