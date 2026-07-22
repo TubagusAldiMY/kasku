@@ -74,6 +74,19 @@
 	}
 }
 
+/* LayerChart — petakan CSS var internalnya ke token KasKu (tanpa preset framework).
+   Cukup ini; komponen (axis, grid, tooltip) membaca var berikut. */
+.lc-root-container {
+	--color-primary: var(--color-teal);
+	--color-surface-100: var(--color-card);
+	--color-surface-200: var(--color-field);
+	--color-surface-300: #1e2733;
+	--color-surface-content: var(--color-ink);
+	--color-success: var(--color-teal);
+	--color-danger: var(--color-clay);
+	--color-warning: var(--color-gold);
+}
+
 /* Scroll-reveal (dipasangkan dengan action `reveal` di landing).
    Kelas hidden ditambah dari JS, jadi tanpa JS konten tetap terlihat. */
 .reveal-hidden {
