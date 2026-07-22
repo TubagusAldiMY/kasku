@@ -3,6 +3,7 @@
 	import { apiFetch } from '$lib/api/client';
 	import { resolve } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
+	import { BarChart, Bars, LinearGradient } from 'layerchart';
 
 	// ── Local view models (online-only; no IndexedDB rows) ──
 	type Account = { name: string; balance: number };
@@ -143,23 +144,22 @@
 
 	const monthlySavings = $derived(stats.monthlyIncome - stats.monthlyExpense);
 
-	// Bar chart harian: bar = besaran per hari diskrit; tooltip per bar untuk detail.
+	// Bar chart harian (LayerChart): bar = besaran per hari diskrit, tooltip per bar.
 	const maxWeekly = $derived(Math.max(...weeklyData.map((d) => d.amount)));
 	const totalWeekly = $derived(weeklyData.reduce((sum, d) => sum + d.amount, 0));
-	const peakIndex = $derived.by(() => {
-		let idx = 0;
-		weeklyData.forEach((d, i) => {
-			if (d.amount > weeklyData[idx].amount) idx = i;
-		});
-		return idx;
-	});
 
-	// Format ringkas untuk label di atas bar (tooltip tetap pakai nilai penuh).
-	function fmtCompact(n: number) {
+	// Format ringkas untuk sumbu Y (tooltip tetap pakai nilai penuh).
+	function fmtAxis(n: number) {
 		if (n >= 1_000_000)
-			return 'Rp ' + (n / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
-		if (n >= 1_000) return 'Rp ' + Math.round(n / 1_000) + ' rb';
-		return 'Rp ' + n;
+			return (n / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + 'jt';
+		if (n >= 1_000) return Math.round(n / 1_000) + 'rb';
+		return String(n);
+	}
+
+	// Header tooltip: "Jum, 18 Jul" — cari tanggal dari nama hari (unik dalam 7 hari).
+	function tooltipHeader(day: string) {
+		const d = weeklyData.find((w) => w.day === day);
+		return d?.dateLabel ? `${day}, ${d.dateLabel}` : day;
 	}
 
 	function fmtSigned(amount: number) {
@@ -473,69 +473,45 @@
 				Belum ada pengeluaran dalam 7 hari terakhir.
 			</div>
 		{:else}
-			<div class="flex h-48 items-end gap-2 border-b border-ink/15 sm:gap-4">
-				{#each weeklyData as d, i (d.day + i)}
-					{@const isToday = i === weeklyData.length - 1}
-					{@const isPeak = i === peakIndex && d.amount > 0}
-					<!-- Satu tombol per hari: hit area penuh (lebih besar dari bar),
-					     tooltip muncul via hover ATAU fokus keyboard -->
-					<button
-						type="button"
-						class="group relative flex h-full flex-1 cursor-default flex-col items-center justify-end rounded-t-lg outline-none focus-visible:bg-ink/4"
-						aria-label="{d.day} {d.dateLabel}: {balanceHidden
-							? 'nilai disembunyikan'
-							: formatCurrency(d.amount)}"
-					>
-						<div
-							class="pointer-events-none absolute bottom-full z-10 mb-2 hidden flex-col rounded-xl border border-ink/12 bg-card px-3.5 py-2.5 whitespace-nowrap shadow-xl shadow-black/40 group-hover:flex group-focus-visible:flex {i ===
-							0
-								? 'left-0 items-start'
-								: i === weeklyData.length - 1
-									? 'right-0 items-end'
-									: 'left-1/2 -translate-x-1/2 items-center'}"
-						>
-							<p class="text-[10px] font-semibold tracking-widest text-ink/45 uppercase">
-								{d.day}, {d.dateLabel}
-							</p>
-							<p class="mt-0.5 text-sm font-semibold text-ink tabular-nums">
-								{balanceHidden ? 'Rp •••' : formatCurrency(d.amount)}
-							</p>
-						</div>
-
-						{#if isPeak && !balanceHidden}
-							<!-- Label langsung hanya di puncak (selektif, bukan semua bar) -->
-							<span class="mb-1.5 text-[11px] font-semibold whitespace-nowrap text-ink tabular-nums"
-								>{fmtCompact(d.amount)}</span
+			<!-- Gaya seragam dengan area chart Laporan: bar gradient + tooltip crosshair -->
+			<div class="h-56 w-full text-[11px]">
+				<BarChart
+					data={weeklyData}
+					x="day"
+					y="amount"
+					bandPadding={0.45}
+					series={[{ key: 'amount', label: 'Pengeluaran', color: 'var(--color-teal)' }]}
+					props={{
+						yAxis: { format: (v: number) => (balanceHidden ? '•••' : fmtAxis(v)) },
+						tooltip: {
+							header: { format: (day: string) => tooltipHeader(day) },
+							item: {
+								format: (v: number) => (balanceHidden ? 'Rp •••' : formatCurrency(v))
+							}
+						}
+					}}
+				>
+					{#snippet marks({ context })}
+						{#each context.series.visibleSeries as s (s.key)}
+							<LinearGradient
+								stops={[s.color ?? '', 'color-mix(in lch, ' + s.color + ' 30%, transparent)']}
+								vertical
 							>
-						{/if}
-
-						{#if d.amount > 0}
-							<div
-								class="w-full max-w-12 rounded-t transition-colors duration-200 group-hover:bg-teal {isToday
-									? 'bg-teal'
-									: 'bg-teal/45'}"
-								style="height: max({(d.amount / Math.max(1, maxWeekly)) * 85}%, 4px)"
-							></div>
-						{:else}
-							<div class="h-1 w-full max-w-12 rounded-t bg-ink/15"></div>
-						{/if}
-					</button>
-				{/each}
+								{#snippet children({ gradient })}
+									<Bars rounded="top" radius={7} motion="tween" {...s.props} fill={gradient} />
+								{/snippet}
+							</LinearGradient>
+						{/each}
+					{/snippet}
+				</BarChart>
 			</div>
-			<div class="flex gap-2 pt-2 sm:gap-4">
-				{#each weeklyData as d, i (d.day + i)}
-					<div class="flex-1 text-center">
-						<p
-							class="text-[11px] font-semibold {i === weeklyData.length - 1
-								? 'text-ink'
-								: 'text-ink/45'}"
-						>
-							{d.day}
-						</p>
-						<p class="text-[10px] text-ink/30">{d.dateLabel}</p>
-					</div>
+			<!-- Ringkasan tekstual untuk screen reader (tooltip chart hanya hover) -->
+			<p class="sr-only">
+				{#each weeklyData as d (d.day)}
+					{d.day}
+					{d.dateLabel}: {balanceHidden ? 'nilai disembunyikan' : formatCurrency(d.amount)}.
 				{/each}
-			</div>
+			</p>
 		{/if}
 	</section>
 
