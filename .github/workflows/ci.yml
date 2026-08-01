@@ -76,7 +76,7 @@ jobs:
       PUBLIC_API_BASE_URL: http://localhost:8080/v1
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
