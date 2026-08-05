@@ -541,7 +541,7 @@
 <!-- Modal Tambah Transaksi -->
 {#if showAddModal}
 	<div
-		class="fixed inset-0 z-50 flex items-end justify-center bg-ink/25 backdrop-blur-sm sm:items-center sm:p-4"
+		class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 150 }}
 	>

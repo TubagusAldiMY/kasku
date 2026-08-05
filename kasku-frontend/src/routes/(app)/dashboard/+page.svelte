@@ -3,6 +3,7 @@
 	import { apiFetch } from '$lib/api/client';
 	import { resolve } from '$app/paths';
 	import { SvelteDate } from 'svelte/reactivity';
+	import { BarChart, Bars, LinearGradient } from 'layerchart';
 
 	// ── Local view models (online-only; no IndexedDB rows) ──
 	type Account = { name: string; balance: number };
@@ -122,13 +123,13 @@
 	}
 
 	let weeklyData = $state([
-		{ day: 'Sen', amount: 0 },
-		{ day: 'Sel', amount: 0 },
-		{ day: 'Rab', amount: 0 },
-		{ day: 'Kam', amount: 0 },
-		{ day: 'Jum', amount: 0 },
-		{ day: 'Sab', amount: 0 },
-		{ day: 'Min', amount: 0 }
+		{ day: 'Sen', dateLabel: '', amount: 0 },
+		{ day: 'Sel', dateLabel: '', amount: 0 },
+		{ day: 'Rab', dateLabel: '', amount: 0 },
+		{ day: 'Kam', dateLabel: '', amount: 0 },
+		{ day: 'Jum', dateLabel: '', amount: 0 },
+		{ day: 'Sab', dateLabel: '', amount: 0 },
+		{ day: 'Min', dateLabel: '', amount: 0 }
 	]);
 
 	const topBudgets = $derived(
@@ -143,31 +144,23 @@
 
 	const monthlySavings = $derived(stats.monthlyIncome - stats.monthlyExpense);
 
-	// Line chart in the mockup's 1128×180 viewBox, derived from weeklyData.
-	const CHART_W = 1128;
-	const CHART_H = 180;
-	const chartPoints = $derived.by(() => {
-		const max = Math.max(1, ...weeklyData.map((d) => d.amount));
-		const n = weeklyData.length;
-		const padX = 40;
-		return weeklyData.map((d, i) => ({
-			...d,
-			x: n === 1 ? CHART_W / 2 : padX + (i / (n - 1)) * (CHART_W - padX * 2),
-			y: CHART_H - 20 - (d.amount / max) * (CHART_H - 40)
-		}));
-	});
-	const chartPath = $derived(
-		chartPoints
-			.map((p, i) => `${i === 0 ? 'M' : 'L'}${Math.round(p.x)} ${Math.round(p.y)}`)
-			.join(' ')
-	);
-	const peakIndex = $derived.by(() => {
-		let idx = 0;
-		weeklyData.forEach((d, i) => {
-			if (d.amount > weeklyData[idx].amount) idx = i;
-		});
-		return idx;
-	});
+	// Bar chart harian (LayerChart): bar = besaran per hari diskrit, tooltip per bar.
+	const maxWeekly = $derived(Math.max(...weeklyData.map((d) => d.amount)));
+	const totalWeekly = $derived(weeklyData.reduce((sum, d) => sum + d.amount, 0));
+
+	// Format ringkas untuk sumbu Y (tooltip tetap pakai nilai penuh).
+	function fmtAxis(n: number) {
+		if (n >= 1_000_000)
+			return (n / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + 'jt';
+		if (n >= 1_000) return Math.round(n / 1_000) + 'rb';
+		return String(n);
+	}
+
+	// Header tooltip: "Jum, 18 Jul" — cari tanggal dari nama hari (unik dalam 7 hari).
+	function tooltipHeader(day: string) {
+		const d = weeklyData.find((w) => w.day === day);
+		return d?.dateLabel ? `${day}, ${d.dateLabel}` : day;
+	}
 
 	function fmtSigned(amount: number) {
 		const sign = amount < 0 ? '−' : '+';
@@ -235,7 +228,11 @@
 					return td.getTime() === date.getTime() && t.transaction_type === 'EXPENSE';
 				})
 				.reduce((sum, t) => sum + t.amount_idr, 0);
-			return { day: days[date.getDay()], amount: dayAmount };
+			return {
+				day: days[date.getDay()],
+				dateLabel: date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+				amount: dayAmount
+			};
 		});
 
 		const savings = mIncome - mExpense;
@@ -457,44 +454,65 @@
 		</div>
 	</section>
 
-	<!-- ═══════════ Weekly spending line chart ═══════════ -->
+	<!-- ═══════════ Weekly spending bar chart ═══════════ -->
 	<section class="border-b border-ink/10 py-10">
-		<div class="mb-4 flex items-baseline justify-between">
+		<div class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
 			<p class="text-[13px] font-semibold text-ink">Pengeluaran 7 hari terakhir</p>
 			<p class="text-xs text-ink/50">
-				Puncak {weeklyData[peakIndex].day} · {formatCurrency(weeklyData[peakIndex].amount)}
+				Total <span class="font-semibold text-ink/70 tabular-nums"
+					>{loading || balanceHidden ? 'Rp •••' : formatCurrency(totalWeekly)}</span
+				>
 			</p>
 		</div>
-		<svg
-			viewBox="0 0 {CHART_W} {CHART_H}"
-			class="block h-[180px] w-full"
-			preserveAspectRatio="none"
-		>
-			<line x1="0" y1="60" x2={CHART_W} y2="60" stroke="rgba(18,49,46,0.07)" stroke-width="1" />
-			<line x1="0" y1="110" x2={CHART_W} y2="110" stroke="rgba(18,49,46,0.07)" stroke-width="1" />
-			<line x1="0" y1="160" x2={CHART_W} y2="160" stroke="rgba(18,49,46,0.12)" stroke-width="1" />
-			<path
-				d={chartPath}
-				fill="none"
-				stroke="#1a5f66"
-				stroke-width="2.5"
-				stroke-linejoin="round"
-				stroke-linecap="round"
-				vector-effect="non-scaling-stroke"
-			/>
-			{#each chartPoints as p, i (p.day + i)}
-				{#if i === peakIndex && p.amount > 0}
-					<circle cx={p.x} cy={p.y} r="5" fill="#1a5f66" />
-				{:else}
-					<circle cx={p.x} cy={p.y} r="4" fill="#f7f6f2" stroke="#1a5f66" stroke-width="2.5" />
-				{/if}
-			{/each}
-		</svg>
-		<div class="flex justify-between px-4 pt-2 text-[11px] font-medium text-ink/45">
-			{#each weeklyData as d, i (d.day + i)}
-				<span>{d.day}</span>
-			{/each}
-		</div>
+
+		{#if !loading && maxWeekly === 0}
+			<!-- Empty state: jangan tampilkan sumbu kosong tanpa penjelasan -->
+			<div
+				class="flex h-44 items-center justify-center rounded-2xl border border-dashed border-ink/15 text-sm text-ink/45"
+			>
+				Belum ada pengeluaran dalam 7 hari terakhir.
+			</div>
+		{:else}
+			<!-- Gaya seragam dengan area chart Laporan: bar gradient + tooltip crosshair -->
+			<div class="h-56 w-full text-[11px]">
+				<BarChart
+					data={weeklyData}
+					x="day"
+					y="amount"
+					bandPadding={0.45}
+					series={[{ key: 'amount', label: 'Pengeluaran', color: 'var(--color-teal)' }]}
+					props={{
+						yAxis: { format: (v: number) => (balanceHidden ? '•••' : fmtAxis(v)) },
+						tooltip: {
+							header: { format: (day: string) => tooltipHeader(day) },
+							item: {
+								format: (v: number) => (balanceHidden ? 'Rp •••' : formatCurrency(v))
+							}
+						}
+					}}
+				>
+					{#snippet marks({ context })}
+						{#each context.series.visibleSeries as s (s.key)}
+							<LinearGradient
+								stops={[s.color ?? '', 'color-mix(in lch, ' + s.color + ' 30%, transparent)']}
+								vertical
+							>
+								{#snippet children({ gradient })}
+									<Bars rounded="top" radius={7} motion="tween" {...s.props} fill={gradient} />
+								{/snippet}
+							</LinearGradient>
+						{/each}
+					{/snippet}
+				</BarChart>
+			</div>
+			<!-- Ringkasan tekstual untuk screen reader (tooltip chart hanya hover) -->
+			<p class="sr-only">
+				{#each weeklyData as d (d.day)}
+					{d.day}
+					{d.dateLabel}: {balanceHidden ? 'nilai disembunyikan' : formatCurrency(d.amount)}.
+				{/each}
+			</p>
+		{/if}
 	</section>
 
 	<!-- ═══════════ Activity + budget/debt ═══════════ -->
