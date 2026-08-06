@@ -80,7 +80,7 @@
 		"@fontsource/poppins": "^5.3.0",
 		"@types/qrcode": "^1.5.6",
 		"d3-shape": "^3.2.0",
-		"layerchart": "^2.0.2",
+		"layerchart": "^2.0.4",
 		"qrcode": "^1.5.4"
 	}
 }
