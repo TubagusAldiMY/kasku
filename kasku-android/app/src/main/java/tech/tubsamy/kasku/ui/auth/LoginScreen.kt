@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import tech.tubsamy.kasku.R
 import tech.tubsamy.kasku.ui.components.PrimaryButton
 import tech.tubsamy.kasku.ui.theme.KasKuInk
-import tech.tubsamy.kasku.ui.theme.KasKuTealSoft
+import tech.tubsamy.kasku.ui.theme.KasKuMint
 
 @Composable
 fun LoginScreen(
@@ -54,7 +54,9 @@ fun LoginScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        // Panel brand ink — adaptasi split panel desain login (ReDesign/), ramping.
+        // Panel brand "inverted": KasKuInk = permukaan TERANG, jadi teksnya justru gelap
+        // (colorScheme.surface). Ini sengaja meniru `bg-ink text-card` di split panel login
+        // web — satu-satunya blok terang di seluruh app, supaya jadi titik fokus.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -65,22 +67,22 @@ fun LoginScreen(
             Text(
                 buildAnnotatedString {
                     append("Kas")
-                    withStyle(SpanStyle(color = KasKuTealSoft, fontStyle = FontStyle.Italic)) { append("Ku") }
+                    withStyle(SpanStyle(color = KasKuMint, fontStyle = FontStyle.Italic)) { append("Ku") }
                 },
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.background,
+                color = MaterialTheme.colorScheme.surface,
             )
             Spacer(Modifier.height(14.dp))
             Text(
                 "“Kamu tidak perlu jadi kaya untuk mulai tertib. Kamu perlu tertib untuk mulai kaya.”",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.background,
+                color = MaterialTheme.colorScheme.surface,
             )
             Spacer(Modifier.height(10.dp))
             Text(
                 "Catatanmu aman, offline maupun online.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.background.copy(alpha = 0.55f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
             )
         }
 

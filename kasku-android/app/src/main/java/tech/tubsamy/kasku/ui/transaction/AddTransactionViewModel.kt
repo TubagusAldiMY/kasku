@@ -17,16 +17,15 @@ import tech.tubsamy.kasku.data.AccountsRepository
 import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.CategoryItem
 import tech.tubsamy.kasku.data.TransactionsRepository
-import tech.tubsamy.kasku.data.sync.TransactionMutations
 import java.time.LocalDate
 
 /**
  * Dipakai untuk Tambah DAN Edit transaksi (reuse layar sama). editId != null → mode edit:
- * prefill dari Room lalu save() memanggil mutations.update; null → create baru.
+ * prefill dari cache TransactionsRepository (refresh dulu) lalu save() memanggil update; null →
+ * create baru. Semua ONLINE via REST.
  */
 class AddTransactionViewModel(
-    repo: AccountsRepository,
-    private val mutations: TransactionMutations,
+    private val accountsRepo: AccountsRepository,
     private val categories: CategoriesRepository,
     private val transactions: TransactionsRepository,
     private val editId: String? = null,
@@ -35,8 +34,7 @@ class AddTransactionViewModel(
 
     val isEdit: Boolean get() = editId != null
 
-    val accounts: StateFlow<List<AccountItem>> =
-        repo.observeAccounts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val accounts: StateFlow<List<AccountItem>> = accountsRepo.accounts
 
     var amount by mutableStateOf("") // string, diparse ke Long (rupiah bulat)
     var notes by mutableStateOf("")
@@ -72,16 +70,18 @@ class AddTransactionViewModel(
 
     init {
         viewModelScope.launch { categories.ensureLoaded() }
+        viewModelScope.launch { accountsRepo.refresh() }
         if (editId != null) {
             viewModelScope.launch {
-                transactions.findRaw(editId)?.let { tx ->
+                transactions.refresh()
+                transactions.find(editId)?.let { tx ->
                     // Set _type langsung (bukan via setter) agar categoryId prefill tak ter-reset.
-                    _type.value = tx.transaction_type
-                    amount = tx.amount_idr.toString()
+                    _type.value = tx.type
+                    amount = tx.amountIdr.toString()
                     notes = tx.notes ?: ""
-                    accountId = tx.account_id
-                    categoryId = tx.category_id
-                    date = tx.transaction_date
+                    accountId = tx.accountId
+                    categoryId = tx.categoryId
+                    date = tx.date
                 }
             }
         }
@@ -99,10 +99,8 @@ class AddTransactionViewModel(
         viewModelScope.launch {
             try {
                 if (editId != null) {
-                    // categoryId bisa null (Tanpa kategori) — update() abaikan null sbg "pertahankan".
-                    // ponytail: mode edit tak dukung ubah kategori jadi null. Belum diminta; tambah
-                    // param clearCategory ke update() bila perlu.
-                    mutations.update(
+                    // categoryId bisa null (Tanpa kategori).
+                    transactions.update(
                         id = editId,
                         accountId = acc,
                         type = type,
@@ -112,7 +110,7 @@ class AddTransactionViewModel(
                         notes = notes,
                     )
                 } else {
-                    mutations.create(
+                    transactions.create(
                         accountId = acc,
                         type = type,
                         amountIdr = amt,
@@ -122,7 +120,7 @@ class AddTransactionViewModel(
                     )
                 }
                 saving = false
-                onDone() // optimistic: transaksi masuk Room + antre sync, langsung kembali
+                onDone()
             } catch (e: Exception) {
                 saving = false
                 error = "Gagal menyimpan transaksi."
@@ -132,13 +130,12 @@ class AddTransactionViewModel(
 
     companion object {
         fun factory(
-            repo: AccountsRepository,
-            mutations: TransactionMutations,
+            accounts: AccountsRepository,
             categories: CategoriesRepository,
             transactions: TransactionsRepository,
             editId: String? = null,
         ) = viewModelFactory {
-            initializer { AddTransactionViewModel(repo, mutations, categories, transactions, editId) }
+            initializer { AddTransactionViewModel(accounts, categories, transactions, editId) }
         }
     }
 }
