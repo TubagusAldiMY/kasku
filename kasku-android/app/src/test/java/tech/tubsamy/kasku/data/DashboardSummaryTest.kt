@@ -10,7 +10,16 @@ class DashboardSummaryTest {
         AccountItem(id = "a", name = "n", accountType = "CASH", balance = balance, currency = "IDR")
 
     private fun tx(type: String, amt: Long, cat: String = "Umum", date: String = "2026-07-01") =
-        TransactionItem(id = "t$amt$type$date", type = type, amountIdr = amt, date = date, categoryId = null, categoryName = cat, notes = null)
+        TransactionItem(
+            id = "t$amt$type$date",
+            type = type,
+            amountIdr = amt,
+            date = date,
+            categoryId = null,
+            categoryName = cat,
+            notes = null,
+            accountId = null,
+        )
 
     private val fmt: (Long) -> String = { "Rp $it" }
 
