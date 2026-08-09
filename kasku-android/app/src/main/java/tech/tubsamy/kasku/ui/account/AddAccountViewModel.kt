@@ -7,18 +7,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.AccountsRepository
-import tech.tubsamy.kasku.data.sync.AccountMutations
 
 /**
- * Form tambah/edit akun. editId != null → prefill dari snapshot Room (observeAccounts).
- * Mutasi lewat AccountMutations (offline-first: tulis Room + antre sync). Currency
- * tetap IDR — ponytail: satu mata uang untuk sekarang.
+ * Form tambah/edit akun (ONLINE). editId != null → prefill dari cache AccountsRepository
+ * (refresh dulu supaya cache terisi bila layar dibuka langsung). Mutasi lewat REST; sukses →
+ * repo menyegarkan cache. Currency tetap IDR — ponytail: satu mata uang untuk sekarang.
  */
 class AddAccountViewModel(
-    private val mutations: AccountMutations,
     private val accounts: AccountsRepository,
     private val editId: String? = null,
 ) : ViewModel() {
@@ -42,7 +39,8 @@ class AddAccountViewModel(
     init {
         editId?.let { id ->
             viewModelScope.launch {
-                val acc = accounts.observeAccounts().first().firstOrNull { it.id == id }
+                accounts.refresh()
+                val acc = accounts.find(id)
                 if (acc == null) {
                     error = "Akun tidak ditemukan."
                 } else {
@@ -61,12 +59,13 @@ class AddAccountViewModel(
         viewModelScope.launch {
             try {
                 if (editId != null) {
-                    mutations.update(editId, name = name.trim(), accountType = accountType, balance = balanceValue)
+                    // Saldo tidak diubah saat edit — backend mengabaikannya (saldo bergerak lewat transaksi).
+                    accounts.update(editId, name = name.trim(), accountType = accountType)
                 } else {
-                    mutations.create(name = name.trim(), accountType = accountType, balance = balanceValue)
+                    accounts.create(name = name.trim(), accountType = accountType, balance = balanceValue)
                 }
                 saving = false
-                onSaved() // optimistic: masuk Room + antre sync, langsung kembali
+                onSaved()
             } catch (e: Exception) {
                 saving = false
                 error = "Gagal menyimpan akun. Periksa koneksi."
@@ -76,11 +75,10 @@ class AddAccountViewModel(
 
     companion object {
         fun factory(
-            mutations: AccountMutations,
             accounts: AccountsRepository,
             editId: String? = null,
         ) = viewModelFactory {
-            initializer { AddAccountViewModel(mutations, accounts, editId) }
+            initializer { AddAccountViewModel(accounts, editId) }
         }
     }
 }

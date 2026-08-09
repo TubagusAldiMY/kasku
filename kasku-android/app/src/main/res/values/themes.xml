@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base theme untuk window/splash; UI sesungguhnya di-render Compose. -->
-    <style name="Theme.KasKu" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+    <!-- Kanvas app — harus sama dengan `Paper` di ui/theme/Theme.kt (token color-paper di web). -->
+    <color name="kasku_paper">#0A0E14</color>
+
+    <!--
+      Base theme untuk window & splash; UI sesungguhnya di-render Compose.
+      windowBackground di-set eksplisit ke paper: tanpa ini window default menyala putih
+      selama beberapa frame sebelum Compose menggambar, dan kedipnya sangat terlihat
+      pada tema gelap.
+    -->
+    <style name="Theme.KasKu" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/kasku_paper</item>
+    </style>
 </resources>

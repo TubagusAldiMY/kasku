@@ -1,6 +1,5 @@
 package tech.tubsamy.kasku.ui.investment
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -14,21 +13,17 @@ import tech.tubsamy.kasku.data.InvestmentMarketRepository
 import tech.tubsamy.kasku.data.InvestmentTxItem
 import tech.tubsamy.kasku.data.InvestmentsRepository
 import tech.tubsamy.kasku.data.MarketPrice
-import tech.tubsamy.kasku.data.sync.InvestmentMutations
-import tech.tubsamy.kasku.data.sync.SyncWorker
 import java.time.LocalDate
 
 /**
  * Rincian satu instrumen: harga live + riwayat beli/jual (GET history) + form catat BUY/SELL
- * (POST units) → SyncWorker.enqueueOnce untuk refresh units/avg dari server. Aset dibaca
- * reaktif dari Room (berubah otomatis setelah sync). Edit/Hapus lewat entry point terpisah.
+ * (POST units) → repo.refresh() untuk tarik ulang units/avg yang sudah dihitung server. Aset
+ * dibaca reaktif dari cache InvestmentsRepository. Edit/Hapus lewat entry point terpisah.
  */
 class InvestmentDetailViewModel(
     private val repo: InvestmentsRepository,
     private val market: InvestmentMarketRepository,
-    private val mutations: InvestmentMutations,
     private val assetId: String,
-    private val appContext: Context,
 ) : ViewModel() {
 
     var asset by mutableStateOf<InvestmentItem?>(null)
@@ -67,7 +62,8 @@ class InvestmentDetailViewModel(
 
     init {
         viewModelScope.launch {
-            repo.observeInvestments().collect { list ->
+            repo.refresh()
+            repo.investments.collect { list ->
                 val found = list.firstOrNull { it.id == assetId }
                 asset = found
                 if (found?.symbol?.isNotBlank() == true && price == null) loadPrice(found.symbol)
@@ -110,8 +106,8 @@ class InvestmentDetailViewModel(
                     transactionDate = txDate,
                     notes = notes,
                 )
-                // Server sudah hitung ulang units & avg → tarik ke Room.
-                SyncWorker.enqueueOnce(appContext)
+                // Server sudah hitung ulang units & avg → tarik ulang daftar.
+                repo.refresh()
                 quantity = ""
                 totalValue = ""
                 notes = ""
@@ -127,7 +123,7 @@ class InvestmentDetailViewModel(
 
     fun delete(onDone: () -> Unit) {
         viewModelScope.launch {
-            mutations.delete(assetId)
+            repo.delete(assetId)
             onDone()
         }
     }
@@ -136,13 +132,9 @@ class InvestmentDetailViewModel(
         fun factory(
             repo: InvestmentsRepository,
             market: InvestmentMarketRepository,
-            mutations: InvestmentMutations,
             assetId: String,
-            appContext: Context,
         ) = viewModelFactory {
-            initializer {
-                InvestmentDetailViewModel(repo, market, mutations, assetId, appContext.applicationContext)
-            }
+            initializer { InvestmentDetailViewModel(repo, market, assetId) }
         }
     }
 }

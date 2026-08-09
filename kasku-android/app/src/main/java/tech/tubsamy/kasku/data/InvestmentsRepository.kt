@@ -1,10 +1,12 @@
 package tech.tubsamy.kasku.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import tech.tubsamy.kasku.data.local.KasKuDatabase
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import tech.tubsamy.kasku.data.remote.InvestmentApi
+import tech.tubsamy.kasku.data.remote.dto.CreateAssetRequest
+import tech.tubsamy.kasku.data.remote.dto.UpdateAssetRequest
 
-/** Item investasi untuk UI (dari Room, hasil sinkronisasi). */
+/** Item investasi untuk UI. */
 data class InvestmentItem(
     val id: String,
     val name: String,
@@ -18,26 +20,66 @@ data class InvestmentItem(
 }
 
 /**
- * OFFLINE-FIRST (M2): sumber kebenaran tampilan = Room, diisi oleh SyncEngine.
- * Sama seperti AccountsRepository — tidak memanggil REST, sync yang mengisi tabel.
+ * ONLINE (pola BudgetsRepository): fetch GET /investments → cache in-memory StateFlow.
+ * Web memetakan quantity→units & avg_buy_price→avgBuyPriceIdr; sama di sini. units & avg
+ * hanya bisa diubah lewat pencatatan unit (BUY/SELL), bukan update instrumen.
  */
 class InvestmentsRepository(
-    db: KasKuDatabase,
+    private val api: InvestmentApi,
 ) {
-    private val investmentDao = db.investmentDao()
+    private val _investments = MutableStateFlow<List<InvestmentItem>>(emptyList())
+    val investments: StateFlow<List<InvestmentItem>> = _investments
 
-    /** Investasi aktif, reaktif. Kosong sampai sync pertama mengisi Room. */
-    fun observeInvestments(): Flow<List<InvestmentItem>> =
-        investmentDao.observeActive().map { rows ->
-            rows.map {
+    /** Ambil dari cache tanpa fetch (prefill layar edit). */
+    fun find(id: String): InvestmentItem? = _investments.value.firstOrNull { it.id == id }
+
+    /** Fetch ulang; offline/5xx → diam, nilai lama tetap tampil. */
+    suspend fun refresh() {
+        val loaded = runCatching {
+            (api.listInvestments().data ?: emptyList()).map {
                 InvestmentItem(
                     id = it.id,
                     name = it.name,
-                    assetType = it.asset_type,
-                    symbol = it.symbol,
-                    units = it.units,
-                    avgBuyPriceIdr = it.avg_buy_price_idr,
+                    assetType = it.assetType,
+                    symbol = it.symbol.ifBlank { null },
+                    units = it.quantity,
+                    avgBuyPriceIdr = it.avgBuyPrice.toLong(),
                 )
             }
-        }
+        }.getOrNull() ?: return
+        _investments.value = loaded
+    }
+
+    suspend fun create(
+        name: String,
+        assetType: String,
+        units: Double,
+        avgBuyPriceIdr: Long,
+        symbol: String,
+    ) {
+        api.createInvestment(
+            CreateAssetRequest(
+                name = name.trim(),
+                assetType = assetType,
+                symbol = symbol.trim(),
+                quantity = units,
+                avgBuyPrice = avgBuyPriceIdr.toDouble(),
+            ),
+        )
+        refresh()
+    }
+
+    /** Hanya name/asset_type/symbol yang dapat diubah — units & avg via pencatatan unit. */
+    suspend fun update(id: String, name: String, assetType: String, symbol: String) {
+        api.updateInvestment(
+            id,
+            UpdateAssetRequest(name = name.trim(), assetType = assetType, symbol = symbol.trim()),
+        )
+        refresh()
+    }
+
+    suspend fun delete(id: String) {
+        api.deleteInvestment(id)
+        refresh()
+    }
 }

@@ -28,10 +28,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -238,10 +242,15 @@ private fun RecentRow(tx: TransactionItem) {
     }
 }
 
-/** Palet irisan donat — tinta editorial redup di atas paper (deterministik, di-index modulo). */
+/**
+ * Palet irisan donat — deterministik (di-index modulo), 4 warna pertama adalah aksen brand
+ * web (teal/clay/gold/steel) supaya kategori teratas selalu terbaca "KasKu". Empat sisanya
+ * pelengkap kategorikal yang sama-sama terang, karena di atas kanvas gelap warna pekat
+ * (palet editorial lama) praktis hilang jadi hitam.
+ */
 private val sliceColors = listOf(
-    Color(0xFF1A5F66), Color(0xFFA4502F), Color(0xFF8A6A1F), Color(0xFF2F5583),
-    Color(0xFF12312E), Color(0xFF5B7B4F), Color(0xFF7A4A66), Color(0xFF4F7B77),
+    Color(0xFF2DD4BF), Color(0xFFF4795B), Color(0xFFE0B357), Color(0xFF85AEE7),
+    Color(0xFFB292E8), Color(0xFF6EE7B7), Color(0xFFF0A6C8), Color(0xFF7C8CF8),
 )
 
 /**
@@ -276,16 +285,8 @@ private fun MonthlyTrendChart(trend: List<MonthlyPoint>) {
                 val cx = groupW * i + groupW / 2f
                 val incH = (p.income.toFloat() / maxVal) * h
                 val expH = (p.expense.toFloat() / maxVal) * h
-                drawRect(
-                    color = incomeColor,
-                    topLeft = Offset(cx - barW - gap / 2f, h - incH),
-                    size = Size(barW, incH),
-                )
-                drawRect(
-                    color = expenseColor,
-                    topLeft = Offset(cx + gap / 2f, h - expH),
-                    size = Size(barW, expH),
-                )
+                drawGradientBar(incomeColor, cx - barW - gap / 2f, h - incH, barW, incH)
+                drawGradientBar(expenseColor, cx + gap / 2f, h - expH, barW, expH)
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -304,6 +305,34 @@ private fun MonthlyTrendChart(trend: List<MonthlyPoint>) {
             LegendDot(incomeColor, "Pemasukan")
             LegendDot(expenseColor, "Pengeluaran")
         }
+    }
+}
+
+/**
+ * Batang grafik bergaya web: sudut atas membulat + gradien vertikal warna penuh → 30% alpha
+ * (setara `<Bars rounded="top" radius={7}>` + `LinearGradient` di LayerChart pada dashboard web).
+ *
+ * Compose hanya punya roundRect dengan empat sudut sama. Triknya: gambar roundRect yang
+ * menjulur `r` piksel di bawah baseline, lalu clip ke kotak batang — sudut bawah terpotong
+ * rata sementara sudut atas utuh. (Menimpa sudut bawah dengan drawRect tidak bisa: ujung
+ * gradiennya cuma 30% alpha, jadi sudutnya tetap terlihat membulat.)
+ * Radius dijepit ke tinggi batang supaya batang pendek tidak berubah jadi kapsul.
+ */
+private fun DrawScope.drawGradientBar(color: Color, x: Float, top: Float, width: Float, height: Float) {
+    if (height <= 0f) return
+    val r = minOf(7.dp.toPx(), height, width / 2f)
+    val brush = Brush.verticalGradient(
+        colors = listOf(color, color.copy(alpha = 0.3f)),
+        startY = top,
+        endY = top + height,
+    )
+    clipRect(left = x, top = top, right = x + width, bottom = top + height) {
+        drawRoundRect(
+            brush = brush,
+            topLeft = Offset(x, top),
+            size = Size(width, height + r),
+            cornerRadius = CornerRadius(r, r),
+        )
     }
 }
 

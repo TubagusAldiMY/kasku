@@ -1,13 +1,14 @@
 package tech.tubsamy.kasku.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import tech.tubsamy.kasku.data.local.KasKuDatabase
-import tech.tubsamy.kasku.data.local.TransactionEntity
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import tech.tubsamy.kasku.data.remote.TransactionApi
+import tech.tubsamy.kasku.data.remote.dto.TransactionRequest
 
 /**
- * Item transaksi untuk UI. type = INCOME | EXPENSE. amountIdr selalu positif;
- * sign (prefix "−") ditentukan di UI. categoryName hasil resolusi cache in-memory.
+ * Item transaksi untuk UI. type = INCOME | EXPENSE. amountIdr selalu positif; sign (prefix
+ * "−") ditentukan di UI. categoryName hasil resolusi cache CategoriesRepository. accountId
+ * dipakai prefill layar Edit (tak ditampilkan di daftar).
  */
 data class TransactionItem(
     val id: String,
@@ -17,42 +18,93 @@ data class TransactionItem(
     val categoryId: String?,
     val categoryName: String,
     val notes: String?,
+    val accountId: String?,
 )
 
 /**
- * Infra bersama F1 (Dashboard bulan berjalan) + F2 (Riwayat). Sumber kebenaran = Room.
- *
- * Nama kategori di-resolve saat map lewat CategoriesRepository.nameFor (cache in-memory).
- * Di-combine dengan categories.version → list re-emit dengan nama benar begitu cache datang
- * (hindari "Umum" nyangkut saat emit pertama mendahului fetch).
+ * ONLINE (pola BudgetsRepository): fetch GET /transactions → cache in-memory StateFlow,
+ * urut tanggal desc. Nama kategori diresolusi saat map lewat CategoriesRepository (dijamin
+ * termuat karena refresh() memanggil ensureLoaded() dulu). Mutasi CRUD → REST lalu refresh().
  */
 class TransactionsRepository(
-    db: KasKuDatabase,
+    private val api: TransactionApi,
     private val categories: CategoriesRepository,
 ) {
-    private val dao = db.transactionDao()
+    private val _transactions = MutableStateFlow<List<TransactionItem>>(emptyList())
+    val transactions: StateFlow<List<TransactionItem>> = _transactions
 
-    /** F2 Riwayat: semua transaksi, urut kronologis desc. */
-    fun observeAll(): Flow<List<TransactionItem>> =
-        dao.observe().withCategoryNames()
+    /** Ambil dari cache tanpa fetch (prefill layar edit). */
+    fun find(id: String): TransactionItem? = _transactions.value.firstOrNull { it.id == id }
 
-    /** Prefill layar Edit: field mentah (accountId/type dll) yang tak ada di TransactionItem. */
-    suspend fun findRaw(id: String): TransactionEntity? = dao.findById(id)
+    /** Fetch ulang; offline/5xx → diam, nilai lama tetap tampil. */
+    suspend fun refresh() {
+        // Pastikan kategori termuat dulu supaya categoryName benar sejak emit pertama.
+        categories.ensureLoaded()
+        val loaded = runCatching {
+            (api.listTransactions().data ?: emptyList())
+                .map {
+                    TransactionItem(
+                        id = it.id,
+                        type = it.transactionType,
+                        amountIdr = it.amountIdr,
+                        date = it.transactionDate.take(10), // trim RFC3339 → "YYYY-MM-DD"
+                        categoryId = it.categoryId,
+                        categoryName = categories.nameFor(it.categoryId),
+                        notes = it.notes,
+                        accountId = it.accountId,
+                    )
+                }
+                .sortedByDescending { it.date }
+        }.getOrNull() ?: return
+        _transactions.value = loaded
+    }
 
-    /** F1 Dashboard: bulan berjalan; from/to "YYYY-MM-DD" di-supply VM via clock. */
-    fun observeMonth(from: String, to: String): Flow<List<TransactionItem>> =
-        dao.observeByDateRange(from, to).withCategoryNames()
+    suspend fun create(
+        accountId: String,
+        type: String,
+        amountIdr: Long,
+        categoryId: String?,
+        date: String,
+        notes: String,
+    ) {
+        api.createTransaction(
+            TransactionRequest(
+                accountId = accountId,
+                categoryId = categoryId,
+                transactionType = type,
+                amountIdr = amountIdr,
+                transactionDate = date,
+                notes = notes,
+            ),
+        )
+        refresh()
+    }
 
-    private fun Flow<List<TransactionEntity>>.withCategoryNames(): Flow<List<TransactionItem>> =
-        combine(categories.version) { rows, _ -> rows.map { it.toItem() } }
+    suspend fun update(
+        id: String,
+        accountId: String,
+        type: String,
+        amountIdr: Long,
+        categoryId: String?,
+        date: String,
+        notes: String,
+    ) {
+        api.updateTransaction(
+            id,
+            TransactionRequest(
+                accountId = accountId,
+                categoryId = categoryId,
+                transactionType = type,
+                amountIdr = amountIdr,
+                transactionDate = date,
+                notes = notes,
+            ),
+        )
+        refresh()
+    }
 
-    private fun TransactionEntity.toItem() = TransactionItem(
-        id = id,
-        type = transaction_type,
-        amountIdr = amount_idr,
-        date = transaction_date,
-        categoryId = category_id,
-        categoryName = categories.nameFor(category_id),
-        notes = notes,
-    )
+    suspend fun delete(id: String) {
+        api.deleteTransaction(id)
+        refresh()
+    }
 }

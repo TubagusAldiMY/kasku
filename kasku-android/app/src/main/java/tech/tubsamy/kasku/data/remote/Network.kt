@@ -14,7 +14,7 @@ import tech.tubsamy.kasku.data.TokenStore
 class NetworkApis(
     val authApi: AuthApi,
     val financeApi: FinanceApi,
-    val syncApi: SyncApi,
+    val transactionApi: TransactionApi,
     val debtApi: DebtApi,
     val reportApi: ReportApi,
     val userApi: UserApi,
@@ -78,7 +78,7 @@ object Network {
         return NetworkApis(
             authApi = mainRetrofit.create(AuthApi::class.java),
             financeApi = mainRetrofit.create(FinanceApi::class.java),
-            syncApi = mainRetrofit.create(SyncApi::class.java),
+            transactionApi = mainRetrofit.create(TransactionApi::class.java),
             debtApi = mainRetrofit.create(DebtApi::class.java),
             reportApi = mainRetrofit.create(ReportApi::class.java),
             userApi = mainRetrofit.create(UserApi::class.java),

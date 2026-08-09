@@ -12,8 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Tombol utama KasKu — CTA teal. Saat disabled tetap teal diredupkan (bukan abu-abu
- * default M3 yang terbaca seperti field mati), saat loading tampil spinner.
+ * Tombol utama KasKu — CTA teal solid (padanan `bg-teal text-card` di web).
+ *
+ * State disabled sengaja tetap bernuansa teal, bukan abu-abu default M3 yang di kanvas
+ * gelap terbaca seperti field mati. Yang penting: warna LABEL-nya tidak boleh ikut
+ * `onPrimary` (= card, hampir hitam) — di atas teal yang sudah diredam jadi gelap, teks
+ * gelap praktis hilang. Karena itu label disabled memakai ink diredam supaya kontrasnya
+ * tetap terbaca (±4:1).
  */
 @Composable
 fun PrimaryButton(
@@ -27,8 +32,8 @@ fun PrimaryButton(
         onClick = onClick,
         enabled = enabled && !loading,
         colors = ButtonDefaults.buttonColors(
-            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
+            disabledContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
         ),
         modifier = modifier.fillMaxWidth(),
     ) {

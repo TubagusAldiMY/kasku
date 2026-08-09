@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background adaptive icon = navy dari desain Kasku2 (Icon/Kasku2.png). -->
+    <color name="ic_launcher_background">#0B1419</color>
+</resources>

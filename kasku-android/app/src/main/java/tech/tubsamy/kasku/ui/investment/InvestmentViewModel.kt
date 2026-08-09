@@ -1,6 +1,5 @@
 package tech.tubsamy.kasku.ui.investment
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -15,24 +14,17 @@ import tech.tubsamy.kasku.data.InvestmentItem
 import tech.tubsamy.kasku.data.InvestmentMarketRepository
 import tech.tubsamy.kasku.data.InvestmentsRepository
 import tech.tubsamy.kasku.data.MarketPrice
-import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
- * OFFLINE-FIRST daftar instrumen (Room, diisi sync) + ONLINE harga live (price-service).
- * Masuk layar → picu sync sekali; setiap kali daftar simbol berubah → fetch harga live.
+ * ONLINE: daftar instrumen dari cache InvestmentsRepository (GET /investments) + harga live
+ * (price-service). Masuk layar → refresh(); setiap kali kumpulan simbol berubah → fetch harga.
  */
 class InvestmentViewModel(
     private val repo: InvestmentsRepository,
     private val market: InvestmentMarketRepository,
-    private val appContext: Context,
 ) : ViewModel() {
 
-    val investments: StateFlow<List<InvestmentItem>> =
-        repo.observeInvestments().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
+    val investments: StateFlow<List<InvestmentItem>> = repo.investments
 
     /** Cache harga live, di-key per simbol. */
     val prices: StateFlow<Map<String, MarketPrice>> =
@@ -43,8 +35,8 @@ class InvestmentViewModel(
         )
 
     init {
-        SyncWorker.enqueueOnce(appContext)
-        // Fetch harga tiap kali kumpulan simbol berubah (bukan tiap perubahan Room lain).
+        viewModelScope.launch { repo.refresh() }
+        // Fetch harga tiap kali kumpulan simbol berubah (bukan tiap perubahan lain).
         viewModelScope.launch {
             investments
                 .map { list -> list.mapNotNull { it.symbol?.takeIf { s -> s.isNotBlank() } }.distinct().sorted() }
@@ -53,10 +45,10 @@ class InvestmentViewModel(
         }
     }
 
-    /** Segarkan: sync ulang daftar + refetch harga live untuk simbol saat ini. */
+    /** Segarkan: tarik ulang daftar + refetch harga live untuk simbol saat ini. */
     fun refresh() {
-        SyncWorker.enqueueOnce(appContext)
         viewModelScope.launch {
+            repo.refresh()
             market.fetchPrices(investments.value.mapNotNull { it.symbol })
         }
     }
@@ -65,9 +57,8 @@ class InvestmentViewModel(
         fun factory(
             repo: InvestmentsRepository,
             market: InvestmentMarketRepository,
-            appContext: Context,
         ) = viewModelFactory {
-            initializer { InvestmentViewModel(repo, market, appContext.applicationContext) }
+            initializer { InvestmentViewModel(repo, market) }
         }
     }
 }

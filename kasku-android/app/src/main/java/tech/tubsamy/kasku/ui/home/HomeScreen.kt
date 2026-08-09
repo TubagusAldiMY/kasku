@@ -1,6 +1,7 @@
 package tech.tubsamy.kasku.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.outlined.Contactless
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,9 +61,9 @@ import tech.tubsamy.kasku.ui.account.accountTypeLabel
 import tech.tubsamy.kasku.ui.components.Hairline
 import tech.tubsamy.kasku.ui.components.MoneyText
 import tech.tubsamy.kasku.ui.components.SectionLabel
+import tech.tubsamy.kasku.ui.theme.KasKuField
 import tech.tubsamy.kasku.ui.theme.KasKuGold
-import tech.tubsamy.kasku.ui.theme.KasKuInk
-import tech.tubsamy.kasku.ui.theme.KasKuTealSoft
+import tech.tubsamy.kasku.ui.theme.KasKuTeal
 import tech.tubsamy.kasku.ui.theme.LabelEyebrow
 
 @Composable
@@ -70,7 +72,6 @@ fun HomeScreen(
     onAddAccount: () -> Unit,
     onEditAccount: (String) -> Unit,
     onLogout: () -> Unit,
-    onConflicts: () -> Unit,
     onDebts: () -> Unit,
     onReports: () -> Unit,
     onBilling: () -> Unit,
@@ -78,7 +79,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val accounts by vm.accounts.collectAsState()
-    val conflictCount by vm.conflictCount.collectAsState()
     // Konfirmasi hapus (aksi destruktif — cegah tap tak sengaja).
     var pendingDelete by remember { mutableStateOf<AccountItem?>(null) }
 
@@ -97,19 +97,6 @@ fun HomeScreen(
                 style = MaterialTheme.typography.headlineMedium,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Konflik hanya muncul saat ada — badge coral, tap → layar konflik.
-                if (conflictCount > 0) {
-                    TextButton(onClick = onConflicts) {
-                        Icon(
-                            Icons.Outlined.Warning,
-                            contentDescription = "Konflik",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("$conflictCount", color = MaterialTheme.colorScheme.error)
-                    }
-                }
                 IconButton(onClick = onLogout) {
                     Icon(
                         Icons.AutoMirrored.Outlined.Logout,
@@ -289,16 +276,41 @@ private fun AccountRow(
     }
 }
 
-/** Kartu saldo bergaya kartu fisik di atas ink brand — chip emas, contactless, nomor bertopeng. */
+/**
+ * Kartu saldo bergaya kartu fisik — chip emas, contactless, nomor bertopeng.
+ *
+ * Permukaannya gradien card→field dengan glow teal di sudut kanan-atas: ini padanan
+ * langsung dari bahasa "cinematic dark" web (permukaan gelap + satu sumber cahaya aksen),
+ * dan sekaligus memisahkan kartu dari kanvas paper yang nyaris sewarna. Border hairline
+ * dipakai karena tema gelap tidak punya shadow yang terbaca.
+ */
 @Composable
 private fun BalanceCard(total: Long) {
-    val paper = MaterialTheme.colorScheme.background
+    val ink = MaterialTheme.colorScheme.onBackground
+    val scheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(KasKuInk)
+            .background(
+                Brush.linearGradient(listOf(scheme.surface, KasKuField)),
+            )
+            .drawWithContent {
+                drawContent()
+                // Glow ditarik di atas konten dengan alpha sangat rendah supaya terbaca
+                // sebagai cahaya, bukan sebagai blok warna yang menutupi angka.
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(KasKuTeal.copy(alpha = 0.14f), Color.Transparent),
+                        center = Offset(size.width * 0.86f, 0f),
+                        radius = size.minDimension * 0.9f,
+                    ),
+                    radius = size.minDimension * 0.9f,
+                    center = Offset(size.width * 0.86f, 0f),
+                )
+            }
+            .border(1.dp, scheme.outlineVariant, RoundedCornerShape(20.dp))
             .padding(24.dp),
     ) {
         Column(
@@ -310,29 +322,29 @@ private fun BalanceCard(total: Long) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Chip emas EMV — gradasi gold palet editorial.
+                // Chip emas EMV — gradasi gold palet KasKu.
                 Box(
                     modifier = Modifier
                         .size(width = 46.dp, height = 34.dp)
                         .clip(RoundedCornerShape(7.dp))
                         .background(
-                            Brush.linearGradient(colors = listOf(Color(0xFFD9BC6A), KasKuGold)),
+                            Brush.linearGradient(colors = listOf(Color(0xFFF0D08F), KasKuGold)),
                         ),
                 )
                 Icon(
                     Icons.Outlined.Contactless,
                     contentDescription = null,
-                    tint = paper.copy(alpha = 0.85f),
+                    tint = ink.copy(alpha = 0.7f),
                 )
             }
             Column {
                 Text(
                     "TOTAL SALDO",
                     style = LabelEyebrow,
-                    color = paper.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(2.dp))
-                MoneyText(total, fontSize = 34, color = paper)
+                MoneyText(total, fontSize = 34, color = ink)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -341,21 +353,21 @@ private fun BalanceCard(total: Long) {
                 Text(
                     "•••• •••• •••• ••••",
                     modifier = Modifier.weight(1f),
-                    color = paper.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 15.sp,
                     letterSpacing = 1.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
                 )
                 Spacer(Modifier.width(12.dp))
-                // Wordmark editorial: "Kas" + "Ku" italic teal lembut.
+                // Wordmark: "Kas" + "Ku" italic teal — identik dengan logo header web.
                 Text(
                     buildAnnotatedString {
                         append("Kas")
-                        withStyle(SpanStyle(color = KasKuTealSoft, fontStyle = FontStyle.Italic)) { append("Ku") }
+                        withStyle(SpanStyle(color = KasKuTeal, fontStyle = FontStyle.Italic)) { append("Ku") }
                     },
                     style = MaterialTheme.typography.titleLarge,
-                    color = paper,
+                    color = ink,
                     maxLines = 1,
                     softWrap = false,
                 )
