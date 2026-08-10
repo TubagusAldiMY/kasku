@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client';
-	import { SvelteDate } from 'svelte/reactivity';
+	import { SvelteDate, SvelteURLSearchParams } from 'svelte/reactivity';
 	import { AreaChart, Area, LinearGradient } from 'layerchart';
 	import { curveMonotoneX } from 'd3-shape';
+	import { slide } from 'svelte/transition';
 
 	type MonthlyPoint = { month: string; income: number; expense: number };
 	type CategoryItem = {
@@ -33,11 +34,29 @@
 	// Editorial category palette (mockup "Pengeluaran per kategori" bars).
 	const CAT_COLORS = ['#2dd4bf', '#85aee7', '#e0b357', '#f4795b', '#8fd18a', '#b8a7e9', '#94a3b8'];
 
+	// Label periode yang sedang tampil: salah satu label PRESETS, atau CUSTOM.
+	const CUSTOM = 'Custom';
+
 	let loading = $state(true);
 	let errorMsg = $state<string | null>(null);
 	let report = $state<ReportData | null>(null);
 	let activePreset = $state<string>('6B');
 	let csvExporting = $state(false);
+
+	// ── Periode custom ──────────────────────────────────────────────────────────
+	// Pakai <input type="date"> bawaan browser: sudah tervalidasi, sudah ter-lokalisasi,
+	// dan sudah bisa diakses keyboard/screen reader tanpa menambah library date picker.
+	let showCustom = $state(false);
+	let customFrom = $state('');
+	let customTo = $state('');
+
+	// Perbandingan string aman untuk format ISO YYYY-MM-DD (leksikografis = kronologis).
+	const customValid = $derived(customFrom !== '' && customTo !== '' && customFrom <= customTo);
+
+	// Query terakhir disimpan supaya tombol "Coba lagi" mengulang periode yang sama —
+	// termasuk periode custom, yang tidak bisa direkonstruksi dari label preset.
+	type Query = { from: string; to: string; months?: number };
+	let lastQuery: Query = { from: '', to: '' };
 
 	// ── Tren bulanan (LayerChart AreaChart) ─────────────────────────────────────
 	// Pemasukan & pengeluaran = ukuran independen → overlap (bukan stack).
@@ -74,13 +93,25 @@
 		return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
 	}
 
+	// Tanggal ISO → "1 Mar 2026" untuk judul grafik periode custom.
+	function fmtDateLabel(iso: string): string {
+		const d = new Date(iso);
+		return Number.isNaN(d.getTime())
+			? iso
+			: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+	}
+
 	// ── API calls ───────────────────────────────────────────────────────────────
-	async function fetchReport(months: number) {
+	async function fetchReport(q: Query) {
+		lastQuery = q;
 		loading = true;
 		errorMsg = null;
-		const { from, to } = getDateRange(months);
+		// months hanya dikirim untuk preset. Untuk periode custom sengaja dihilangkan supaya
+		// backend memakai rentang eksplisit, bukan jatuh ke jendela "N bulan terakhir".
+		const params = new SvelteURLSearchParams({ from: q.from, to: q.to });
+		if (q.months !== undefined) params.set('months', String(q.months));
 		try {
-			const res = await apiFetch(`/transactions/reports?from=${from}&to=${to}&months=${months}`);
+			const res = await apiFetch(`/transactions/reports?${params}`);
 			const json = await res.json();
 			if (!res.ok || !json.success) throw new Error(json.error?.message ?? 'Gagal memuat laporan');
 			report = json.data as ReportData;
@@ -93,7 +124,25 @@
 
 	function setPreset(p: (typeof PRESETS)[number]) {
 		activePreset = p.label;
-		fetchReport(p.months);
+		showCustom = false;
+		fetchReport({ ...getDateRange(p.months), months: p.months });
+	}
+
+	// Panel custom dibuka dengan nilai awal = periode yang sedang tampil, supaya pengguna
+	// menggeser dari sesuatu yang konkret alih-alih dua field kosong.
+	function toggleCustom() {
+		showCustom = !showCustom;
+		if (showCustom && !customFrom && !customTo) {
+			customFrom = report?.period_from ?? '';
+			customTo = report?.period_to ?? '';
+		}
+	}
+
+	function applyCustom() {
+		if (!customValid) return;
+		activePreset = CUSTOM;
+		showCustom = false;
+		fetchReport({ from: customFrom, to: customTo });
 	}
 
 	async function exportCSV() {
@@ -115,7 +164,7 @@
 		}
 	}
 
-	onMount(() => fetchReport(6));
+	onMount(() => fetchReport({ ...getDateRange(6), months: 6 }));
 </script>
 
 <div>
@@ -136,6 +185,30 @@
 							: 'text-ink/50 hover:text-ink'}">{p.label}</button
 					>
 				{/each}
+				<button
+					onclick={toggleCustom}
+					aria-expanded={showCustom}
+					aria-controls="rentang-custom"
+					class="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors {activePreset ===
+					CUSTOM
+						? 'bg-ink text-card'
+						: 'text-ink/50 hover:text-ink'}"
+				>
+					<svg
+						class="h-3.5 w-3.5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+						/>
+					</svg>
+					Custom
+				</button>
 			</div>
 			<button
 				onclick={exportCSV}
@@ -153,6 +226,56 @@
 			</button>
 		</div>
 	</div>
+
+	<!-- Panel rentang custom ─────────────────────────────────────────────────── -->
+	{#if showCustom}
+		<div
+			id="rentang-custom"
+			class="flex flex-wrap items-end gap-4 border-b border-ink/10 py-5"
+			transition:slide={{ duration: 180 }}
+		>
+			<div>
+				<label
+					for="tgl-dari"
+					class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+				>
+					Dari
+				</label>
+				<input
+					id="tgl-dari"
+					type="date"
+					bind:value={customFrom}
+					max={customTo || undefined}
+					class="rounded-xl border border-ink/15 bg-field px-3.5 py-2 text-[13px] text-ink [color-scheme:dark] focus:border-teal focus:outline-none"
+				/>
+			</div>
+			<div>
+				<label
+					for="tgl-sampai"
+					class="mb-1.5 block text-[11px] font-semibold tracking-[0.12em] text-ink/45 uppercase"
+				>
+					Sampai
+				</label>
+				<input
+					id="tgl-sampai"
+					type="date"
+					bind:value={customTo}
+					min={customFrom || undefined}
+					class="rounded-xl border border-ink/15 bg-field px-3.5 py-2 text-[13px] text-ink [color-scheme:dark] focus:border-teal focus:outline-none"
+				/>
+			</div>
+			<button
+				onclick={applyCustom}
+				disabled={!customValid}
+				class="rounded-full bg-teal px-5 py-2 text-[12.5px] font-semibold text-card transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-40"
+			>
+				Terapkan
+			</button>
+			{#if customFrom && customTo && !customValid}
+				<p class="text-[12.5px] text-clay">Tanggal “Dari” harus lebih awal dari “Sampai”.</p>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Loading skeleton ────────────────────────────────────────────────────── -->
 	{#if loading}
@@ -174,7 +297,7 @@
 		<div class="mt-8 border-y border-clay/20 bg-clay/5 py-16 text-center">
 			<p class="text-clay">{errorMsg}</p>
 			<button
-				onclick={() => fetchReport(PRESETS.find((p) => p.label === activePreset)?.months ?? 6)}
+				onclick={() => fetchReport(lastQuery)}
 				class="mt-4 rounded-full border border-clay/25 px-5 py-2 text-sm font-semibold text-clay transition-colors hover:bg-clay/10"
 				>Coba lagi</button
 			>
@@ -248,13 +371,18 @@
 			<!-- ── Area chart gradient (tren bulanan) ─────────────────────────── -->
 			<div>
 				<p class="mb-5 text-[13px] font-semibold text-ink">
-					Arus kas {PRESETS.find((p) => p.label === activePreset)?.months ?? 6} bulan terakhir
+					{#if activePreset === CUSTOM}
+						Arus kas {fmtDateLabel(report.period_from)} — {fmtDateLabel(report.period_to)}
+					{:else}
+						Arus kas {PRESETS.find((p) => p.label === activePreset)?.months ?? 6} bulan terakhir
+					{/if}
 				</p>
 				{#if !trendData.length}
 					<p class="py-16 text-sm text-ink/45">Belum ada data transaksi untuk periode ini.</p>
 				{:else if trendData.length < 2}
 					<p class="py-16 text-sm text-ink/45">
-						Grafik tren butuh minimal 2 bulan data — pilih rentang 3B, 6B, atau 12B.
+						Grafik tren butuh minimal 2 bulan data — pilih rentang yang lebih panjang (3B, 6B, 12B,
+						atau periode custom).
 					</p>
 				{:else}
 					<div
