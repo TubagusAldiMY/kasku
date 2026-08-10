@@ -11,6 +11,7 @@ type Config struct {
 	Billing      PostgresConfig
 	User         PostgresConfig
 	RabbitMQ     RabbitMQConfig
+	AuthService  AuthServiceConfig
 	App          AppConfig
 	OTELEndpoint string
 }
@@ -26,6 +27,13 @@ type PostgresConfig struct {
 
 type RabbitMQConfig struct {
 	URL string
+}
+
+// AuthServiceConfig menyimpan alamat gRPC auth-service beserta shared secret
+// untuk RPC sensitif (UpdateUsername).
+type AuthServiceConfig struct {
+	GRPCAddr       string
+	InternalSecret string
 }
 
 type AppConfig struct {
@@ -51,6 +59,13 @@ func Load() (*Config, error) {
 		},
 		RabbitMQ: RabbitMQConfig{
 			URL: requireEnv("RABBITMQ_URL"),
+		},
+		AuthService: AuthServiceConfig{
+			GRPCAddr: getEnvOrDefault("AUTH_GRPC_ADDR", "auth-service:9081"),
+			// Sengaja TIDAK requireEnv: kalau kosong, auth-service hanya mencatat
+			// warning dan tetap melayani (mode dev). Memaksa wajib di sini akan
+			// membuat user-service gagal boot di lingkungan dev yang selama ini jalan.
+			InternalSecret: os.Getenv("INTERNAL_GRPC_SECRET"),
 		},
 		App: AppConfig{
 			Env:            getEnvOrDefault("APP_ENV", "development"),

@@ -12,6 +12,7 @@ import (
 	"github.com/TubagusAldiMY/kasku/user-service/configs"
 	deliveryhttp "github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/delivery/http/handler"
+	usergrpc "github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/grpc"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/messaging"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/user-service/internal/usecase"
@@ -132,6 +133,18 @@ func main() {
 	financeRepo := persistence.NewPostgresFinanceRepository(financePool)
 	subscriptionRepo := persistence.NewPostgresSubscriptionRepository(billingPool)
 	profileRepo := persistence.NewPostgresUserProfileRepository(userPool)
+
+	// Client ke auth-service untuk menjaga username tetap seiring antara
+	// auth.users dan user_profiles saat rename profil.
+	authClient, err := usergrpc.NewAuthClient(cfg.AuthService.GRPCAddr, cfg.AuthService.InternalSecret)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("gagal menyiapkan client auth-service")
+	}
+	defer func() {
+		if err := authClient.Close(); err != nil {
+			logger.Warn().Err(err).Msg("gagal menutup koneksi auth-service")
+		}
+	}()
 	exportRepo := persistence.NewPostgresExportRepository(financePool, billingPool)
 
 	// Use Cases
