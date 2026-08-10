@@ -4,94 +4,121 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// ── Palet "Editorial" — paper cream + serif, mengikuti handoff ReDesign/ (web kasku.id) ──
-private val Paper = Color(0xFFF7F6F2) // canvas krem
-private val Bright = Color(0xFFFDFCFA) // kartu/field lebih terang
-private val Ink = Color(0xFF12312E) // teks utama, hijau-hitam pekat
-private val Teal = Color(0xFF1A5F66) // aksi utama / pemasukan / positif
-private val TealSoft = Color(0xFF7FC7BD) // aksen di atas ink gelap
-private val Clay = Color(0xFFA4502F) // bahaya / pengeluaran / lewat anggaran
-private val Gold = Color(0xFF8A6A1F) // peringatan / cache / anggaran mendekati limit
-private val Muted = Color(0xFF6E807C) // teks sekunder (ink 60% di atas paper)
-private val Line = Color(0xFFE3E4DF) // hairline pemisah baris (ink ~10%)
-private val Border = Color(0xFFBEC5C1) // border field/chip (ink ~25%)
+/*
+ * ── Palet "Modern Dark / cinematic" — port 1:1 dari token web kasku-frontend ──
+ * Sumber kebenaran: `kasku-frontend/src/routes/layout.css` (@theme). Setiap nilai di bawah
+ * harus sama persis dengan CSS custom property yang namanya sepadan, supaya app dan web
+ * tidak pelan-pelan drift jadi dua produk yang beda rasa.
+ *
+ * Catatan semantik yang gampang menjebak (ikut konvensi web):
+ *   - `Ink` BUKAN warna gelap. Ink = teks utama (terang) SEKALIGUS warna panel "inverted"
+ *     (di web: `bg-ink` = panel terang dengan teks gelap — dipakai di panel brand login).
+ *   - `Card` = permukaan gelap SEKALIGUS warna teks di atas tombol berwarna
+ *     (di web: `bg-teal text-card`). Makanya onPrimary/onError = Card, bukan putih.
+ *   - `Mint` = teal gelap, khusus dipakai DI ATAS panel terang (bg-ink). Jangan dipakai
+ *     di atas paper/card — kontrasnya gagal.
+ */
 
-// Warna brand tambahan untuk pemakaian langsung.
+// Permukaan gelap — sengaja hindari #000 murni supaya elevasi masih terbaca.
+private val Paper = Color(0xFF0A0E14) // kanvas app  (--color-paper)
+private val Card = Color(0xFF10161F) // kartu/panel  (--color-card)
+private val Field = Color(0xFF161E29) // input/inset  (--color-field)
+
+// Ink + aksen — semua sudah dicek kontras AA di atas Paper/Card.
+private val Ink = Color(0xFFE9EDF4) // teks utama   (--color-ink)
+private val Teal = Color(0xFF2DD4BF) // aksi utama / positif (--color-teal)
+private val Mint = Color(0xFF0F766E) // teal gelap di atas panel terang (--color-mint)
+private val Clay = Color(0xFFF4795B) // danger / lewat anggaran (--color-clay)
+private val Gold = Color(0xFFE0B357) // caution / anggaran mendekati limit (--color-gold)
+
+/*
+ * Turunan opacity ink di-flatten jadi warna solid: Compose menggambar teks/garis dengan
+ * alpha per-elemen, tapi menyetel colorScheme dengan warna ber-alpha bikin hasil tak
+ * konsisten saat elemen ditumpuk. Nilai di bawah = hasil komposit ink di atas paper.
+ */
+private val Muted = Color(0xFF98A2B3) // ≈ ink/60 — teks sekunder, kontras 7.3:1 vs paper
+private val Line = Color(0xFF232A35) // ≈ ink/10 — hairline pemisah baris
+private val Border = Color(0xFF313B49) // ≈ ink/18 — border field/chip
+
+// Warna brand untuk pemakaian langsung (di luar colorScheme).
 val KasKuTeal = Teal
 val KasKuClay = Clay
 val KasKuGold = Gold
-val KasKuInk = Ink // panel brand gelap (login, kartu saldo)
-val KasKuTealSoft = TealSoft // aksen "Ku" di atas ink
+val KasKuField = Field
+val KasKuInk = Ink // panel "inverted" terang (panel brand login)
+val KasKuMint = Mint // aksen "Ku" DI ATAS panel terang KasKuInk
 
-/** Default: editorial terang. */
-private val LightColors = lightColorScheme(
+/**
+ * Satu-satunya skema warna. Web mengunci `color-scheme: dark` tanpa varian terang, jadi app
+ * ikut: tidak ada light mode yang perlu dirawat, dan tidak ada permukaan yang lolos tanpa
+ * dicek kontrasnya.
+ */
+private val KasKuColors = darkColorScheme(
     primary = Teal,
-    onPrimary = Paper,
-    primaryContainer = Teal, // FAB & tombol utama = teal solid
-    onPrimaryContainer = Paper,
+    onPrimary = Card,
+    primaryContainer = Teal, // FAB & tombol utama = teal solid (web: bg-teal)
+    onPrimaryContainer = Card,
     secondary = Clay,
-    onSecondary = Paper,
-    secondaryContainer = Ink, // chip/filter terpilih = ink solid (desain)
-    onSecondaryContainer = Paper,
+    onSecondary = Card,
+    // Chip/filter terpilih = panel ink terang — idiom "inverted" milik web.
+    secondaryContainer = Ink,
+    onSecondaryContainer = Card,
     tertiary = Gold,
-    onTertiary = Paper,
+    onTertiary = Card,
     background = Paper,
     onBackground = Ink,
-    surface = Bright,
+    surface = Card,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFECEAE4), // field/chip netral
+    surfaceVariant = Field, // field/inset
     onSurfaceVariant = Muted,
-    surfaceTint = Color.Transparent, // flat: tanpa tonal overlay
+    surfaceTint = Color.Transparent, // flat: tanpa tonal overlay ungu bawaan M3
+    // Tangga surfaceContainer diisi manual; default M3 memberi abu bersemu ungu yang
+    // langsung terlihat asing di menu, dropdown, dan AlertDialog.
+    surfaceContainerLowest = Paper,
+    surfaceContainerLow = Card,
+    surfaceContainer = Card,
+    surfaceContainerHigh = Field,
+    surfaceContainerHighest = Field,
+    inverseSurface = Ink, // snackbar = panel terang
+    inverseOnSurface = Card,
     error = Clay,
-    onError = Paper,
+    onError = Card,
+    errorContainer = Field,
+    onErrorContainer = Clay,
     outline = Border,
     outlineVariant = Line,
+    scrim = Color.Black,
 )
 
-/** Fallback gelap: panel ink (seperti panel brand di desain login). */
-private val DarkColors = darkColorScheme(
-    primary = TealSoft,
-    onPrimary = Ink,
-    primaryContainer = Teal,
-    onPrimaryContainer = Paper,
-    secondary = Color(0xFFD98E6B),
-    onSecondary = Ink,
-    secondaryContainer = Paper,
-    onSecondaryContainer = Ink,
-    background = Ink,
-    onBackground = Paper,
-    surface = Color(0xFF1A3C38),
-    onSurface = Paper,
-    surfaceVariant = Color(0xFF224844),
-    onSurfaceVariant = Color(0xFFA9BDB8),
-    error = Color(0xFFD98E6B),
-    onError = Ink,
-    outline = Color(0xFF3C5D58),
-    outlineVariant = Color(0xFF2A4A46),
-)
-
-// Sudut editorial: field lembut, tombol pill via komponen.
+// Radius mengikuti skala web: input rounded-xl (12), kartu rounded-2xl (16),
+// sheet/panel rounded-3xl (24). Tombol pill diatur per-komponen (CircleShape).
 private val KasKuShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(18.dp),
-    extraLarge = RoundedCornerShape(24.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
-/** Default TERANG (editorial paper). Kirim darkTheme=true untuk fallback ink. */
+/**
+ * Tema KasKu — gelap permanen, sepadan dengan web.
+ *
+ * Parameter [darkTheme] dipertahankan supaya call site & @Preview lama tidak pecah, tapi
+ * nilainya diabaikan: app hanya punya satu skema, jadi tidak ada jalur render yang bisa
+ * lolos tanpa teruji.
+ */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun KasKuTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = KasKuColors,
         typography = KasKuTypography,
         shapes = KasKuShapes,
         content = content,

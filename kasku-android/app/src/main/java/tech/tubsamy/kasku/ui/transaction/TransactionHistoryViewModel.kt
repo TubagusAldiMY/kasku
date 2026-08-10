@@ -10,32 +10,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.TransactionItem
 import tech.tubsamy.kasku.data.TransactionsRepository
-import tech.tubsamy.kasku.data.sync.TransactionMutations
 
 /**
- * F2 Riwayat — list transaksi dari Room (urut kronologis desc). Nama kategori via
- * CategoriesRepository (cache in-memory); ensureLoaded() di init memicu re-emit list
- * dengan nama benar begitu cache datang (via combine categories.version di repo).
+ * F2 Riwayat — list transaksi dari cache TransactionsRepository (ONLINE, urut tanggal desc).
+ * refresh() memuat kategori dulu supaya categoryName benar sejak emit pertama.
  */
 class TransactionHistoryViewModel(
-    transactions: TransactionsRepository,
-    private val categories: CategoriesRepository,
-    private val mutations: TransactionMutations,
+    private val transactions: TransactionsRepository,
 ) : ViewModel() {
 
-    /** Hapus optimistic: soft-delete Room + antre sync. List re-emit sendiri (deleted=0 difilter). */
+    /** Hapus via REST; repo menyegarkan cache → list re-emit. */
     fun delete(id: String) {
-        viewModelScope.launch { mutations.delete(id) }
+        viewModelScope.launch { transactions.delete(id) }
     }
 
-    /** Filter tipe (pills desain ReDesign/): null = Semua, "INCOME" = Masuk, "EXPENSE" = Keluar. */
+    /** Filter tipe (pills): null = Semua, "INCOME" = Masuk, "EXPENSE" = Keluar. */
     val typeFilter = MutableStateFlow<String?>(null)
 
     val items: StateFlow<List<TransactionItem>> =
-        combine(transactions.observeAll(), typeFilter) { txs, type ->
+        combine(transactions.transactions, typeFilter) { txs, type ->
             if (type == null) txs else txs.filter { it.type == type }
         }.stateIn(
             scope = viewModelScope,
@@ -44,16 +39,12 @@ class TransactionHistoryViewModel(
         )
 
     init {
-        viewModelScope.launch { categories.ensureLoaded() }
+        viewModelScope.launch { transactions.refresh() }
     }
 
     companion object {
-        fun factory(
-            transactions: TransactionsRepository,
-            categories: CategoriesRepository,
-            mutations: TransactionMutations,
-        ) = viewModelFactory {
-            initializer { TransactionHistoryViewModel(transactions, categories, mutations) }
+        fun factory(transactions: TransactionsRepository) = viewModelFactory {
+            initializer { TransactionHistoryViewModel(transactions) }
         }
     }
 }

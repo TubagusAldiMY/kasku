@@ -2,14 +2,15 @@ package tech.tubsamy.kasku
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -18,15 +19,18 @@ import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -51,8 +55,6 @@ import tech.tubsamy.kasku.ui.budget.BudgetScreen
 import tech.tubsamy.kasku.ui.budget.BudgetViewModel
 import tech.tubsamy.kasku.ui.category.CategoryScreen
 import tech.tubsamy.kasku.ui.category.CategoryViewModel
-import tech.tubsamy.kasku.ui.conflicts.ConflictsScreen
-import tech.tubsamy.kasku.ui.conflicts.ConflictsViewModel
 import tech.tubsamy.kasku.ui.dashboard.DashboardScreen
 import tech.tubsamy.kasku.ui.dashboard.DashboardViewModel
 import tech.tubsamy.kasku.ui.debt.AddDebtScreen
@@ -88,7 +90,6 @@ private object Routes {
     const val EDIT_TRANSACTION = "edit_transaction" // arg: transactionId
     const val DASHBOARD = "dashboard"
     const val HISTORY = "history"
-    const val CONFLICTS = "conflicts"
     const val CATEGORIES = "categories"
     const val INVESTMENTS = "investments"
     const val ADD_INVESTMENT = "add_investment"
@@ -116,7 +117,6 @@ private object Routes {
 fun AppRoot(container: AppContainer) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
-    val appContext = LocalContext.current.applicationContext
     // Landing = Dashboard (ringkasan) saat sudah login.
     val start = if (container.authRepository.isLoggedIn()) Routes.DASHBOARD else Routes.LOGIN
 
@@ -130,7 +130,13 @@ fun AppRoot(container: AppContainer) {
         floatingActionButton = {
             // FAB tambah transaksi tersedia di Dashboard & Akun (layar berorientasi transaksi).
             if (currentRoute == Routes.DASHBOARD || currentRoute == Routes.HOME) {
-                FloatingActionButton(onClick = { nav.navigate(Routes.ADD_TRANSACTION) }) {
+                // Bulat penuh + teal solid, menyamai FAB "+" di bottom nav web.
+                FloatingActionButton(
+                    onClick = { nav.navigate(Routes.ADD_TRANSACTION) },
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
                     Icon(Icons.Filled.Add, contentDescription = "Tambah transaksi")
                 }
             }
@@ -194,18 +200,12 @@ fun AppRoot(container: AppContainer) {
         }
         composable(Routes.HOME) {
             val vm: HomeViewModel = viewModel(
-                factory = HomeViewModel.factory(
-                    container.accountsRepository,
-                    container.conflictsRepository,
-                    container.accountMutations,
-                    appContext,
-                ),
+                factory = HomeViewModel.factory(container.accountsRepository),
             )
             HomeScreen(
                 vm = vm,
                 onAddAccount = { nav.navigate(Routes.ADD_ACCOUNT) },
                 onEditAccount = { id -> nav.navigate("${Routes.EDIT_ACCOUNT}/$id") },
-                onConflicts = { nav.navigate(Routes.CONFLICTS) },
                 onDebts = { nav.navigate(Routes.DEBTS) },
                 onReports = { nav.navigate(Routes.REPORTS) },
                 onBilling = { nav.navigate(Routes.BILLING) },
@@ -222,7 +222,7 @@ fun AppRoot(container: AppContainer) {
         }
         composable(Routes.ADD_ACCOUNT) {
             val vm: AddAccountViewModel = viewModel(
-                factory = AddAccountViewModel.factory(container.accountMutations, container.accountsRepository),
+                factory = AddAccountViewModel.factory(container.accountsRepository),
             )
             AddAccountScreen(
                 vm = vm,
@@ -240,11 +240,7 @@ fun AppRoot(container: AppContainer) {
                 return@composable
             }
             val vm: AddAccountViewModel = viewModel(
-                factory = AddAccountViewModel.factory(
-                    container.accountMutations,
-                    container.accountsRepository,
-                    accountId,
-                ),
+                factory = AddAccountViewModel.factory(container.accountsRepository, accountId),
             )
             AddAccountScreen(
                 vm = vm,
@@ -349,7 +345,6 @@ fun AppRoot(container: AppContainer) {
             val vm: AddTransactionViewModel = viewModel(
                 factory = AddTransactionViewModel.factory(
                     container.accountsRepository,
-                    container.transactionMutations,
                     container.categoriesRepository,
                     container.transactionsRepository,
                 ),
@@ -372,7 +367,6 @@ fun AppRoot(container: AppContainer) {
             val vm: AddTransactionViewModel = viewModel(
                 factory = AddTransactionViewModel.factory(
                     container.accountsRepository,
-                    container.transactionMutations,
                     container.categoriesRepository,
                     container.transactionsRepository,
                     transactionId,
@@ -391,7 +385,6 @@ fun AppRoot(container: AppContainer) {
                     container.transactionsRepository,
                     container.categoriesRepository,
                     container.budgetsRepository,
-                    appContext,
                 ),
             )
             DashboardScreen(
@@ -410,26 +403,13 @@ fun AppRoot(container: AppContainer) {
         }
         composable(Routes.HISTORY) {
             val vm: TransactionHistoryViewModel = viewModel(
-                factory = TransactionHistoryViewModel.factory(
-                    container.transactionsRepository,
-                    container.categoriesRepository,
-                    container.transactionMutations,
-                ),
+                factory = TransactionHistoryViewModel.factory(container.transactionsRepository),
             )
             TransactionHistoryScreen(
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onEdit = { id -> nav.navigate("${Routes.EDIT_TRANSACTION}/$id") },
             )
-        }
-        composable(Routes.CONFLICTS) {
-            val vm: ConflictsViewModel = viewModel(
-                factory = ConflictsViewModel.factory(
-                    container.conflictsRepository,
-                    container.conflictResolutionService,
-                ),
-            )
-            ConflictsScreen(vm = vm, onBack = { nav.popBackStack() })
         }
         composable(Routes.CATEGORIES) {
             val vm: CategoryViewModel = viewModel(
@@ -442,7 +422,6 @@ fun AppRoot(container: AppContainer) {
                 factory = InvestmentViewModel.factory(
                     container.investmentsRepository,
                     container.investmentMarketRepository,
-                    appContext,
                 ),
             )
             InvestmentScreen(
@@ -465,9 +444,7 @@ fun AppRoot(container: AppContainer) {
                 factory = InvestmentDetailViewModel.factory(
                     container.investmentsRepository,
                     container.investmentMarketRepository,
-                    container.investmentMutations,
                     assetId,
-                    appContext,
                 ),
             )
             InvestmentDetailScreen(
@@ -521,7 +498,7 @@ fun AppRoot(container: AppContainer) {
         }
         composable(Routes.ADD_INVESTMENT) {
             val vm: AddInvestmentViewModel = viewModel(
-                factory = AddInvestmentViewModel.factory(container.investmentMutations),
+                factory = AddInvestmentViewModel.factory(container.investmentsRepository),
             )
             AddInvestmentScreen(
                 vm = vm,
@@ -539,11 +516,7 @@ fun AppRoot(container: AppContainer) {
                 return@composable
             }
             val vm: AddInvestmentViewModel = viewModel(
-                factory = AddInvestmentViewModel.factory(
-                    container.investmentMutations,
-                    container.investmentsRepository,
-                    assetId,
-                ),
+                factory = AddInvestmentViewModel.factory(container.investmentsRepository, assetId),
             )
             AddInvestmentScreen(
                 vm = vm,
@@ -567,25 +540,41 @@ private val TABS = listOf(
 )
 private val TAB_ROUTES = TABS.map { it.route }.toSet()
 
+/**
+ * Bottom nav menyamai web: permukaan card, dipisah kanvas oleh hairline atas, tab aktif
+ * ditandai indikator teal redup + label ink penuh, tab non-aktif diredam jadi muted.
+ */
 @Composable
 private fun KasKuBottomBar(nav: NavHostController, currentRoute: String?) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        TABS.forEach { tab ->
-            NavigationBarItem(
-                selected = currentRoute == tab.route,
-                onClick = {
-                    if (currentRoute != tab.route) {
-                        nav.navigate(tab.route) {
-                            // Satu instance per tab; simpan/pulihkan state antar-tab.
-                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+    Column {
+        // NavigationBar tidak punya border atas; hairline eksplisit menahan card agar
+        // tidak melebur dengan paper di layar OLED.
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+            TABS.forEach { tab ->
+                NavigationBarItem(
+                    selected = currentRoute == tab.route,
+                    onClick = {
+                        if (currentRoute != tab.route) {
+                            nav.navigate(tab.route) {
+                                // Satu instance per tab; simpan/pulihkan state antar-tab.
+                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
-                    }
-                },
-                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                label = { Text(tab.label) },
-            )
+                    },
+                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                    label = { Text(tab.label) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onBackground,
+                        selectedTextColor = MaterialTheme.colorScheme.onBackground,
+                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
         }
     }
 }

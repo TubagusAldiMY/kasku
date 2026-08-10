@@ -1,6 +1,5 @@
 package tech.tubsamy.kasku.ui.dashboard
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
@@ -18,23 +17,20 @@ import tech.tubsamy.kasku.data.CategoriesRepository
 import tech.tubsamy.kasku.data.DashboardCharts
 import tech.tubsamy.kasku.data.DashboardSummary
 import tech.tubsamy.kasku.data.TransactionsRepository
-import tech.tubsamy.kasku.data.sync.SyncWorker
 import tech.tubsamy.kasku.ui.formatIdr
 import java.time.LocalDate
 import java.time.YearMonth
 
 /**
- * F1 Dashboard — dihitung LOKAL dari Room (offline-first, tanpa endpoint baru).
- * combine(akun aktif, transaksi bulan berjalan) → DashboardSummary.compute (pure).
- *
- * `today` disuntik supaya rentang bulan testable/KMP-ready (default LocalDate.now).
+ * F1 Dashboard — dihitung LOKAL dari cache repo ONLINE (accounts + transactions), tanpa
+ * endpoint agregasi baru. combine(akun, transaksi bulan berjalan) → DashboardSummary.compute
+ * (pure). `today` disuntik supaya rentang bulan testable (default LocalDate.now).
  */
 class DashboardViewModel(
-    accounts: AccountsRepository,
-    transactions: TransactionsRepository,
+    private val accounts: AccountsRepository,
+    private val transactions: TransactionsRepository,
     private val categories: CategoriesRepository,
     private val budgetsRepo: BudgetsRepository,
-    private val appContext: Context,
     today: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
@@ -42,17 +38,18 @@ class DashboardViewModel(
     private val monthFrom = month.atDay(1).toString()   // "YYYY-MM-DD"
     private val monthTo = month.atEndOfMonth().toString()
 
-    /** "Juli 2026" — konteks eyebrow hero (desain ReDesign/). */
+    /** "Juli 2026" — konteks eyebrow hero. */
     val monthLabel: String =
         month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.forLanguageTag("id")) +
             " " + month.year
 
     val summary: StateFlow<DashboardSummary> =
         combine(
-            accounts.observeAccounts(),
-            transactions.observeMonth(monthFrom, monthTo),
+            accounts.accounts,
+            transactions.transactions,
         ) { accs, txs ->
-            DashboardSummary.compute(accs, txs) { formatIdr(it) }
+            val monthTxs = txs.filter { it.date in monthFrom..monthTo }
+            DashboardSummary.compute(accs, monthTxs) { formatIdr(it) }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -60,11 +57,11 @@ class DashboardViewModel(
         )
 
     /**
-     * Data grafik dari SELURUH riwayat (observeAll) — trend butuh beberapa bulan, tak cukup
-     * observeMonth. Dihitung LOKAL/pure; breakdown difilter ulang ke bulan berjalan di sini.
+     * Data grafik dari SELURUH riwayat — trend butuh beberapa bulan. Dihitung LOKAL/pure;
+     * breakdown difilter ulang ke bulan berjalan di sini.
      */
     val charts: StateFlow<DashboardCharts> =
-        transactions.observeAll().map { txs ->
+        transactions.transactions.map { txs ->
             DashboardCharts(
                 trend = DashboardCharts.trend(txs, month.toString(), months = TREND_MONTHS),
                 expenseByCategory = DashboardCharts.expenseByCategory(
@@ -77,9 +74,9 @@ class DashboardViewModel(
             initialValue = DashboardCharts.EMPTY,
         )
 
-    /** 4 transaksi terakhir — seksi "Aktivitas terakhir" (desain ReDesign/). */
+    /** 4 transaksi terakhir — seksi "Aktivitas terakhir". */
     val recent: StateFlow<List<tech.tubsamy.kasku.data.TransactionItem>> =
-        transactions.observeAll().map { txs ->
+        transactions.transactions.map { txs ->
             txs.sortedByDescending { it.date }.take(RECENT_COUNT)
         }.stateIn(
             scope = viewModelScope,
@@ -91,10 +88,10 @@ class DashboardViewModel(
     val budgets: StateFlow<List<BudgetItem>> = budgetsRepo.budgets
 
     init {
-        // Cache kategori untuk insight "pengeluaran terbesar" + segarkan Room.
         viewModelScope.launch { categories.ensureLoaded() }
+        viewModelScope.launch { accounts.refresh() }
+        viewModelScope.launch { transactions.refresh() }
         viewModelScope.launch { budgetsRepo.refresh() }
-        SyncWorker.enqueueOnce(appContext)
     }
 
     companion object {
@@ -106,17 +103,8 @@ class DashboardViewModel(
             transactions: TransactionsRepository,
             categories: CategoriesRepository,
             budgets: BudgetsRepository,
-            appContext: Context,
         ) = viewModelFactory {
-            initializer {
-                DashboardViewModel(
-                    accounts,
-                    transactions,
-                    categories,
-                    budgets,
-                    appContext.applicationContext,
-                )
-            }
+            initializer { DashboardViewModel(accounts, transactions, categories, budgets) }
         }
     }
 }

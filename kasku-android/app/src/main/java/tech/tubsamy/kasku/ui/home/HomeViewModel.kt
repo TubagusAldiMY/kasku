@@ -1,68 +1,41 @@
 package tech.tubsamy.kasku.ui.home
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tech.tubsamy.kasku.data.AccountItem
 import tech.tubsamy.kasku.data.AccountsRepository
-import tech.tubsamy.kasku.data.ConflictsRepository
-import tech.tubsamy.kasku.data.sync.AccountMutations
-import tech.tubsamy.kasku.data.sync.SyncWorker
 
 /**
- * OFFLINE-FIRST: akun dibaca reaktif dari Room (diisi sync). Masuk Home → picu
- * sync sekali (one-off, NETWORK_CONNECTED). UI selalu punya data lokal terakhir.
- *
- * conflictCount: badge reaktif jumlah konflik sync (F5).
+ * ONLINE: akun dibaca dari cache StateFlow AccountsRepository (GET /accounts).
+ * Masuk Home → refresh() sekali. Mutasi (hapus) langsung REST lalu repo refresh cache.
  */
 class HomeViewModel(
-    repo: AccountsRepository,
-    conflicts: ConflictsRepository,
-    private val accountMutations: AccountMutations,
-    private val appContext: Context,
+    private val repo: AccountsRepository,
 ) : ViewModel() {
 
-    val accounts: StateFlow<List<AccountItem>> =
-        repo.observeAccounts().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
-
-    val conflictCount: StateFlow<Int> =
-        conflicts.observeCount().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = 0,
-        )
+    val accounts: StateFlow<List<AccountItem>> = repo.accounts
 
     init {
-        // Trigger sync sekali saat masuk Home (mengisi/menyegarkan Room).
-        SyncWorker.enqueueOnce(appContext)
+        refresh()
     }
 
-    /** Retry manual = picu sync sekali lagi. */
-    fun refresh() = SyncWorker.enqueueOnce(appContext)
+    /** Tarik ulang dari server. */
+    fun refresh() {
+        viewModelScope.launch { repo.refresh() }
+    }
 
-    /** Hapus akun (soft-delete optimistic + antre sync). */
+    /** Hapus akun via REST, lalu cache disegarkan oleh repo. */
     fun deleteAccount(id: String) {
-        viewModelScope.launch { accountMutations.delete(id) }
+        viewModelScope.launch { repo.delete(id) }
     }
 
     companion object {
-        fun factory(
-            repo: AccountsRepository,
-            conflicts: ConflictsRepository,
-            accountMutations: AccountMutations,
-            appContext: Context,
-        ) = viewModelFactory {
-            initializer { HomeViewModel(repo, conflicts, accountMutations, appContext.applicationContext) }
+        fun factory(repo: AccountsRepository) = viewModelFactory {
+            initializer { HomeViewModel(repo) }
         }
     }
 }

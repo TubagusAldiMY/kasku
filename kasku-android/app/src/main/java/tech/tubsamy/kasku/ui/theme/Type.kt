@@ -5,29 +5,31 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import tech.tubsamy.kasku.R
 
-// Variable font helper — satu file TTF, bobot via axis wght (minSdk 26).
-@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
-private fun variable(resId: Int, weight: FontWeight) =
-    Font(resId, weight = weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+/*
+ * Pasangan huruf sama persis dengan web (`--font-sans` / `--font-serif` di layout.css):
+ *   Poppins          → body, label, data. Geometric sans, jadi wajah "SaaS" produk.
+ *   Instrument Serif → judul & angka uang hero. Satu-satunya sisa identitas editorial.
+ * Keduanya di-bundle sebagai aset (bukan Downloadable Fonts) supaya tampilan tidak
+ * bergantung pada Google Play Services maupun koneksi saat first launch.
+ */
 
-/** Instrument Serif — wajah editorial KasKu (judul, angka uang hero). Hanya weight 400 + italic. */
+/** Poppins — hanya 4 bobot yang benar-benar dipakai, sisanya cuma menambah ukuran APK. */
+val Poppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold),
+)
+
+/** Instrument Serif — judul & angka uang. Hanya tersedia weight 400 + italic. */
 val InstrumentSerif = FontFamily(
     Font(R.font.instrument_serif, weight = FontWeight.Normal),
     Font(R.font.instrument_serif_italic, weight = FontWeight.Normal, style = FontStyle.Italic),
-)
-
-/** Instrument Sans — body, label, data. */
-val InstrumentSans = FontFamily(
-    variable(R.font.instrument_sans_var, FontWeight.Normal),
-    variable(R.font.instrument_sans_var, FontWeight.Medium),
-    variable(R.font.instrument_sans_var, FontWeight.SemiBold),
-    variable(R.font.instrument_sans_var, FontWeight.Bold),
 )
 
 /** Font angka uang besar — dipakai MoneyText/PercentText di ui/components. */
@@ -35,16 +37,25 @@ val MoneyFont = InstrumentSerif
 
 private val base = Typography()
 
-// Serif editorial selalu weight 400, tracking rapat (mengikuti desain -0.02em).
+// Serif selalu weight 400 dengan tracking rapat — web memakai `tracking-tight` di tiap
+// angka/judul serif; memaksa bold di sini justru menghasilkan faux-bold yang buram.
 private fun TextStyle.serif() = copy(
     fontFamily = InstrumentSerif,
     fontWeight = FontWeight.Normal,
-    letterSpacing = (-0.01).em,
+    letterSpacing = (-0.02).em,
+)
+
+// Poppins sudah cukup lapang secara natural; letterSpacing bawaan Material (0.1–0.5sp)
+// membuatnya terbaca renggang dan tidak sepadan dengan web yang memakai tracking normal.
+private fun TextStyle.poppins(weight: FontWeight = FontWeight.Normal) = copy(
+    fontFamily = Poppins,
+    fontWeight = weight,
+    letterSpacing = 0.sp,
 )
 
 /**
- * Instrument Serif untuk display/headline/titleLarge (identitas editorial),
- * Instrument Sans untuk body/label (keterbacaan data).
+ * Instrument Serif untuk display/headline/titleLarge (angka & judul),
+ * Poppins untuk title kecil/body/label (keterbacaan data).
  */
 val KasKuTypography = Typography(
     displayLarge = base.displayLarge.serif(),
@@ -54,19 +65,19 @@ val KasKuTypography = Typography(
     headlineMedium = base.headlineMedium.serif(),
     headlineSmall = base.headlineSmall.serif(),
     titleLarge = base.titleLarge.serif(),
-    titleMedium = base.titleMedium.copy(fontFamily = InstrumentSans, fontWeight = FontWeight.SemiBold),
-    titleSmall = base.titleSmall.copy(fontFamily = InstrumentSans, fontWeight = FontWeight.SemiBold),
-    bodyLarge = base.bodyLarge.copy(fontFamily = InstrumentSans),
-    bodyMedium = base.bodyMedium.copy(fontFamily = InstrumentSans),
-    bodySmall = base.bodySmall.copy(fontFamily = InstrumentSans),
-    labelLarge = base.labelLarge.copy(fontFamily = InstrumentSans, fontWeight = FontWeight.SemiBold),
-    labelMedium = base.labelMedium.copy(fontFamily = InstrumentSans, fontWeight = FontWeight.Medium),
-    labelSmall = base.labelSmall.copy(fontFamily = InstrumentSans, fontWeight = FontWeight.Medium),
+    titleMedium = base.titleMedium.poppins(FontWeight.SemiBold),
+    titleSmall = base.titleSmall.poppins(FontWeight.SemiBold),
+    bodyLarge = base.bodyLarge.poppins(),
+    bodyMedium = base.bodyMedium.poppins(),
+    bodySmall = base.bodySmall.poppins(),
+    labelLarge = base.labelLarge.poppins(FontWeight.SemiBold),
+    labelMedium = base.labelMedium.poppins(FontWeight.Medium),
+    labelSmall = base.labelSmall.poppins(FontWeight.Medium),
 )
 
-/** Eyebrow editorial: UPPERCASE, tracking lebar (SectionLabel meng-uppercase teksnya). */
+/** Eyebrow: UPPERCASE, tracking lebar — padanan `text-[11px] tracking-[0.12em] uppercase` di web. */
 val LabelEyebrow = TextStyle(
-    fontFamily = InstrumentSans,
+    fontFamily = Poppins,
     fontSize = 11.sp,
     letterSpacing = 0.12.em,
     fontWeight = FontWeight.SemiBold,

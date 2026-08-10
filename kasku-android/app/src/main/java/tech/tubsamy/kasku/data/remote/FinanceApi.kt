@@ -10,14 +10,25 @@ import tech.tubsamy.kasku.data.remote.dto.AccountDto
 import tech.tubsamy.kasku.data.remote.dto.ApiEnvelope
 import tech.tubsamy.kasku.data.remote.dto.BudgetDto
 import tech.tubsamy.kasku.data.remote.dto.CategoryDto
+import tech.tubsamy.kasku.data.remote.dto.CreateAccountRequest
 import tech.tubsamy.kasku.data.remote.dto.CreateBudgetRequest
 import tech.tubsamy.kasku.data.remote.dto.CreateCategoryRequest
 import tech.tubsamy.kasku.data.remote.dto.CreatedIdDto
+import tech.tubsamy.kasku.data.remote.dto.UpdateAccountRequest
 import tech.tubsamy.kasku.data.remote.dto.UpdateBudgetRequest
 
 interface FinanceApi {
     @GET("accounts")
     suspend fun listAccounts(): ApiEnvelope<List<AccountDto>>
+
+    @POST("accounts")
+    suspend fun createAccount(@Body body: CreateAccountRequest): ApiEnvelope<AccountDto>
+
+    @PUT("accounts/{id}")
+    suspend fun updateAccount(@Path("id") id: String, @Body body: UpdateAccountRequest): ApiEnvelope<AccountDto>
+
+    @DELETE("accounts/{id}")
+    suspend fun deleteAccount(@Path("id") id: String): ApiEnvelope<CreatedIdDto>
 
     @GET("categories")
     suspend fun listCategories(): ApiEnvelope<List<CategoryDto>>
