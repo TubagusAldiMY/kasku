@@ -1,71 +1,162 @@
 version: 2
+
+# Strategi grouping (ditambahkan 2026-08-10):
+#
+# Tanpa `groups`, Dependabot membuka SATU PR per paket per direktori. Dengan 15 entri
+# di bawah, itu pernah menghasilkan 35 branch terbuka sekaligus — praktis tidak ada yang
+# sempat di-review, jadi update keamanan justru ikut tenggelam.
+#
+# Dua aturan yang dipakai tiap entri:
+#   1. `groups` hanya mencakup update minor + patch → digabung jadi satu PR per direktori.
+#   2. Update MAJOR sengaja DIBIARKAN terpisah. Major berpotensi breaking dan perlu dibaca
+#      satu per satu; kalau ikut dibundel, satu major yang gagal CI akan menahan semua
+#      patch aman di PR yang sama, dan revert-nya jadi all-or-nothing.
+#
+# `open-pull-requests-limit: 3` menahan antrean tetap pendek walau major menumpuk
+# (default GitHub = 5 per entri, alias plafon 75 PR untuk repo ini).
+
 updates:
   # Go services
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/api-gateway"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      api-gateway-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/auth-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      auth-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/user-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      user-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/billing-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      billing-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/finance-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      finance-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/transaction-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      transaction-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/investment-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      investment-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/notification-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      notification-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/admin-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      admin-service-go:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # Rust services
   - package-ecosystem: "cargo"
     directory: "/kasku-backend/price-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      price-service-rust:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
     directory: "/kasku-backend/sync-service"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      sync-service-rust:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # Frontend
   - package-ecosystem: "npm"
     directory: "/kasku-frontend"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      frontend-npm:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # Docker base images
   - package-ecosystem: "docker"
     directory: "/kasku-backend/api-gateway"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      api-gateway-docker:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: "docker"
     directory: "/kasku-backend/auth-service"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      auth-service-docker:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
