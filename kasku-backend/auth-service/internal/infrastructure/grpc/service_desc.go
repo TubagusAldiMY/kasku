@@ -18,6 +18,7 @@ type authInternalServer any
 //	/auth.v1.AuthInternal/GetUserByEmail
 //	/auth.v1.AuthInternal/RevokeUserTokens
 //	/auth.v1.AuthInternal/IsTokenBlacklisted
+//	/auth.v1.AuthInternal/UpdateUsername
 var authInternalServiceDesc = grpc.ServiceDesc{
 	ServiceName: "auth.v1.AuthInternal",
 	HandlerType: (*authInternalServer)(nil),
@@ -27,6 +28,7 @@ var authInternalServiceDesc = grpc.ServiceDesc{
 		{MethodName: "GetUserByEmail", Handler: getUserByEmailHandler},
 		{MethodName: "RevokeUserTokens", Handler: revokeUserTokensHandler},
 		{MethodName: "IsTokenBlacklisted", Handler: isTokenBlacklistedHandler},
+		{MethodName: "UpdateUsername", Handler: updateUsernameHandler},
 	},
 	Streams: []grpc.StreamDesc{},
 }

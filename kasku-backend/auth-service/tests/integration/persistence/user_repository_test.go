@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/entity"
+	domainerrors "github.com/TubagusAldiMY/kasku/auth-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/infrastructure/persistence"
 	"github.com/TubagusAldiMY/kasku/auth-service/tests/integration"
 	"github.com/google/uuid"
@@ -248,4 +249,51 @@ func TestPostgresUserRepository_EmailNormalizationOnCreate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Equal(t, u.ID, got.ID)
+}
+
+// UpdateUsername dipanggil user-service lewat gRPC saat rename profil. Bentroknya
+// dideteksi dari constraint DB (SQLSTATE 23505), bukan cek-lalu-tulis, jadi
+// perilakunya hanya bisa dibuktikan terhadap Postgres asli.
+func TestPostgresUserRepository_UpdateUsername(t *testing.T) {
+	pool := integration.SetupPostgres(t)
+	repo := persistence.NewPostgresUserRepository(pool)
+	ctx := context.Background()
+
+	t.Run("rename berhasil", func(t *testing.T) {
+		u := seedUser(t, ctx, repo, "rename-ok@example.com", "namalama")
+
+		require.NoError(t, repo.UpdateUsername(ctx, u.ID, "namabaru"))
+
+		got, err := repo.FindByID(ctx, u.ID)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "namabaru", got.Username)
+	})
+
+	t.Run("username milik user lain ditolak", func(t *testing.T) {
+		seedUser(t, ctx, repo, "pemilik@example.com", "sudahdipakai")
+		u := seedUser(t, ctx, repo, "penantang@example.com", "penantang")
+
+		err := repo.UpdateUsername(ctx, u.ID, "sudahdipakai")
+		assert.ErrorIs(t, err, domainerrors.ErrUsernameAlreadyExists)
+
+		// Username lama harus utuh — kegagalan tidak boleh meninggalkan state separuh.
+		got, err := repo.FindByID(ctx, u.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "penantang", got.Username)
+	})
+
+	t.Run("beda huruf besar-kecil tetap dianggap bentrok", func(t *testing.T) {
+		seedUser(t, ctx, repo, "kapital@example.com", "hurufkecil")
+		u := seedUser(t, ctx, repo, "penantang2@example.com", "penantang2")
+
+		// Indeks uniknya lower(username), jadi "HurufKecil" harus ikut tertolak.
+		err := repo.UpdateUsername(ctx, u.ID, "HurufKecil")
+		assert.ErrorIs(t, err, domainerrors.ErrUsernameAlreadyExists)
+	})
+
+	t.Run("user tidak ada", func(t *testing.T) {
+		err := repo.UpdateUsername(ctx, uuid.New(), "siapapun")
+		assert.ErrorIs(t, err, domainerrors.ErrUserNotFound)
+	})
 }

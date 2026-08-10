@@ -274,6 +274,7 @@ func main() {
 		userRepo,
 		refreshTokenRepo,
 		blacklist,
+		userRepo, // UsernameUpdater — user-service memanggilnya saat rename profil
 		cfg.Server.InternalSecret,
 		cfg.IsDevelopment(),
 		logger,

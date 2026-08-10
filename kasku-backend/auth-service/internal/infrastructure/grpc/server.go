@@ -43,6 +43,12 @@ type TokenRevoker interface {
 	RevokeAllActiveByUserID(ctx context.Context, userID uuid.UUID) error
 }
 
+// UsernameUpdater mengganti username pada tabel users.
+// Diimplementasikan oleh repository.UserRepository.UpdateUsername.
+type UsernameUpdater interface {
+	UpdateUsername(ctx context.Context, userID uuid.UUID, username string) error
+}
+
 // BlacklistChecker memeriksa JTI di Redis blacklist.
 // Diimplementasikan oleh redis.TokenBlacklist.
 type BlacklistChecker interface {
@@ -55,6 +61,7 @@ type AuthGRPCServer struct {
 	userLookup       UserLookup
 	tokenRevoker     TokenRevoker
 	blacklistChecker BlacklistChecker
+	usernameUpdater  UsernameUpdater
 
 	log            zerolog.Logger
 	internalSecret string
@@ -77,6 +84,7 @@ func NewAuthGRPCServer(
 	userLookup UserLookup,
 	tokenRevoker TokenRevoker,
 	blacklistChecker BlacklistChecker,
+	usernameUpdater UsernameUpdater,
 	internalSecret string,
 	enableReflection bool,
 	log zerolog.Logger,
@@ -86,6 +94,7 @@ func NewAuthGRPCServer(
 		userLookup:       userLookup,
 		tokenRevoker:     tokenRevoker,
 		blacklistChecker: blacklistChecker,
+		usernameUpdater:  usernameUpdater,
 		internalSecret:   internalSecret,
 		enableReflection: enableReflection,
 		log:              log,
@@ -105,6 +114,9 @@ func (s *AuthGRPCServer) Start(port string) error {
 	// menangkap panic di interceptor lain.
 	sensitiveMethods := map[string]bool{
 		"/auth.v1.AuthInternal/RevokeUserTokens": true,
+		// Mengubah identitas login user — sama sensitifnya dengan mencabut token,
+		// jadi wajib membawa shared secret meski hanya dipanggil user-service.
+		"/auth.v1.AuthInternal/UpdateUsername": true,
 	}
 
 	s.server = grpc.NewServer(

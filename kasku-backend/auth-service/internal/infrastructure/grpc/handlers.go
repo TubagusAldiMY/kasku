@@ -198,3 +198,42 @@ func isTokenBlacklistedHandler(srv any, ctx context.Context, dec func(any) error
 
 	return &rawBytesMsg{data: encodeIsTokenBlacklistedResponse(&isTokenBlacklistedResponse{Blacklisted: blacklisted})}, nil
 }
+
+// ─── UpdateUsername ───────────────────────────────────────────────────────────
+
+// updateUsernameHandler mengganti username pada tabel users milik auth-service.
+//
+// Validasi format username TIDAK diulang di sini — user-service sudah melakukannya
+// sebelum memanggil, dan ini jalur internal yang sudah dijaga shared secret. Yang
+// tetap divalidasi adalah bentuk UUID dan username tidak kosong, karena keduanya
+// menentukan apakah query aman dijalankan.
+func updateUsernameHandler(srv any, ctx context.Context, dec func(any) error, _ grpc.UnaryServerInterceptor) (any, error) {
+	s, err := assertServer(srv)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := decodeRawBytes(dec)
+	if err != nil {
+		return nil, err
+	}
+	req, err := decodeUpdateUsernameRequest(raw)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "request invalid: %v", err)
+	}
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "user_id bukan UUID valid")
+	}
+	if req.Username == "" {
+		return nil, status.Error(codes.InvalidArgument, "username kosong")
+	}
+
+	if err := s.usernameUpdater.UpdateUsername(ctx, userID, req.Username); err != nil {
+		// toStatus memetakan ErrUsernameAlreadyExists → codes.AlreadyExists,
+		// sehingga pemanggil bisa membedakan bentrok dari kegagalan sungguhan.
+		return nil, toStatus(fmt.Errorf("UpdateUsername: %w", err))
+	}
+
+	return &rawBytesMsg{data: encodeUpdateUsernameResponse(&updateUsernameResponse{Username: req.Username})}, nil
+}

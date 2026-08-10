@@ -7,11 +7,16 @@ import (
 	"time"
 
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/entity"
+	domainerrors "github.com/TubagusAldiMY/kasku/auth-service/internal/domain/errors"
 	"github.com/TubagusAldiMY/kasku/auth-service/internal/domain/repository"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// pgUniqueViolation adalah SQLSTATE untuk pelanggaran constraint UNIQUE.
+const pgUniqueViolation = "23505"
 
 // postgresUserRepository mengimplementasikan repository.UserRepository menggunakan pgxpool.
 type postgresUserRepository struct {
@@ -193,6 +198,31 @@ func (r *postgresUserRepository) UpdatePassword(ctx context.Context, userID uuid
 	_, err := r.pool.Exec(ctx, query, userID, newPasswordHash, time.Now().UTC())
 	if err != nil {
 		return fmt.Errorf("gagal update password: %w", err)
+	}
+	return nil
+}
+
+// UpdateUsername mengganti username user.
+//
+// Bentroknya sengaja dideteksi dari constraint DB (SQLSTATE 23505), bukan lewat
+// ExistsByUsername lebih dulu: pola cek-lalu-tulis punya jendela balapan — dua
+// permintaan rename ke username yang sama bisa sama-sama lolos pengecekan lalu
+// salah satunya gagal di INSERT dengan error mentah. Indeks unik adalah satu-
+// satunya penengah yang benar, jadi biarkan ia yang memutuskan.
+//
+// Indeks yang relevan: users_username_unique_idx UNIQUE (lower(username)).
+func (r *postgresUserRepository) UpdateUsername(ctx context.Context, userID uuid.UUID, username string) error {
+	query := `UPDATE public.users SET username = $2, updated_at = now() WHERE id = $1`
+	tag, err := r.pool.Exec(ctx, query, userID, username)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+			return domainerrors.ErrUsernameAlreadyExists
+		}
+		return fmt.Errorf("gagal update username: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domainerrors.ErrUserNotFound
 	}
 	return nil
 }

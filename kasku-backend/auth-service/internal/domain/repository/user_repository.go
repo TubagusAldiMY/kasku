@@ -32,6 +32,13 @@ type UserRepository interface {
 	// UpdateLoginSuccess mereset failed_login_count dan meng-update last_login_at.
 	UpdateLoginSuccess(ctx context.Context, userID uuid.UUID) error
 
+	// UpdateUsername mengganti username user. Dipanggil user-service lewat gRPC
+	// saat rename profil, supaya auth.users dan user_profiles tidak berbeda.
+	//
+	// Mengembalikan errors.ErrUsernameAlreadyExists bila username sudah dipakai
+	// user lain, dan errors.ErrUserNotFound bila user-nya tidak ada.
+	UpdateUsername(ctx context.Context, userID uuid.UUID, username string) error
+
 	// IncrementFailedLoginCount menaikkan failed_login_count.
 	// Jika count mencapai maxAttempts, set locked_until.
 	IncrementFailedLoginAndLockIfNeeded(ctx context.Context, userID uuid.UUID, maxAttempts int16, lockoutDuration string) error

@@ -46,6 +46,19 @@ service AuthInternal {
   // IsTokenBlacklisted memeriksa keberadaan JTI di blacklist Redis. Useful
   // sebagai fallback bagi service yang tidak punya akses langsung ke Redis.
   rpc IsTokenBlacklisted(IsTokenBlacklistedRequest) returns (IsTokenBlacklistedResponse);
+
+  // UpdateUsername mengubah username pada tabel users milik auth-service.
+  //
+  // Username disimpan di DUA tempat: auth.users (identitas, dipakai saat login)
+  // dan user_profiles milik user-service (tampilan). Keduanya punya constraint
+  // UNIQUE masing-masing, jadi rename harus menyentuh keduanya — kalau tidak,
+  // kedua tabel pelan-pelan berbeda dan username yang "bebas" menurut satu
+  // tabel bisa ditolak tabel lain.
+  //
+  // user-service adalah pemanggil satu-satunya. Endpoint ini SENSITIF (mengubah
+  // identitas) — wajib lewat interceptor shared-secret seperti RevokeUserTokens.
+  // Mengembalikan codes.AlreadyExists bila username sudah dipakai user lain.
+  rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
 }
 
 // ─── ValidateToken ────────────────────────────────────────────────────────────
@@ -100,4 +113,15 @@ message IsTokenBlacklistedRequest {
 
 message IsTokenBlacklistedResponse {
   bool blacklisted = 1;
+}
+
+// ─── UpdateUsername ───────────────────────────────────────────────────────────
+
+message UpdateUsernameRequest {
+  string user_id  = 1; // UUID string
+  string username = 2; // sudah tervalidasi format-nya oleh pemanggil
+}
+
+message UpdateUsernameResponse {
+  string username = 1; // username setelah tersimpan (hasil normalisasi)
 }

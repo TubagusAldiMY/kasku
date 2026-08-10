@@ -56,6 +56,20 @@ func (mr *MockUserRepositoryMockRecorder) Create(ctx, user any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserRepository)(nil).Create), ctx, user)
 }
 
+// CreateOAuthUser mocks base method.
+func (m *MockUserRepository) CreateOAuthUser(ctx context.Context, user *entity.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateOAuthUser", ctx, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateOAuthUser indicates an expected call of CreateOAuthUser.
+func (mr *MockUserRepositoryMockRecorder) CreateOAuthUser(ctx, user any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOAuthUser", reflect.TypeOf((*MockUserRepository)(nil).CreateOAuthUser), ctx, user)
+}
+
 // ExistsByEmail mocks base method.
 func (m *MockUserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -101,6 +115,21 @@ func (mr *MockUserRepositoryMockRecorder) FindByEmail(ctx, email any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByEmail", reflect.TypeOf((*MockUserRepository)(nil).FindByEmail), ctx, email)
 }
 
+// FindByGoogleID mocks base method.
+func (m *MockUserRepository) FindByGoogleID(ctx context.Context, googleID string) (*entity.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByGoogleID", ctx, googleID)
+	ret0, _ := ret[0].(*entity.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByGoogleID indicates an expected call of FindByGoogleID.
+func (mr *MockUserRepositoryMockRecorder) FindByGoogleID(ctx, googleID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByGoogleID", reflect.TypeOf((*MockUserRepository)(nil).FindByGoogleID), ctx, googleID)
+}
+
 // FindByID mocks base method.
 func (m *MockUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 	m.ctrl.T.Helper()
@@ -130,6 +159,20 @@ func (mr *MockUserRepositoryMockRecorder) IncrementFailedLoginAndLockIfNeeded(ct
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncrementFailedLoginAndLockIfNeeded", reflect.TypeOf((*MockUserRepository)(nil).IncrementFailedLoginAndLockIfNeeded), ctx, userID, maxAttempts, lockoutDuration)
 }
 
+// SaveGoogleID mocks base method.
+func (m *MockUserRepository) SaveGoogleID(ctx context.Context, userID uuid.UUID, googleID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveGoogleID", ctx, userID, googleID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveGoogleID indicates an expected call of SaveGoogleID.
+func (mr *MockUserRepositoryMockRecorder) SaveGoogleID(ctx, userID, googleID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGoogleID", reflect.TypeOf((*MockUserRepository)(nil).SaveGoogleID), ctx, userID, googleID)
+}
+
 // UpdateLoginSuccess mocks base method.
 func (m *MockUserRepository) UpdateLoginSuccess(ctx context.Context, userID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -156,6 +199,20 @@ func (m *MockUserRepository) UpdatePassword(ctx context.Context, userID uuid.UUI
 func (mr *MockUserRepositoryMockRecorder) UpdatePassword(ctx, userID, newPasswordHash any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePassword", reflect.TypeOf((*MockUserRepository)(nil).UpdatePassword), ctx, userID, newPasswordHash)
+}
+
+// UpdateUsername mocks base method.
+func (m *MockUserRepository) UpdateUsername(ctx context.Context, userID uuid.UUID, username string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUsername", ctx, userID, username)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUsername indicates an expected call of UpdateUsername.
+func (mr *MockUserRepositoryMockRecorder) UpdateUsername(ctx, userID, username any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUsername", reflect.TypeOf((*MockUserRepository)(nil).UpdateUsername), ctx, userID, username)
 }
 
 // VerifyEmail mocks base method.
