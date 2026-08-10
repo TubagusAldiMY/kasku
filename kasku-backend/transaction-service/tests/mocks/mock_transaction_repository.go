@@ -86,6 +86,36 @@ func (mr *MockTransactionRepositoryMockRecorder) GetByID(ctx, tenantSchema, id, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockTransactionRepository)(nil).GetByID), ctx, tenantSchema, id, userID)
 }
 
+// GetCategoryBreakdown mocks base method.
+func (m *MockTransactionRepository) GetCategoryBreakdown(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.CategoryBreakdown, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCategoryBreakdown", ctx, tenantSchema, userID, from, to)
+	ret0, _ := ret[0].([]entity.CategoryBreakdown)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCategoryBreakdown indicates an expected call of GetCategoryBreakdown.
+func (mr *MockTransactionRepositoryMockRecorder) GetCategoryBreakdown(ctx, tenantSchema, userID, from, to any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCategoryBreakdown", reflect.TypeOf((*MockTransactionRepository)(nil).GetCategoryBreakdown), ctx, tenantSchema, userID, from, to)
+}
+
+// GetMonthlyTrend mocks base method.
+func (m *MockTransactionRepository) GetMonthlyTrend(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.MonthlyPoint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMonthlyTrend", ctx, tenantSchema, userID, from, to)
+	ret0, _ := ret[0].([]entity.MonthlyPoint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMonthlyTrend indicates an expected call of GetMonthlyTrend.
+func (mr *MockTransactionRepositoryMockRecorder) GetMonthlyTrend(ctx, tenantSchema, userID, from, to any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMonthlyTrend", reflect.TypeOf((*MockTransactionRepository)(nil).GetMonthlyTrend), ctx, tenantSchema, userID, from, to)
+}
+
 // GetSummary mocks base method.
 func (m *MockTransactionRepository) GetSummary(ctx context.Context, tenantSchema, userID string, from, to time.Time) (*entity.TransactionSummary, error) {
 	m.ctrl.T.Helper()

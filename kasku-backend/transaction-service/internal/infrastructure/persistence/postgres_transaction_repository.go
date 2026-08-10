@@ -580,13 +580,18 @@ func (r *postgresTransactionRepository) GetCategoryBreakdown(ctx context.Context
 	return items, nil
 }
 
-func (r *postgresTransactionRepository) GetMonthlyTrend(ctx context.Context, tenantSchema, userID string, months int) ([]entity.MonthlyPoint, error) {
+// GetMonthlyTrend mengagregasi pemasukan/pengeluaran per bulan di dalam rentang [from, to].
+//
+// Rentang diterima eksplisit (bukan "N bulan terakhir" yang di-anchor ke NOW()) supaya
+// pemanggil bisa meminta periode custom di masa lalu — mis. Jan–Mar tahun lalu. Anchor
+// NOW() membuat itu mustahil: grafiknya selalu berakhir hari ini walau angka ringkasan
+// di atasnya memakai rentang lain, jadi keduanya bisa bercerita beda.
+func (r *postgresTransactionRepository) GetMonthlyTrend(ctx context.Context, tenantSchema, userID string, from, to time.Time) ([]entity.MonthlyPoint, error) {
 	if err := ValidateTenantSchema(tenantSchema); err != nil {
 		return nil, err
 	}
-	if months <= 0 || months > 24 {
-		months = 6
-	}
+	// transaction_date bertipe DATE, jadi perbandingan inklusif di kedua ujung —
+	// sama persis dengan filter di GetSummary supaya grafik dan totalnya konsisten.
 	query := fmt.Sprintf(`
 		SELECT
 			TO_CHAR(DATE_TRUNC('month', t.transaction_date), 'YYYY-MM') AS month,
@@ -597,12 +602,12 @@ func (r *postgresTransactionRepository) GetMonthlyTrend(ctx context.Context, ten
 		WHERE a.user_id = $1
 		  AND t.is_deleted = false
 		  AND t.transaction_type IN ('INCOME', 'EXPENSE')
-		  AND t.transaction_date >= DATE_TRUNC('month', NOW() - (($2 - 1) || ' months')::interval)
+		  AND t.transaction_date >= $2 AND t.transaction_date <= $3
 		GROUP BY DATE_TRUNC('month', t.transaction_date)
 		ORDER BY 1 ASC
 	`, tenantSchema, tenantSchema)
 
-	rows, err := r.pool.Query(ctx, query, userID, months)
+	rows, err := r.pool.Query(ctx, query, userID, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("gagal query monthly trend: %w", err)
 	}
