@@ -88,7 +88,6 @@
 		localStorage.setItem('kasku_mock_mode', 'true');
 		goto(resolve('/dashboard'));
 	}
-
 </script>
 
 <div class="space-y-8">

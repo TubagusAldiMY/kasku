@@ -144,6 +144,8 @@
 	}
 
 	function normalizeCategoryNames(data: unknown): Map<string, string> {
+		// Map lokal sementara untuk lookup, tidak dipakai sebagai state reaktif.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const map = new Map<string, string>();
 		if (!Array.isArray(data)) return map;
 		for (const raw of data) {

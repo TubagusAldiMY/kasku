@@ -269,92 +269,92 @@
 
 		<div class="grid grid-cols-1 gap-8 md:grid-cols-2">
 			{#if isSuperAdmin}
-			<div class="rounded-2xl border border-ink/12 bg-card p-6">
-				<h3 class="text-[13px] font-semibold text-ink">Status akun</h3>
-				<p class="mt-1.5 text-[13px] text-ink/55">
-					Suspend mencegah login dan akses API; aktivasi mengembalikan akses penuh.
-				</p>
-				{#if user.is_active}
-					<label
-						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
-					>
-						Alasan suspend
-						<input
-							type="text"
-							bind:value={suspendReason}
-							placeholder="Contoh: Pelanggaran ToS pasal 3"
-							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
-						/>
-					</label>
-					<button
-						type="button"
-						onclick={suspend}
-						disabled={actionBusy || suspendReason.trim().length < 3}
-						class="mt-4 rounded-full border border-clay/25 px-5 py-2.5 text-[13px] font-semibold text-clay transition-colors hover:bg-clay/5 disabled:opacity-40"
-					>
-						Suspend
-					</button>
-				{:else}
-					<label
-						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
-					>
-						Alasan aktivasi
-						<input
-							type="text"
-							bind:value={activateReason}
-							placeholder="Contoh: Masalah sudah diselesaikan"
-							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
-						/>
-					</label>
-					<button
-						type="button"
-						onclick={activate}
-						disabled={actionBusy || activateReason.trim().length < 3}
-						class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
-					>
-						Aktifkan
-					</button>
-				{/if}
-			</div>
+				<div class="rounded-2xl border border-ink/12 bg-card p-6">
+					<h3 class="text-[13px] font-semibold text-ink">Status akun</h3>
+					<p class="mt-1.5 text-[13px] text-ink/55">
+						Suspend mencegah login dan akses API; aktivasi mengembalikan akses penuh.
+					</p>
+					{#if user.is_active}
+						<label
+							class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+						>
+							Alasan suspend
+							<input
+								type="text"
+								bind:value={suspendReason}
+								placeholder="Contoh: Pelanggaran ToS pasal 3"
+								class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
+							/>
+						</label>
+						<button
+							type="button"
+							onclick={suspend}
+							disabled={actionBusy || suspendReason.trim().length < 3}
+							class="mt-4 rounded-full border border-clay/25 px-5 py-2.5 text-[13px] font-semibold text-clay transition-colors hover:bg-clay/5 disabled:opacity-40"
+						>
+							Suspend
+						</button>
+					{:else}
+						<label
+							class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+						>
+							Alasan aktivasi
+							<input
+								type="text"
+								bind:value={activateReason}
+								placeholder="Contoh: Masalah sudah diselesaikan"
+								class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+							/>
+						</label>
+						<button
+							type="button"
+							onclick={activate}
+							disabled={actionBusy || activateReason.trim().length < 3}
+							class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
+						>
+							Aktifkan
+						</button>
+					{/if}
+				</div>
 			{/if}
 
 			{#if isSuperAdmin}
-			<div class="rounded-2xl border border-ink/12 bg-card p-6">
-				<h3 class="text-[13px] font-semibold text-ink">Override subscription</h3>
-				<p class="mt-1.5 text-[13px] text-ink/55">
-					Ubah tier secara manual; berguna untuk kompensasi atau promo. Tercatat di audit log.
-				</p>
-				<div class="mt-4 grid grid-cols-1 gap-3.5">
-					<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
-						Tier baru
-						<select
-							bind:value={overridePlanName}
-							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none focus:border-teal"
-						>
-							{#each tierOptions as t (t)}
-								<option value={t}>{t}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
-						Alasan override
-						<input
-							type="text"
-							bind:value={overrideReason}
-							placeholder="Contoh: Kompensasi gangguan layanan"
-							class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
-						/>
-					</label>
+				<div class="rounded-2xl border border-ink/12 bg-card p-6">
+					<h3 class="text-[13px] font-semibold text-ink">Override subscription</h3>
+					<p class="mt-1.5 text-[13px] text-ink/55">
+						Ubah tier secara manual; berguna untuk kompensasi atau promo. Tercatat di audit log.
+					</p>
+					<div class="mt-4 grid grid-cols-1 gap-3.5">
+						<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+							Tier baru
+							<select
+								bind:value={overridePlanName}
+								class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none focus:border-teal"
+							>
+								{#each tierOptions as t (t)}
+									<option value={t}>{t}</option>
+								{/each}
+							</select>
+						</label>
+						<label class="text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+							Alasan override
+							<input
+								type="text"
+								bind:value={overrideReason}
+								placeholder="Contoh: Kompensasi gangguan layanan"
+								class="mt-2 w-full rounded-[10px] border border-ink/25 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-teal"
+							/>
+						</label>
+					</div>
+					<button
+						type="button"
+						onclick={override}
+						disabled={actionBusy || overrideReason.trim().length < 3}
+						class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
+					>
+						Override sekarang
+					</button>
 				</div>
-				<button
-					type="button"
-					onclick={override}
-					disabled={actionBusy || overrideReason.trim().length < 3}
-					class="mt-4 rounded-full bg-teal px-5 py-2.5 text-[13px] font-semibold text-card transition-colors hover:bg-ink disabled:opacity-40"
-				>
-					Override sekarang
-				</button>
-			</div>
 			{/if}
 		</div>
 
@@ -370,7 +370,9 @@
 						Pengguna dihapus. Mengalihkan ke daftar…
 					</p>
 				{:else}
-					<label class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+					<label
+						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+					>
 						Alasan penghapusan
 						<input
 							type="text"
@@ -379,7 +381,9 @@
 							class="mt-2 w-full rounded-[10px] border border-clay/30 bg-field px-3.5 py-2.5 text-sm font-normal text-ink transition-colors outline-none placeholder:text-ink/30 focus:border-clay"
 						/>
 					</label>
-					<label class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase">
+					<label
+						class="mt-4 block text-[11px] font-semibold tracking-[0.1em] text-ink/50 uppercase"
+					>
 						Ketik <span class="font-mono text-clay">{DELETE_PHRASE}</span> untuk konfirmasi
 						<input
 							type="text"

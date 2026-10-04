@@ -161,6 +161,7 @@
 			<div
 				class="absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-8 md:flex"
 			>
+				<!-- eslint-disable svelte/no-navigation-without-resolve -- anchor in-page (#id), bukan rute SvelteKit -->
 				{#each navLinks as l (l.href)}
 					<a
 						href={l.href}
@@ -169,6 +170,7 @@
 						{l.label}
 					</a>
 				{/each}
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			</div>
 
 			<div class="hidden items-center gap-3 md:flex">
@@ -229,6 +231,7 @@
 		{#if mobileOpen}
 			<div class="animate-fade-up border-t border-ink/10 bg-paper/95 backdrop-blur-md md:hidden">
 				<div class="flex flex-col gap-1 px-6 py-4">
+					<!-- eslint-disable svelte/no-navigation-without-resolve -- anchor in-page (#id), bukan rute SvelteKit -->
 					{#each navLinks as l (l.href)}
 						<a
 							href={l.href}
@@ -238,6 +241,7 @@
 							{l.label}
 						</a>
 					{/each}
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 					<div class="mt-3 flex flex-col gap-2 border-t border-ink/10 pt-4">
 						{#if auth.isAuthenticated}
 							<a
