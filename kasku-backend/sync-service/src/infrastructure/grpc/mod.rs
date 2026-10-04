@@ -1,3 +1,8 @@
+// tonic::Status (176 byte) adalah tipe error resmi API gRPC tonic; client di modul ini
+// mengembalikannya apa adanya ke usecase yang memetakannya ke DomainError. Membungkus dengan
+// Box di setiap method hanya menambah noise, jadi lint ini sengaja dimatikan untuk modul ini.
+#![allow(clippy::result_large_err)]
+
 mod finance_client;
 mod investment_client;
 mod transaction_client;
