@@ -1,5 +1,5 @@
 # ── Stage 1: Builder ──────────────────────────────────────────────────────────
-FROM golang:1.26.4-alpine AS builder
+FROM golang:1.27.0-alpine AS builder
 
 # Install ca-certificates for HTTPS/gRPC calls
 RUN apk add --no-cache ca-certificates git
@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-w -s" -o api-gateway ./cmd/server/main.go
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
-FROM alpine:3.19
+FROM alpine:3.24
 
 # ca-certificates untuk koneksi TLS/gRPC ke billing-service
 RUN apk add --no-cache ca-certificates tzdata
