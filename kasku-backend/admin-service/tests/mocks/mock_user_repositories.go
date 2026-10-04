@@ -157,3 +157,17 @@ func (mr *MockUserWriteRepositoryMockRecorder) SetIsActive(ctx, userID, isActive
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIsActive", reflect.TypeOf((*MockUserWriteRepository)(nil).SetIsActive), ctx, userID, isActive)
 }
+
+// SoftDeleteAndAnonymize mocks base method.
+func (m *MockUserWriteRepository) SoftDeleteAndAnonymize(ctx context.Context, userID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SoftDeleteAndAnonymize", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SoftDeleteAndAnonymize indicates an expected call of SoftDeleteAndAnonymize.
+func (mr *MockUserWriteRepositoryMockRecorder) SoftDeleteAndAnonymize(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SoftDeleteAndAnonymize", reflect.TypeOf((*MockUserWriteRepository)(nil).SoftDeleteAndAnonymize), ctx, userID)
+}
