@@ -146,7 +146,7 @@ func (uc *googleLoginUseCase) exchangeAuthCode(code, redirectURI string) (string
 	if err != nil {
 		return "", fmt.Errorf("gagal hubungi Google token endpoint: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var tokenResp googleTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
