@@ -46,7 +46,10 @@ func TestGetTierLimitsUseCase_Execute(t *testing.T) {
 		uc := usecase.NewGetTierLimitsUseCase(repo)
 		got, err := uc.Execute(context.Background(), userID.String())
 		require.NoError(t, err)
-		assert.Equal(t, &plan.Limits, got)
+		// TierName diisi dari nama plan oleh use case, bukan dari kolom limits.
+		want := plan.Limits
+		want.TierName = plan.Name
+		assert.Equal(t, &want, got)
 	})
 
 	t.Run("no subscription returns FREE tier fallback", func(t *testing.T) {
