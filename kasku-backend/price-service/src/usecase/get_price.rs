@@ -83,8 +83,8 @@ impl GetPriceUseCase {
                 if TROY_OZ_GOLD_TOKENS.contains(&symbol) {
                     let factor = Decimal::try_from(TROY_OZ_TO_GRAM)
                         .map_err(|e| DomainError::Internal(format!("decimal conversion: {}", e)))?;
-                    price_usd = price_usd / factor;
-                    price_idr = price_idr / factor;
+                    price_usd /= factor;
+                    price_idr /= factor;
                 }
 
                 // Step 3: Upsert into cache
