@@ -63,3 +63,9 @@ not-push
 
 # Metadata tooling Claude Code skills — bukan source
 skills-lock.json
+
+# File kunci rahasia hasil unduhan (nama berisi "sk live") — jangan pernah masuk repo
+/*sk live*.txt
+
+# Binary APK hasil build lokal (23 MB) — distribusi lewat release, bukan git
+*.apk
