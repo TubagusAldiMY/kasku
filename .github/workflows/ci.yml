@@ -69,6 +69,28 @@ jobs:
         run: cargo test
         working-directory: kasku-backend/${{ matrix.service }}
 
+  rust-monolith:
+    name: Rust monolith
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # openssl-sys (via lettre/native-tls) butuh header OpenSSL; dipasang eksplisit
+      # supaya tidak bergantung pada isi image runner.
+      - name: Install libssl-dev
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libssl-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kasku-backend-monolith
+      - name: Lint (cargo clippy)
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: kasku-backend-monolith
+      - name: Test
+        run: cargo test
+        working-directory: kasku-backend-monolith
+
   frontend:
     name: Frontend check
     runs-on: ubuntu-latest
