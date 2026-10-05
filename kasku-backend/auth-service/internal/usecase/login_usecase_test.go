@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"math"
 	"testing"
 	"time"
 
@@ -174,7 +175,14 @@ func TestLoginUseCase_TimingAttack_ConstantTimeCheck(t *testing.T) {
 	require.NoError(t, err)
 	userID := uuid.New()
 
-	const iterations = 3 // hashing argon2 is slow; minimal iterations for sanity check
+	// Argon2 ~ms per hash, jadi test ini sensitif terhadap jitter (GC, test paralel lain, CPU
+	// runner CI). Dua langkah meredamnya: satu panggilan pemanasan (alokasi memori Argon2 awal
+	// tidak dihitung) dan memakai durasi MINIMUM, bukan rata-rata — minimum adalah pengukuran
+	// yang paling bebas gangguan, dan itu cukup untuk membedakan "ada hash" vs "tanpa hash".
+	const (
+		warmup     = 1
+		iterations = 10
+	)
 	measure := func(setup func(*mocks.MockUserRepository)) time.Duration {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -185,24 +193,26 @@ func TestLoginUseCase_TimingAttack_ConstantTimeCheck(t *testing.T) {
 
 		uc := usecase.NewLoginUseCase(ur, rr, priv, 15*time.Minute, 24*time.Hour, testArgon2Cfg, 5, 15*time.Minute, freeQuerier{})
 
-		total := time.Duration(0)
-		for range iterations {
+		best := time.Duration(math.MaxInt64)
+		for i := range warmup + iterations {
 			start := time.Now()
 			_, _ = uc.Execute(context.Background(), newTestLoginInput("x@y.com", "WrongPass1"))
-			total += time.Since(start)
+			if d := time.Since(start); i >= warmup && d < best {
+				best = d
+			}
 		}
-		return total / iterations
+		return best
 	}
 
 	tNotFound := measure(func(ur *mocks.MockUserRepository) {
-		ur.EXPECT().FindByEmail(gomock.Any(), "x@y.com").Return(nil, nil).Times(iterations)
+		ur.EXPECT().FindByEmail(gomock.Any(), "x@y.com").Return(nil, nil).Times(warmup + iterations)
 	})
 	tWrongPass := measure(func(ur *mocks.MockUserRepository) {
 		user := &entity.User{ID: userID, Email: "x@y.com", PasswordHash: correctHash, IsActive: true}
-		ur.EXPECT().FindByEmail(gomock.Any(), "x@y.com").Return(user, nil).Times(iterations)
+		ur.EXPECT().FindByEmail(gomock.Any(), "x@y.com").Return(user, nil).Times(warmup + iterations)
 		ur.EXPECT().
 			IncrementFailedLoginAndLockIfNeeded(gomock.Any(), userID, int16(5), gomock.Any()).
-			Return(nil).Times(iterations)
+			Return(nil).Times(warmup + iterations)
 	})
 
 	// Tolerance: 3x deviation acceptable mengingat Go GC + Argon2 jitter.
