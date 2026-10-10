@@ -80,5 +80,10 @@
 		"d3-shape": "^3.2.0",
 		"layerchart": "^2.5.2",
 		"qrcode": "^1.5.4"
+	},
+	"overrides": {
+		"runed": {
+			"@sveltejs/kit": "$@sveltejs/kit"
+		}
 	}
 }
