@@ -1,4 +1,4 @@
-FROM golang:1.26.6-alpine AS builder
+FROM golang:1.26.9-alpine AS builder
 WORKDIR /app
 
 # Copy go.mod dan go.sum terlebih dahulu untuk memanfaatkan Docker layer cache
