@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { apiFetch } from '$lib/api/client';
 	import { resolve } from '$app/paths';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
 	import { startGoogleLogin } from '$lib/googleOAuth';
 
-	const googleClientId = env.PUBLIC_GOOGLE_CLIENT_ID ?? '';
+	const googleClientId = PUBLIC_GOOGLE_CLIENT_ID;
 
 	let email = $state('');
 	let username = $state('');
@@ -106,7 +106,7 @@
 				</p>
 			</div>
 			<a
-				href={resolve('/login')}
+				href={resolve('/(auth)/login')}
 				class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
 			>
 				Kembali ke masuk
@@ -340,7 +340,7 @@
 
 		<p class="text-center text-[13px] text-ink/55">
 			Sudah punya akun?
-			<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink">Masuk</a>
+			<a href={resolve('/(auth)/login')} class="font-semibold text-teal hover:text-ink">Masuk</a>
 		</p>
 	{/if}
 </div>

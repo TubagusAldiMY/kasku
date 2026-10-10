@@ -7,7 +7,7 @@ RUN npm ci --ignore-scripts
 
 COPY . .
 
-# PUBLIC_* vars are baked at build time via $env/static/public
+# PUBLIC_API_BASE_URL di-inline saat build (static, dideklarasikan di src/env.ts); PUBLIC_GOOGLE_CLIENT_ID dibaca runtime.
 ARG PUBLIC_API_BASE_URL=https://api.kasku.id/v1
 ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
 ARG PUBLIC_GOOGLE_CLIENT_ID=

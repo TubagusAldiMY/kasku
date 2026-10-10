@@ -118,6 +118,8 @@
 
 	<p class="text-center text-[13px] text-ink/55">
 		Ingat kata sandimu?
-		<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink">Kembali ke masuk</a>
+		<a href={resolve('/(auth)/login')} class="font-semibold text-teal hover:text-ink"
+			>Kembali ke masuk</a
+		>
 	</p>
 </div>

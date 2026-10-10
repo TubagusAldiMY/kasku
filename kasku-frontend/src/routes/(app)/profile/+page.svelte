@@ -343,7 +343,7 @@
 					Dapatkan kuota transaksi tak terbatas dan laporan PDF premium.
 				</p>
 				<a
-					href={resolve('/billing')}
+					href={resolve('/(app)/billing')}
 					class="block w-full rounded-full bg-teal py-3 text-center text-[13px] font-semibold text-card transition-colors hover:bg-mint hover:text-ink"
 					>Lihat Paket</a
 				>

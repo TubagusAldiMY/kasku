@@ -4,7 +4,11 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
+	import type { RouteId } from '$app/types';
+
+	// Hanya rute (app) yang tanpa parameter: resolve() mensyaratkan ini agar argumennya tunggal.
+	type AppRoute = Extract<RouteId, `/(app)/${string}`>;
 	import { apiFetch } from '$lib/api/client';
 
 	let { children } = $props();
@@ -21,7 +25,7 @@
 
 	$effect(() => {
 		if (!auth.loading && !auth.isAuthenticated) {
-			goto(resolve('/login'));
+			goto(resolve('/(auth)/login'));
 		}
 	});
 
@@ -33,7 +37,7 @@
 			// Ignore error on logout if BE is down
 		} finally {
 			auth.logout();
-			goto(resolve('/login'));
+			goto(resolve('/(auth)/login'));
 		}
 	}
 
@@ -77,61 +81,71 @@
 		notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
 	}
 
-	function isActive(path: string) {
-		return $page.url.pathname === path || $page.url.pathname.startsWith(path + '/');
+	// Rute disimpan sebagai route id (mis. '/(app)/dashboard') karena resolve() di SvelteKit 3
+	// hanya menerima route id; pathname asli didapat lewat resolve().
+	function isActive(route: AppRoute) {
+		const path = resolve(route);
+		return page.url.pathname === path || page.url.pathname.startsWith(path + '/');
 	}
 
 	// Desktop primary nav (mockup: 6 editorial links)
 	const topNav = [
-		{ href: '/dashboard', label: 'Ringkasan' },
-		{ href: '/transactions', label: 'Transaksi' },
-		{ href: '/accounts', label: 'Rekening' },
-		{ href: '/budgets', label: 'Anggaran' },
-		{ href: '/investments', label: 'Investasi' },
-		{ href: '/reports', label: 'Laporan' }
+		{ href: '/(app)/dashboard', label: 'Ringkasan' },
+		{ href: '/(app)/transactions', label: 'Transaksi' },
+		{ href: '/(app)/accounts', label: 'Rekening' },
+		{ href: '/(app)/budgets', label: 'Anggaran' },
+		{ href: '/(app)/investments', label: 'Investasi' },
+		{ href: '/(app)/reports', label: 'Laporan' }
 	] as const;
 
 	// Avatar dropdown — full secondary set, so every page stays reachable on mobile too.
 	const menuLinks = [
-		{ href: '/budgets', label: 'Anggaran' },
-		{ href: '/reports', label: 'Laporan' },
-		{ href: '/categories', label: 'Kategori' },
-		{ href: '/debts', label: 'Hutang & Piutang' },
-		{ href: '/billing', label: 'Paket' },
-		{ href: '/profile', label: 'Profil' }
+		{ href: '/(app)/budgets', label: 'Anggaran' },
+		{ href: '/(app)/reports', label: 'Laporan' },
+		{ href: '/(app)/categories', label: 'Kategori' },
+		{ href: '/(app)/debts', label: 'Hutang & Piutang' },
+		{ href: '/(app)/billing', label: 'Paket' },
+		{ href: '/(app)/profile', label: 'Profil' }
 	] as const;
 
 	// Mobile bottom nav (mockup: 5 tabs; Profil is the catch-all hub).
 	const bottomNav = [
 		{
-			href: '/dashboard',
+			href: '/(app)/dashboard',
 			label: 'Beranda',
 			icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'
 		},
 		{
-			href: '/transactions',
+			href: '/(app)/transactions',
 			label: 'Transaksi',
 			icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01m-.01 4h.01'
 		},
 		{
-			href: '/accounts',
+			href: '/(app)/accounts',
 			label: 'Rekening',
 			icon: 'M3 10h18M7 10V7a5 5 0 0110 0v3M4 10v10a1 1 0 001 1h14a1 1 0 001-1V10M10 14v4M14 14v4'
 		},
 		{
-			href: '/investments',
+			href: '/(app)/investments',
 			label: 'Investasi',
 			icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'
 		},
 		{
-			href: '/profile',
+			href: '/(app)/profile',
 			label: 'Profil',
 			icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-			match: ['/profile', '/categories', '/reports', '/billing', '/budgets', '/debts']
+			match: [
+				'/(app)/profile',
+				'/(app)/categories',
+				'/(app)/reports',
+				'/(app)/billing',
+				'/(app)/budgets',
+				'/(app)/debts'
+			]
 		}
 	] as const;
 
-	function bottomActive(item: { href: string; match?: readonly string[] }) {
+	function bottomActive(item: { href: AppRoute; match?: readonly AppRoute[] }) {
 		return (item.match ?? [item.href]).some((p) => isActive(p));
 	}
 </script>
@@ -150,7 +164,7 @@
 			<div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-6 lg:px-10">
 				<div class="flex items-center gap-6 lg:gap-10">
 					<a
-						href={resolve('/dashboard')}
+						href={resolve('/(app)/dashboard')}
 						class="font-serif text-[26px] leading-none tracking-tight text-ink"
 					>
 						Kas<em class="text-teal">Ku</em>
@@ -171,7 +185,7 @@
 
 				<div class="flex items-center gap-2 sm:gap-3">
 					<a
-						href={resolve('/transactions')}
+						href={resolve('/(app)/transactions')}
 						class="hidden rounded-full bg-teal px-5 py-2 text-[13px] font-semibold text-card transition-colors hover:bg-ink sm:inline-flex"
 					>
 						+ Catat
@@ -377,7 +391,7 @@
 
 		<!-- Mobile quick-add FAB -->
 		<a
-			href={resolve('/transactions')}
+			href={resolve('/(app)/transactions')}
 			class="fixed right-5 bottom-20 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-teal text-3xl font-light text-card shadow-lg shadow-ink/30 transition-transform hover:scale-105 active:scale-95 lg:hidden"
 			style="margin-bottom: env(safe-area-inset-bottom);"
 			aria-label="Catat transaksi"

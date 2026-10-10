@@ -153,7 +153,7 @@
 			<div class="mb-1 flex items-baseline justify-between">
 				<p class="text-[13px] font-semibold text-ink">Pengguna terbaru</p>
 				<a
-					href={resolve('/admin/users')}
+					href={resolve('/(admin)/admin/users')}
 					class="text-xs font-semibold text-teal transition-colors hover:text-ink"
 				>
 					Kelola semua →
@@ -178,7 +178,7 @@
 				{#each recentUsers as u (u.id)}
 					{@const isPro = u.subscription_tier?.toUpperCase() === 'PRO'}
 					<a
-						href={resolve(`/admin/users/${u.id}`)}
+						href={resolve('/(admin)/admin/users/[id]', { id: u.id })}
 						class="grid grid-cols-[1.6fr_0.7fr_0.9fr_0.6fr] items-baseline gap-3 border-b border-ink/8 py-4 text-[13px] transition-colors hover:bg-ink/[0.02]"
 					>
 						<span class="truncate font-medium text-ink">{u.email}</span>

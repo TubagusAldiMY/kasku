@@ -157,7 +157,7 @@
 			return;
 		if (await postAction('delete', { reason: deleteReason.trim() })) {
 			deleted = true;
-			setTimeout(() => goto(resolve('/admin/users')), 1200);
+			setTimeout(() => goto(resolve('/(admin)/admin/users')), 1200);
 		}
 	}
 
@@ -168,7 +168,7 @@
 	<div class="flex items-center justify-between">
 		<button
 			type="button"
-			onclick={() => goto(resolve('/admin/users'))}
+			onclick={() => goto(resolve('/(admin)/admin/users'))}
 			class="text-[13px] font-semibold text-ink/55 transition-colors hover:text-ink"
 		>
 			← Kembali ke daftar

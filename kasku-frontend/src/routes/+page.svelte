@@ -8,7 +8,7 @@
 		auth.setToken('mock-jwt-token');
 		auth.setUser({ id: 'mock-user-id', email: 'demo@kasku.id', username: 'Juragan Demo' });
 		localStorage.setItem('kasku_mock_mode', 'true');
-		goto(resolve('/dashboard'));
+		goto(resolve('/(app)/dashboard'));
 	}
 
 	function formatPrice(val: number) {
@@ -176,20 +176,20 @@
 			<div class="hidden items-center gap-3 md:flex">
 				{#if auth.isAuthenticated}
 					<a
-						href={resolve('/dashboard')}
+						href={resolve('/(app)/dashboard')}
 						class="rounded-full bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-card transition-all hover:scale-105 active:scale-95"
 					>
 						Buka dashboard
 					</a>
 				{:else}
 					<a
-						href={resolve('/login')}
+						href={resolve('/(auth)/login')}
 						class="rounded-full px-4 py-2 text-[13.5px] font-semibold text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink"
 					>
 						Masuk
 					</a>
 					<a
-						href={resolve('/register')}
+						href={resolve('/(auth)/register')}
 						class="rounded-full bg-ink px-5 py-2.5 text-[13.5px] font-semibold text-card transition-all hover:scale-105 active:scale-95"
 					>
 						Daftar gratis
@@ -245,20 +245,20 @@
 					<div class="mt-3 flex flex-col gap-2 border-t border-ink/10 pt-4">
 						{#if auth.isAuthenticated}
 							<a
-								href={resolve('/dashboard')}
+								href={resolve('/(app)/dashboard')}
 								class="rounded-full bg-ink py-2.5 text-center text-sm font-semibold text-card"
 							>
 								Buka dashboard
 							</a>
 						{:else}
 							<a
-								href={resolve('/login')}
+								href={resolve('/(auth)/login')}
 								class="rounded-full border border-ink/15 py-2.5 text-center text-sm font-semibold text-ink"
 							>
 								Masuk
 							</a>
 							<a
-								href={resolve('/register')}
+								href={resolve('/(auth)/register')}
 								class="rounded-full bg-ink py-2.5 text-center text-sm font-semibold text-card"
 							>
 								Daftar gratis
@@ -330,7 +330,7 @@
 			>
 				{#if auth.isAuthenticated}
 					<a
-						href={resolve('/dashboard')}
+						href={resolve('/(app)/dashboard')}
 						class="rounded-lg bg-gradient-to-b from-ink via-ink to-ink/70 px-8 py-3.5 text-[15px] font-semibold text-card transition-all hover:scale-105 active:scale-95"
 					>
 						Buka dashboard
@@ -343,7 +343,7 @@
 					</a>
 				{:else}
 					<a
-						href={resolve('/register')}
+						href={resolve('/(auth)/register')}
 						class="rounded-lg bg-gradient-to-b from-ink via-ink to-ink/70 px-8 py-3.5 text-[15px] font-semibold text-card transition-all hover:scale-105 active:scale-95"
 					>
 						Mulai mencatat — gratis
@@ -551,7 +551,7 @@
 							</a>
 						{:else}
 							<a
-								href={resolve('/register')}
+								href={resolve('/(auth)/register')}
 								class="mt-8 rounded-full py-3 text-center text-sm font-semibold transition-all active:scale-95 {p.popular
 									? 'bg-gradient-to-b from-ink via-ink to-ink/70 text-card hover:scale-[1.03]'
 									: 'border border-ink/20 text-ink hover:border-ink/40 hover:bg-ink/5'}"

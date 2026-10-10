@@ -37,7 +37,7 @@
 	$effect(() => {
 		if (isLoginRoute) return;
 		if (!adminAuth.isAuthenticated || !hasAdminRole) {
-			goto(resolve('/admin/login'));
+			goto(resolve('/(admin)/admin/login'));
 		}
 	});
 
@@ -48,7 +48,7 @@
 			// Best effort — token blacklist sisi server hanya bonus.
 		} finally {
 			adminAuth.logout();
-			goto(resolve('/admin/login'));
+			goto(resolve('/(admin)/admin/login'));
 		}
 	}
 

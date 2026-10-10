@@ -53,7 +53,7 @@
 				auth.setToken(result.data.access_token);
 				auth.setUser({ id: '', email: '', username: '' });
 				localStorage.removeItem('kasku_mock_mode');
-				goto(resolve('/dashboard'));
+				goto(resolve('/(app)/dashboard'));
 			} else {
 				status = 'error';
 				errorMsg = result.error?.message || 'Login Google gagal.';
@@ -104,7 +104,7 @@
 					<p class="text-[13px] text-ink/55">{errorMsg}</p>
 				</div>
 				<a
-					href={resolve('/login')}
+					href={resolve('/(auth)/login')}
 					class="flex items-center justify-center gap-2.5 rounded-full bg-teal px-6 py-3 text-sm font-semibold text-card transition-colors hover:bg-ink"
 				>
 					Kembali ke masuk
