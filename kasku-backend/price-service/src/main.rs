@@ -12,9 +12,9 @@ use axum::{routing::get, Router};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use opentelemetry::global;
 use opentelemetry::trace::TracerProvider as _;
-use opentelemetry::KeyValue;
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use tokio::signal;
 use tokio::time::{interval, Duration};
@@ -38,32 +38,31 @@ use usecase::get_price::GetPriceUseCase;
 fn init_tracer(
     service_name: &str,
     otlp_endpoint: &str,
-) -> Option<opentelemetry_sdk::trace::TracerProvider> {
+) -> Option<SdkTracerProvider> {
     if otlp_endpoint.is_empty() {
         return None;
     }
 
-    let resource = Resource::new(vec![KeyValue::new(
-        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-        service_name.to_owned(),
-    )]);
-
-    opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .http()
-                // Sertakan path lengkap /v1/traces karena SDK HTTP memakai provided_endpoint
-                // as-is (tanpa menambahkan path) berbeda dengan env var OTEL_EXPORTER_OTLP_ENDPOINT
-                // yang di-append dengan signal path.
-                .with_endpoint(format!("http://{otlp_endpoint}/v1/traces")),
-        )
-        .with_trace_config(
-            opentelemetry_sdk::trace::Config::default().with_resource(resource),
-        )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
+    let exporter = SpanExporter::builder()
+        .with_http()
+        // Sertakan path lengkap /v1/traces karena SDK HTTP memakai provided_endpoint
+        // as-is (tanpa menambahkan path) berbeda dengan env var OTEL_EXPORTER_OTLP_ENDPOINT
+        // yang di-append dengan signal path.
+        .with_endpoint(format!("http://{otlp_endpoint}/v1/traces"))
+        .build()
         .map_err(|e| eprintln!("[otel] gagal inisialisasi tracer: {e}, tracing dinonaktifkan"))
-        .ok()
+        .ok()?;
+
+    let resource = Resource::builder().with_service_name(service_name.to_owned()).build();
+
+    // Batch processor versi baru berjalan di thread sendiri (bukan runtime Tokio),
+    // jadi exporter HTTP memakai reqwest blocking client.
+    Some(
+        SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .with_resource(resource)
+            .build(),
+    )
 }
 
 use std::sync::atomic::AtomicU64;
