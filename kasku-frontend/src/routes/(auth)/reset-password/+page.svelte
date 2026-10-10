@@ -44,7 +44,7 @@
 					text: 'Kata sandi berhasil diperbarui! Mengalihkan ke halaman login...'
 				};
 				setTimeout(() => {
-					goto(resolve('/login'));
+					goto(resolve('/(auth)/login'));
 				}, 2000);
 			} else {
 				message = {
@@ -87,7 +87,7 @@
 			</svg>
 			<p class="text-[13px] font-medium text-clay">Tautan tidak valid atau sudah kadaluarsa.</p>
 			<a
-				href={resolve('/forgot-password')}
+				href={resolve('/(auth)/forgot-password')}
 				class="inline-block text-[12px] font-semibold tracking-[0.12em] text-teal uppercase hover:text-ink"
 			>
 				Minta tautan baru
@@ -218,6 +218,8 @@
 	{/if}
 
 	<p class="text-center text-[13px] text-ink/55">
-		<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink">Kembali ke masuk</a>
+		<a href={resolve('/(auth)/login')} class="font-semibold text-teal hover:text-ink"
+			>Kembali ke masuk</a
+		>
 	</p>
 </div>

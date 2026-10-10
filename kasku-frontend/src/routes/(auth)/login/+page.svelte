@@ -3,10 +3,10 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
 	import { startGoogleLogin } from '$lib/googleOAuth';
 
-	const googleClientId = env.PUBLIC_GOOGLE_CLIENT_ID ?? '';
+	const googleClientId = PUBLIC_GOOGLE_CLIENT_ID;
 
 	let email = $state('');
 	let password = $state('');
@@ -39,7 +39,7 @@
 				auth.setToken(result.data.access_token);
 				auth.setUser({ id: '1', email, username: email.split('@')[0] });
 				localStorage.removeItem('kasku_mock_mode');
-				goto(resolve('/dashboard'));
+				goto(resolve('/(app)/dashboard'));
 			} else {
 				const msg = result.error?.message || 'Email atau password salah.';
 				error = msg;
@@ -86,7 +86,7 @@
 			username: 'Juragan Demo'
 		});
 		localStorage.setItem('kasku_mock_mode', 'true');
-		goto(resolve('/dashboard'));
+		goto(resolve('/(app)/dashboard'));
 	}
 </script>
 
@@ -168,7 +168,7 @@
 					Kata sandi
 				</label>
 				<a
-					href={resolve('/forgot-password')}
+					href={resolve('/(auth)/forgot-password')}
 					class="text-[12px] font-semibold text-teal hover:text-ink"
 				>
 					Lupa sandi?
@@ -275,6 +275,8 @@
 
 	<p class="text-center text-[13px] text-ink/55">
 		Belum punya akun?
-		<a href={resolve('/register')} class="font-semibold text-teal hover:text-ink">Daftar gratis</a>
+		<a href={resolve('/(auth)/register')} class="font-semibold text-teal hover:text-ink"
+			>Daftar gratis</a
+		>
 	</p>
 </div>

@@ -38,7 +38,7 @@
 			}
 
 			adminAuth.setSession(result.data.access_token, result.data.expires_in, result.data.admin);
-			goto(resolve('/admin/dashboard'));
+			goto(resolve('/(admin)/admin/dashboard'));
 		} catch (err) {
 			console.error('Admin login error:', err);
 			error = 'Tidak dapat menghubungi server admin.';

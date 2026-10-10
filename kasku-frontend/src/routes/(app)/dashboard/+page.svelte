@@ -522,7 +522,7 @@
 			<div class="mb-1 flex items-baseline justify-between">
 				<p class="text-[13px] font-semibold text-ink">Aktivitas terakhir</p>
 				<a
-					href={resolve('/transactions')}
+					href={resolve('/(app)/transactions')}
 					class="text-xs font-semibold text-teal transition-colors hover:text-ink"
 				>
 					Lihat semua →
@@ -608,7 +608,7 @@
 
 			{#if !loading && debtSummary.overdueCount > 0}
 				<a
-					href={resolve('/debts')}
+					href={resolve('/(app)/debts')}
 					class="mt-4 flex items-center gap-2.5 rounded-xl border border-clay/25 bg-clay/5 px-3.5 py-2.5 text-[13px] text-clay transition-colors hover:bg-clay/10"
 				>
 					<svg

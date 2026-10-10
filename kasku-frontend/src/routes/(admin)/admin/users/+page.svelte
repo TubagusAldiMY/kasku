@@ -176,7 +176,7 @@
 					</span>
 					<span class="text-ink/50">{formatDate(u.created_at)}</span>
 					<a
-						href={resolve(`/admin/users/${u.id}`)}
+						href={resolve('/(admin)/admin/users/[id]', { id: u.id })}
 						class="justify-self-end font-semibold text-teal transition-colors hover:text-ink"
 					>
 						Detail →

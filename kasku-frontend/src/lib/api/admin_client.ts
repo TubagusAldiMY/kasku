@@ -1,4 +1,4 @@
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
+import { PUBLIC_API_BASE_URL } from '$app/env/public';
 import { adminAuth } from '$lib/stores/admin_auth.svelte';
 
 type FetchOptions = RequestInit & {

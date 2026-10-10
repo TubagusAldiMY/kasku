@@ -1,5 +1,5 @@
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
-import { browser } from '$app/environment';
+import { PUBLIC_API_BASE_URL } from '$app/env/public';
+import { browser } from '$app/env';
 import { auth } from '$lib/stores/auth.svelte';
 
 type FetchOptions = RequestInit & {

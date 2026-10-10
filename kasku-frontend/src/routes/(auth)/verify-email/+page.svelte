@@ -97,7 +97,7 @@
 			</div>
 			<p class="text-sm text-ink/60">{message}</p>
 			<a
-				href={resolve('/login')}
+				href={resolve('/(auth)/login')}
 				class="flex w-full items-center justify-center gap-2.5 rounded-full bg-teal py-3.5 text-sm font-semibold text-card transition-colors hover:bg-ink"
 			>
 				Lanjut ke masuk
@@ -155,11 +155,11 @@
 			</div>
 
 			<p class="text-center text-[13px] text-ink/55">
-				<a href={resolve('/login')} class="font-semibold text-teal hover:text-ink"
+				<a href={resolve('/(auth)/login')} class="font-semibold text-teal hover:text-ink"
 					>Ke halaman masuk</a
 				>
 				<span class="mx-2 text-ink/25">·</span>
-				<a href={resolve('/register')} class="font-semibold text-teal hover:text-ink"
+				<a href={resolve('/(auth)/register')} class="font-semibold text-teal hover:text-ink"
 					>Kembali ke daftar</a
 				>
 			</p>
