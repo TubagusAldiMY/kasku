@@ -1,4 +1,4 @@
-FROM golang:1.26.6-alpine AS builder
+FROM golang:1.26.9-alpine AS builder
 WORKDIR /app
 COPY observability-go ./observability-go
 COPY transaction-service/go.mod transaction-service/go.sum ./transaction-service/
