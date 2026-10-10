@@ -12,16 +12,17 @@ version: 2
 #      satu per satu; kalau ikut dibundel, satu major yang gagal CI akan menahan semua
 #      patch aman di PR yang sama, dan revert-nya jadi all-or-nothing.
 #
-# `open-pull-requests-limit: 3` menahan antrean tetap pendek walau major menumpuk
-# (default GitHub = 5 per entri, alias plafon 75 PR untuk repo ini).
+# Jadwal bulanan + `open-pull-requests-limit: 2` (satu PR grup + satu major) menahan antrean
+# tetap pendek (default GitHub = 5 per entri). Update KEAMANAN tidak terikat jadwal ini:
+# GitHub tetap membuka PR-nya langsung begitu advisory terbit.
 
 updates:
   # Go services
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/api-gateway"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       api-gateway-go:
         patterns: ["*"]
@@ -29,8 +30,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/auth-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       auth-service-go:
         patterns: ["*"]
@@ -38,8 +39,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/user-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       user-service-go:
         patterns: ["*"]
@@ -47,8 +48,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/billing-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       billing-service-go:
         patterns: ["*"]
@@ -56,8 +57,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/finance-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       finance-service-go:
         patterns: ["*"]
@@ -65,8 +66,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/transaction-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       transaction-service-go:
         patterns: ["*"]
@@ -74,8 +75,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/investment-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       investment-service-go:
         patterns: ["*"]
@@ -83,8 +84,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/notification-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       notification-service-go:
         patterns: ["*"]
@@ -92,8 +93,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/kasku-backend/admin-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       admin-service-go:
         patterns: ["*"]
@@ -103,17 +104,22 @@ updates:
   - package-ecosystem: "cargo"
     directory: "/kasku-backend/price-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
+      # Crate OpenTelemetry harus naik berbarengan (versi opentelemetry, _sdk, -otlp, dan
+      # tracing-opentelemetry saling terkunci). Karena itu SEMUA tipe update (termasuk major)
+      # digabung dalam satu PR; grup ini harus di atas grup generik supaya menang saat match.
+      price-service-otel:
+        patterns: ["opentelemetry*", "tracing-opentelemetry"]
       price-service-rust:
         patterns: ["*"]
         update-types: ["minor", "patch"]
   - package-ecosystem: "cargo"
     directory: "/kasku-backend/sync-service"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       sync-service-rust:
         patterns: ["*"]
@@ -123,8 +129,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/kasku-frontend"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 3
+      interval: "monthly"
+    open-pull-requests-limit: 2
     groups:
       frontend-npm:
         patterns: ["*"]
@@ -135,7 +141,7 @@ updates:
     directory: "/kasku-backend/api-gateway"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     groups:
       api-gateway-docker:
         patterns: ["*"]
@@ -144,7 +150,7 @@ updates:
     directory: "/kasku-backend/auth-service"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     groups:
       auth-service-docker:
         patterns: ["*"]
@@ -155,7 +161,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     groups:
       github-actions:
         patterns: ["*"]
