@@ -1,6 +1,6 @@
 module github.com/TubagusAldiMY/kasku/auth-service
 
-go 1.26.4
+go 1.26.10
 
 replace github.com/TubagusAldiMY/kasku/observability-go => ../observability-go
 

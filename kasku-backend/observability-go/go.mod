@@ -1,6 +1,6 @@
 module github.com/TubagusAldiMY/kasku/observability-go
 
-go 1.26.4
+go 1.26.10
 
 require (
 	github.com/gin-gonic/gin v1.10.0

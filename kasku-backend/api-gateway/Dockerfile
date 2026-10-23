@@ -1,5 +1,5 @@
 # ── Stage 1: Builder ──────────────────────────────────────────────────────────
-FROM golang:1.27.0-alpine AS builder
+FROM golang:1.27.3-alpine AS builder
 
 # Install ca-certificates for HTTPS/gRPC calls
 RUN apk add --no-cache ca-certificates git
